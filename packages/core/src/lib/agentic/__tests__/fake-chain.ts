@@ -51,6 +51,8 @@ export interface FakeRule {
   chain: string;
   actionIds: Hex[];
   native?: Partial<NativeConfigRead>;
+  /** Per-action native config overrides, keyed by lowercase action ID. */
+  nativeByAction?: Record<string, Partial<NativeConfigRead>>;
   universal?: {
     assets: readonly {
       token: Address;
@@ -230,14 +232,19 @@ export class FakeChain implements ChainReader {
       }
       case 'getNativeConfig': {
         const found = this.findConfig(a[0] as Hex, a[1] as Address);
-        const n = found?.rule.native ?? {};
+        const n = {
+          ...(found?.rule.native ?? {}),
+          ...(found
+            ? found.rule.nativeByAction?.[found.action.toLowerCase()] ?? {}
+            : {}),
+        };
         return {
           initialized: !!found,
           validUntil: 2_000_000_000,
           target: ADDR.target,
           selector: '0xd09de08a',
           maxValuePerCall: BigInt(0),
-          maxValueTotal: BigInt(0),
+          maxValueTotal: (BigInt(1) << BigInt(256)) - BigInt(1),
           valueSpent: BigInt(0),
           amount: {
             enabled: false,

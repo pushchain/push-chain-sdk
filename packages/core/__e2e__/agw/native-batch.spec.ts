@@ -9,7 +9,6 @@ import {
   setupAgw,
   type AgwFixture,
 } from './_fixture';
-
 const d = AGW_E2E_ENABLED ? describe : describe.skip;
 const SINK = getAddress('0x000000000000000000000000000000000000dEaD');
 const calls = () =>
@@ -18,32 +17,31 @@ const calls = () =>
     value: BigInt(1000),
     data: '0x' as Hex,
   }));
-
 d('agw native batch', () => {
   let f: AgwFixture;
   beforeAll(async () => {
     f = await setupAgw();
-  }, 300_000);
+  }, 300000);
   afterAll(() => f?.teardown());
-
-  const create = async (maxCalls: number) => {
+  const create = async (_maxCalls: number) => {
     const created = await f.owner.agentic.create('e2e-native-batch', {
       rules: [
         {
           agent: f.agentAddress,
-          target: SINK,
-          selector: 'value-only',
           validUntil: inSeconds(3600),
-          maxValuePerCall: BigInt(1000),
-          maxValueTotal: BigInt(5000),
-          maxCalls,
+          allowedCalls: [
+            {
+              target: SINK,
+              selector: 'value-only',
+              maxValue: BigInt(1000),
+            },
+          ],
         },
       ],
     });
     await f.fundPC(created.wallet, parseEther('0.001'));
     return { ...created, agent: await f.agent(created.wallet) };
   };
-
   it('1. sender-preserving atomic native batch meters both actions', async () => {
     const { wallet, rulesIds, agent } = await create(3);
     const before = await f.push.getBalance({ address: wallet });
@@ -78,12 +76,14 @@ d('agw native batch', () => {
       tx: tx.hash,
     });
   });
-
   it('2. a later policy failure rolls back earlier native actions', async () => {
     const { wallet, rulesIds, agent } = await create(1);
     const before = await f.push.getBalance({ address: wallet });
     await expect(
-      agent.universal.sendTransaction({ to: SINK, data: calls() })
+      agent.universal.sendTransaction({
+        to: SINK,
+        data: [calls()[0], { ...calls()[1], value: BigInt(1001) }],
+      })
     ).rejects.toBeInstanceOf(AgenticRevertError);
     expect(await f.push.getBalance({ address: wallet })).toBe(before);
     expect(

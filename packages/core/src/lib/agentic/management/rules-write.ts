@@ -1,3 +1,4 @@
+import { assertNoDuplicateRules } from './duplicates';
 import type { Address, Hex } from 'viem';
 import { PROGRESS_HOOK } from '../../progress-hook/progress-hook.types';
 import type {
@@ -11,7 +12,11 @@ import { prepareWalletRules } from './prepare';
 import { assertLabel } from './label';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
 import type { AgenticRuntime } from '../runtime';
-import type { AgenticHex, AgenticProgressHook, Rule } from '../agentic.types';
+import type {
+  AgenticHex,
+  AgenticProgressHook,
+  InternalRule,
+} from '../agentic.types';
 import {
   readActiveRules,
   readNativeSpend,
@@ -69,7 +74,7 @@ export async function addRules(
   runtime: AgenticRuntime,
   gen: AgenticGeneration,
   wallet: Address,
-  rules: readonly Rule[],
+  rules: readonly InternalRule[],
   hook?: AgenticProgressHook
 ): Promise<{ rulesIds: AgenticHex[]; tx: UniversalTxResponse }> {
   assertCanSign(runtime, 'rules.add');
@@ -89,6 +94,7 @@ export async function addRules(
     rules,
     snap
   );
+  assertNoDuplicateRules(prepared, await readActiveRules(snap, gen, wallet));
   const nonce = BigInt(
     await snap.read<bigint>(wallet, gen.contracts.abis.wallet, 'grantNonce')
   );
@@ -146,8 +152,8 @@ export function assertRevokeTarget(target: unknown): {
   const ids = Array.isArray(target) ? (target as AgenticHex[]) : undefined;
   if (!all && (!ids || ids.length === 0)) {
     throw new AgenticError(
-      AGENTIC_ERROR_CODE.REVOKE_NEEDS_TARGET,
-      'rules.revoke needs explicit rule IDs or { all: true }',
+      AGENTIC_ERROR_CODE.DELETE_NEEDS_TARGET,
+      'rules.delete needs explicit rule IDs or { all: true }',
       {
         hint: 'A bare revoke that wipes every rule is too easy to make by mistake.',
       }
@@ -156,7 +162,7 @@ export function assertRevokeTarget(target: unknown): {
   return { all, ids };
 }
 
-/** w.rules.revoke(ids) / w.rules.revoke({ all: true }). Bare revoke is refused. */
+/** w.rules.delete(ids) / w.rules.delete({ all: true }). Bare revoke is refused. */
 export async function revokeRules(
   runtime: AgenticRuntime,
   gen: AgenticGeneration,
@@ -171,7 +177,7 @@ export async function revokeRules(
   if (all)
     hook =
       (target as { progressHook?: AgenticProgressHook }).progressHook ?? hook;
-  assertCanSign(runtime, 'rules.revoke');
+  assertCanSign(runtime, 'rules.delete');
   const snap = await Snapshot.at(runtime.reader);
   await assertOwner(runtime, gen, wallet, snap);
 
@@ -189,7 +195,7 @@ export async function revokeRules(
     if (unique.size !== (ids as Hex[]).length) {
       throw new AgenticError(
         AGENTIC_ERROR_CODE.INVALID_RULE,
-        'rules.revoke got the same rule ID twice'
+        'rules.delete got the same rule ID twice'
       );
     }
     for (const id of ids as Hex[]) {
@@ -231,7 +237,7 @@ export async function revokeRules(
             },
           ];
   }
-  const result = await finish(runtime, hook, 'rules.revoke', async () => {
+  const result = await finish(runtime, hook, 'rules.delete', async () => {
     const tx = await sendOwnerCalls(runtime, calls, hook);
     const { logs } = await confirmedLogs(runtime, tx);
     const revoked = gen.contracts
@@ -260,7 +266,7 @@ export async function updateRules(
   gen: AgenticGeneration,
   wallet: Address,
   params: {
-    rules: { rulesId: AgenticHex; rule: Rule }[];
+    rules: { rulesId: AgenticHex; rule: InternalRule }[];
     progressHook?: AgenticProgressHook;
   }
 ): Promise<{
@@ -415,7 +421,7 @@ function sameIds(a: readonly Hex[], b: readonly Hex[]): boolean {
   );
 }
 
-/** Owner rename through the owner door; empty resets the default label. */
+/** Direct owner rename; empty resets the default label without a checkpoint. */
 export async function setLabel(
   runtime: AgenticRuntime,
   gen: AgenticGeneration,
@@ -434,18 +440,13 @@ export async function setLabel(
         {
           to: wallet,
           value: BigInt(0),
-          data: gen.contracts.encodeExecute([
-            {
-              target: wallet,
-              value: BigInt(0),
-              data: gen.contracts.encodeSetLabel(label),
-            },
-          ]),
+          data: gen.contracts.encodeSetLabel(label),
         },
       ],
       hook
     );
     await confirmedLogs(runtime, tx);
+    emitAgentic(runtime, hook, PROGRESS_HOOK.AGENTIC_TX_106, label);
     return { tx };
   }).then(({ tx }) => tx);
 }

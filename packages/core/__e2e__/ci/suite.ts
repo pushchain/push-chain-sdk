@@ -168,19 +168,32 @@ const F = {
 
 export const SCENARIOS: Scenario[] = [
   {
-    id: 'agw-svm-replay-positive', group: 'agw-svm-replay', file: '__e2e__/agw-svm-wire/replay.spec.ts',
-    grep: 'agw svm recorded replay 1\\. positive replay', needs: {}, env: { AGW_SVM_WIRE_REPLAY_E2E: '1' },
+    id: 'agw-svm-replay-positive',
+    group: 'agw-svm-replay',
+    file: '__e2e__/agw-svm-wire/replay.spec.ts',
+    grep: 'agw svm recorded replay 1\\. positive replay',
+    needs: {},
+    env: { AGW_SVM_WIRE_REPLAY_E2E: '1' },
   },
   {
-    id: 'agw-svm-replay-rejected', group: 'agw-svm-replay', file: '__e2e__/agw-svm-wire/replay.spec.ts',
-    grep: 'agw svm recorded replay 2\\. later terminal rejection', needs: {}, env: { AGW_SVM_WIRE_REPLAY_E2E: '1' },
+    id: 'agw-svm-replay-rejected',
+    group: 'agw-svm-replay',
+    file: '__e2e__/agw-svm-wire/replay.spec.ts',
+    grep: 'agw svm recorded replay 2\\. later terminal rejection',
+    needs: {},
+    env: { AGW_SVM_WIRE_REPLAY_E2E: '1' },
   },
   {
-    id: 'agw-svm-replay-policy', group: 'agw-svm-replay', file: '__e2e__/agw-svm-wire/replay.spec.ts',
-    grep: 'agw svm recorded replay 3\\. pinned live policy', needs: {}, env: { AGW_SVM_WIRE_REPLAY_E2E: '1' },
+    id: 'agw-svm-replay-policy',
+    group: 'agw-svm-replay',
+    file: '__e2e__/agw-svm-wire/replay.spec.ts',
+    grep: 'agw svm recorded replay 3\\. pinned live policy',
+    needs: {},
+    env: { AGW_SVM_WIRE_REPLAY_E2E: '1' },
   },
   {
-    id: 'agw-svm-wire-positive', group: 'agw-svm-wire',
+    id: 'agw-svm-wire-positive',
+    group: 'agw-svm-wire',
     file: '__e2e__/agw-svm-wire/outbound.spec.ts',
     grep: 'agw svm wire 1\\. positive outbound',
     needs: { masterPC: '45', masterPSOL: '0.00002' },
@@ -188,14 +201,16 @@ export const SCENARIOS: Scenario[] = [
     note: 'Internal prepared-wire backend; public SVM capability remains gated.',
   },
   {
-    id: 'agw-svm-wire-refusals', group: 'agw-svm-wire',
+    id: 'agw-svm-wire-refusals',
+    group: 'agw-svm-wire',
     file: '__e2e__/agw-svm-wire/outbound.spec.ts',
     grep: 'agw svm wire 2\\. substituted account',
     needs: { masterPC: '45', masterPSOL: '0.00002' },
     env: { AGW_SVM_WIRE_E2E: '1' },
   },
   {
-    id: 'agw-svm-wire-failure', group: 'agw-svm-wire',
+    id: 'agw-svm-wire-failure',
+    group: 'agw-svm-wire',
     file: '__e2e__/agw-svm-wire/outbound.spec.ts',
     grep: 'agw svm wire 3\\. destination program failure',
     needs: { masterPC: '45', masterPSOL: '0.00002' },
@@ -1043,35 +1058,62 @@ export const SCENARIOS: Scenario[] = [
   },
 
   ...Array.from({ length: 6 }, (_, i) => ({
-    id: `agw-public-svm-${i + 1}`, group: 'agw' as const,
-    file: '__e2e__/agw/svm-public.spec.ts', grep: `agw public svm ${i + 1}\\.`,
-    needs: { masterPC: '45', masterPSOL: '0.000020001' }, env: { AGW_E2E: '1' },
+    id: `agw-public-svm-${i + 1}`,
+    group: 'agw' as const,
+    file: '__e2e__/agw/svm-public.spec.ts',
+    grep: `agw public svm ${i + 1}\\.`,
+    needs: { masterPC: '45', masterPSOL: '0.000020001' },
+    env: { AGW_E2E: '1' },
   })),
 
   ...Array.from({ length: 8 }, (_, i) => ({
-    id: `agw-labels-${i + 1}`, group: 'agw' as const,
-    file: '__e2e__/agw/labels.spec.ts', grep: `agw labels ${i + 1}\\.`,
-    needs: i === 4 ? { masterPC: '4', sepoliaEth: '0.003' } : i === 5 ? { masterPC: '4', solanaSOL: '0.003' } : { masterPC: '1' },
+    id: `agw-labels-${i + 1}`,
+    group: 'agw' as const,
+    file: '__e2e__/agw/labels.spec.ts',
+    grep: `agw labels ${i + 1}\\.`,
+    needs:
+      i === 4
+        ? { masterPC: '4', sepoliaEth: '0.003' }
+        : i === 5
+        ? { masterPC: '4', solanaSOL: '0.003' }
+        : { masterPC: '1' },
     env: { AGW_E2E: '1' },
   })),
 
   {
-    id: 'agw-v5-independent-token-budgets', group: 'agw',
-    file: '__e2e__/agw/v5-multiasset.spec.ts', grep: 'agw v5 multi-asset 3\\.',
-    needs: { masterPC: '45', masterPETH: '0.000001000000000001', masterUsdcEth: '0.000011' },
+    id: 'agw-v5-independent-token-budgets',
+    group: 'agw',
+    file: '__e2e__/agw/v5-multiasset.spec.ts',
+    grep: 'agw v5 multi-asset 3\\.',
+    needs: {
+      masterPC: '45',
+      masterPETH: '0.000001000000000001',
+      masterUsdcEth: '0.000011',
+    },
     env: { AGW_E2E: '1' },
   },
   {
-    id: 'agw-owner-spl-transfer', group: 'agw',
-    file: '__e2e__/agw/svm-spl-transfer.spec.ts', grep: 'agw svm spl transfer 1\\.',
+    id: 'agw-owner-spl-transfer',
+    group: 'agw',
+    file: '__e2e__/agw/svm-spl-transfer.spec.ts',
+    grep: 'agw svm spl transfer 1\\.',
     needs: { masterPC: '23', masterUsdtSol: '0.001' },
     env: { AGW_E2E: '1' },
   },
 
+  ...Array.from({ length: 10 }, (_, i) => ({
+    id: `agw-native-multi-action-${i + 1}`,
+    group: 'agw' as const,
+    file: '__e2e__/agw/native-multi-action.spec.ts',
+    grep: `agw native multi-action ${i + 1}\\.`,
+    needs: { masterPC: '1', masterPETH: '0.00000000000000004' },
+    env: { AGW_E2E: '1' },
+  })),
+
   // Extended AGW tests are opt-in and use bounded per-scenario testnet budgets.
   ...[
     ['prefunding', '1\\. prefunding', '11'],
-    ['ambiguous-rules', '2\\. same-agent multiplicity', '11'],
+    ['duplicate-rules', '2\\. create and add reject duplicate', '11'],
     ['batched-lifecycle', '3\\. multi-rule add', '0.5'],
     ['invalid-revoke', '4\\. invalid revoke', '0.5'],
     ['stale-update', '5\\. intervening agent spend', '11'],

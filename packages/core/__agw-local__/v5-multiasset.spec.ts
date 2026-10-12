@@ -1,3 +1,5 @@
+import { buildPresetApi } from '../src/lib/agentic/presets';
+import { publicRules } from '../src/lib/agentic/public-rule';
 /** Actual v5 AGW/URP/engine. Token/core/gateway and destination lookup are local fixtures; no bridge/TSS proof. */
 import {
   encodeFunctionData,
@@ -6,12 +8,13 @@ import {
   type Address,
   type Hex,
 } from 'viem';
-import { CHAIN, type PushChain, type UniversalRule } from '../src';
+import { CHAIN, type PushChain, type Rule } from '../src';
 import type { AgenticRuntime } from '../src/lib/agentic/runtime';
 import { updateRules } from '../src/lib/agentic/management/rules-write';
 import { createWallet } from '../src/lib/agentic/management/create';
 import { configId } from '../src/lib/agentic/codec/ids';
-import { UINT256_MAX } from '../src/lib/agentic/codec/defaults';
+import { prepareWalletRules } from '../src/lib/agentic/management/prepare';
+import { Snapshot } from '../src/lib/agentic/reads/snapshot';
 import { buildSession } from '../src/lib/agentic/codec/session';
 import {
   encodeNativeTerms,
@@ -69,11 +72,11 @@ describe('v5 multi-asset SDK management and execution', () => {
     };
   }
   function rule(
-    assets: UniversalRule['assets'] = [
+    assets: Rule['assets'] = [
       { token: a, maxPerCall: BigInt(5), maxTotal: BigInt(7) },
       { token: b, maxPerCall: BigInt(9), maxTotal: BigInt(30) },
     ]
-  ): UniversalRule {
+  ): Rule {
     return {
       agent: h.wallets[1].account!.address,
       chainNamespace: CHAIN_NS,
@@ -149,6 +152,42 @@ describe('v5 multi-asset SDK management and execution', () => {
       args: [configId(wallet, id, action), wallet],
     });
   }
+  it('a fixture preset produces rules accepted by public create and enforced by real contracts', async () => {
+    const presets = buildPresetApi([
+      {
+        constant: 'DEXES',
+        name: 'Local fixture only',
+        chains: [
+          {
+            chainNamespace: CHAIN_NS,
+            allowedCalls: [
+              { target: DEST, selector: 'increment()', app: 'Harness' },
+            ],
+            maxGasPerCall: BigInt(10) ** BigInt(16),
+          },
+        ],
+      },
+    ]);
+    const { rules } = presets.get('DEXES', {
+      agent: h.wallets[1].account!.address,
+      validUntil: Math.floor(Date.now() / 1000) + 3600,
+      assets: [
+        {
+          chainNamespace: CHAIN_NS,
+          token: a,
+          maxPerCall: BigInt(5),
+          maxTotal: BigInt(7),
+        },
+      ],
+    });
+    const { wallet, id, send } = await setup(rules[0]);
+    await waitPush(send(a, BigInt(5)));
+    expect((await stored(wallet, id)).assets[0].spent).toBe(BigInt(5));
+    await expect(send(a, BigInt(3))).rejects.toMatchObject({
+      decodedError: { name: 'PolicyCheckReverted(TotalSpendCapExceeded)' },
+    });
+  });
+
   it('public create encodes two ordered assets; public get reconstructs source-token caps', async () => {
     const { wallet, id } = await setup();
     expect((await stored(wallet, id)).assets.map((x) => x.token)).toEqual([
@@ -215,7 +254,7 @@ describe('v5 multi-asset SDK management and execution', () => {
       BigInt(9),
     ]);
   });
-  it('omitted total encodes maxUint256; explicit zero prohibits movement', async () => {
+  it('omitted and explicit zero totals both prohibit movement', async () => {
     const { wallet, id, send } = await setup(
       rule([
         { token: a, maxPerCall: BigInt(5) },
@@ -223,9 +262,12 @@ describe('v5 multi-asset SDK management and execution', () => {
       ])
     );
     expect((await stored(wallet, id)).assets.map((x) => x.maxTotal)).toEqual([
-      UINT256_MAX,
+      BigInt(0),
       BigInt(0),
     ]);
+    await expect(send(a, BigInt(1))).rejects.toMatchObject({
+      decodedError: { name: 'PolicyCheckReverted(TotalSpendCapExceeded)' },
+    });
     await expect(send(b, BigInt(1))).rejects.toMatchObject({
       decodedError: { name: 'PolicyCheckReverted(TotalSpendCapExceeded)' },
     });
@@ -285,7 +327,7 @@ describe('v5 multi-asset SDK management and execution', () => {
     };
     await expect(
       updateRules(racing, h.generation, wallet, {
-        rules: [{ rulesId: id, rule: rule() }],
+        rules: [{ rulesId: id, rule: publicRules([rule()])[0] }],
       })
     ).rejects.toMatchObject({ decodedError: { name: 'AssetSpentMismatch' } });
     expect(
@@ -304,11 +346,26 @@ describe('v5 multi-asset SDK management and execution', () => {
       })
     ).toBe(count);
   });
-  it('duplicate grants are allowed, but an ambiguous send fails before any signature', async () => {
+  it('out-of-band duplicate contract grants still make sends ambiguous', async () => {
     const created = await owner.agentic.create('multiple', {
-      rules: [rule(), rule()],
+      rules: [rule()],
     });
-    expect(new Set(created.rulesIds).size).toBe(2);
+    const rt = internal(owner);
+    const [prepared] = await prepareWalletRules(
+      rt,
+      h.generation,
+      h.wallets[0].account!.address,
+      created.wallet,
+      publicRules([rule()]),
+      await Snapshot.at(rt.reader)
+    );
+    await h.write(
+      0,
+      created.wallet,
+      h.generation.contracts.abis.wallet as never,
+      'grantRules',
+      [prepared.session]
+    );
     const agent = await h.client(1, { agenticWallet: created.wallet });
     await expect(
       agent.universal.sendTransaction({

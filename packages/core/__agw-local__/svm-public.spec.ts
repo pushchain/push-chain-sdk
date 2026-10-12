@@ -1,14 +1,17 @@
-/** Public named-IDL API against actual AGW/URP; destination/gateway are fixtures. */
+/** Public numeric-pin API against actual AGW/URP; destination/gateway are fixtures. */
 import { PublicKey } from '@solana/web3.js';
 import type { Idl } from '@coral-xyz/anchor';
 import {
+  hexToBytes,
+  sha256,
+  toHex,
   encodeFunctionData,
   parseAbi,
   zeroAddress,
   type Address,
   type Hex,
 } from 'viem';
-import { CHAIN, PushChain, AgenticRevertError, type SolanaRule } from '../src';
+import { CHAIN, PushChain, AgenticRevertError, type Rule } from '../src';
 import type { AgenticRuntime } from '../src/lib/agentic/runtime';
 import { v5 } from '../src/lib/agentic/contracts/v5';
 import { clearRegistry } from '../src/lib/orchestrator/svm-idl/registry';
@@ -21,7 +24,9 @@ const idl: Idl = {
   instructions: [
     {
       name: 'deposit',
-      discriminator: [1, 2, 3, 4, 5, 6, 7, 8],
+      discriminator: Array.from(
+        hexToBytes(sha256(toHex('global:deposit'))).slice(0, 8)
+      ),
       accounts: [{ name: 'cea_authority', writable: true }],
       args: [{ name: 'amount', type: 'u64' }],
     },
@@ -35,7 +40,7 @@ const TOKEN = parseAbi([
 const CORE = parseAbi(['function setGasToken(string,address)']);
 const rt = (c: PushChain) =>
   (c as unknown as { agenticRuntime: AgenticRuntime }).agenticRuntime;
-describe('public Solana IDL rules on actual v5', () => {
+describe('public Solana rules on actual v5', () => {
   let h: Harness, owner: PushChain, token: Address;
   beforeAll(async () => {
     h = await startHarness(18561);
@@ -74,7 +79,7 @@ describe('public Solana IDL rules on actual v5', () => {
       }),
     });
   }
-  const rule = (): SolanaRule => ({
+  const rule = (): Rule => ({
     agent: h.wallets[1].account!.address,
     chainNamespace: CHAIN.SOLANA_DEVNET,
     validUntil: Math.floor(Date.now() / 1000) + 3600,
@@ -82,12 +87,14 @@ describe('public Solana IDL rules on actual v5', () => {
     assets: [
       { token: zeroAddress, maxPerCall: BigInt(5), maxTotal: BigInt(10) },
     ],
-    allowedInstructions: [
+    allowedCalls: [
       {
-        program,
-        instruction: { idl, name: 'deposit' },
-        accounts: [{ name: 'cea_authority', expected: { kind: 'walletCEA' } }],
-        fields: [{ name: 'amount', max: BigInt(5) }],
+        target: program,
+        selector: 'deposit(u64)',
+        pins: [
+          { account: 0, expected: PushChain.CONSTANTS.AGENTIC.WALLET },
+          { arg: 0, max: BigInt(5) },
+        ],
       },
     ],
   });
@@ -102,10 +109,20 @@ describe('public Solana IDL rules on actual v5', () => {
     });
     expect((await wallet.rules.list()).rules).toHaveLength(1);
     const update = await wallet.rules.update({
-      rules: [{ rulesId: made.rulesIds[0], rule: rule() }],
+      rules: [
+        {
+          rulesId: made.rulesIds[0],
+          rule: { ...record.rule, validUntil: record.validUntil + 60 },
+        },
+      ],
     });
     expect(update.rules[0].rulesId).not.toBe(made.rulesIds[0]);
-    await (await wallet.rules.revoke([update.rules[0].rulesId])).wait();
+    const reread = await wallet.rules.get(update.rules[0].rulesId);
+    expect(reread.rule).toEqual({
+      ...record.rule,
+      validUntil: record.validUntil + 60,
+    });
+    await (await wallet.rules.delete([update.rules[0].rulesId])).wait();
     expect((await wallet.rules.list()).rules).toHaveLength(0);
   });
   it('agent public send uses wallet context, mapped errors and replay metadata', async () => {
@@ -353,27 +370,16 @@ describe('public Solana IDL rules on actual v5', () => {
       },
     });
     const input = rule();
-    input.assets = [{ token: mint, maxPerCall: BigInt(5) }];
-    input.outputTokens = [output];
-    input.allowedInstructions[0].instruction = {
-      idl: {
-        ...idl,
-        instructions: [
-          {
-            ...idl.instructions[0],
-            accounts: [
-              { name: 'cea_authority' },
-              { name: 'inputAta', writable: true },
-              { name: 'outputAta', writable: true },
-            ],
-          },
-        ],
-      },
-      name: 'deposit',
-    };
-    input.allowedInstructions[0].accounts.push(
-      { name: 'inputAta', expected: { kind: 'walletATA', token: mint } },
-      { name: 'outputAta', expected: { kind: 'walletATA', token: output } }
+    input.assets = [
+      { token: mint, maxPerCall: BigInt(5), maxTotal: BigInt(5) },
+    ];
+    input.allowedCalls[0].pins!.push(
+      { account: 1, expected: PushChain.CONSTANTS.AGENTIC.WALLET, token: mint },
+      {
+        account: 2,
+        expected: PushChain.CONSTANTS.AGENTIC.WALLET,
+        token: output,
+      }
     );
     const made = await source.agentic.create('public-spl', { rules: [input] });
     const read = await source.agentic
@@ -385,9 +391,7 @@ describe('public Solana IDL rules on actual v5', () => {
     expect(read.rule.pins.map((p) => p.expected)).toEqual(
       read.rule.ceaAccounts
     );
-    expect(read.rule.assets[0].maxTotal).toBe(
-      BigInt(2) ** BigInt(256) - BigInt(1)
-    );
+    expect(read.rule.assets[0].maxTotal).toBe(BigInt(5));
     await h.publicClient.waitForTransactionReceipt({
       hash: await h.wallets[4].sendTransaction({
         to: made.wallet,
@@ -443,15 +447,17 @@ describe('public Solana IDL rules on actual v5', () => {
         .status
     ).toBe('success');
   });
-  it('invalid named input and removed ref never submit a transaction', async () => {
+  it('invalid account position and removed ref never submit a transaction', async () => {
     const before = await h.publicClient.getTransactionCount({
       address: h.wallets[0].account!.address,
     });
     const r = rule();
-    r.allowedInstructions[0].accounts[0].name = 'typo';
+    r.allowedCalls[0].pins = [
+      { account: 64, expected: PushChain.CONSTANTS.AGENTIC.WALLET },
+    ];
     await expect(
       owner.agentic.create('invalid', { rules: [r] })
-    ).rejects.toThrow('unknown IDL account');
+    ).rejects.toThrow('account position');
     await expect(
       owner.agentic.create('removed-ref', {
         rules: [{ ...rule(), ref: `0x${'11'.repeat(32)}` } as never],

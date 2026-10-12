@@ -12,15 +12,17 @@ import type { AgenticRuntime } from '../src/lib/agentic/runtime';
 import { v5 } from '../src/lib/agentic/contracts/v5';
 import { AGENTIC_ERROR_CODE } from '../src/lib/agentic/errors';
 import { startHarness, type Harness } from './harness';
-
 const TOKEN = parseAbi([
   'function mint(address,uint256)',
   'function approve(address,uint256) returns (bool)',
   'function allowance(address,address) view returns (uint256)',
 ]);
 const internalsOf = (c: PushChain) =>
-  (c as unknown as { agenticRuntime: AgenticRuntime }).agenticRuntime;
-
+  (
+    c as unknown as {
+      agenticRuntime: AgenticRuntime;
+    }
+  ).agenticRuntime;
 describe('AGW race regressions (real v5 contracts)', () => {
   let h: Harness;
   let owner: PushChain;
@@ -31,7 +33,6 @@ describe('AGW race regressions (real v5 contracts)', () => {
   afterAll(async () => {
     await h?.stop();
   });
-
   it('R1 a concurrent creation makes create() fail with nothing granted on either wallet', async () => {
     const expected = await owner.agentic.derive();
     const rt = internalsOf(owner);
@@ -52,10 +53,14 @@ describe('AGW race regressions (real v5 contracts)', () => {
         rules: [
           {
             agent: h.wallets[1].account!.address,
-            target: h.addresses.target,
-            selector: 'increment()',
             validUntil:
               Number((await h.publicClient.getBlock()).timestamp) + 3600,
+            allowedCalls: [
+              {
+                target: h.addresses.target,
+                selector: 'increment()',
+              },
+            ],
           },
         ],
       })
@@ -82,7 +87,6 @@ describe('AGW race regressions (real v5 contracts)', () => {
     const retried = await owner.agentic.create('intended', { rules: [] });
     expect(retried.index).toBe(next.index);
   });
-
   it('R4 an allowance revoked after the SDK read it stays revoked; the outbound fails on-chain', async () => {
     const { wallet } = await owner.agentic.create('allowance-race', {
       rules: [],

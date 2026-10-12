@@ -11,16 +11,13 @@ import {
   setupAgw,
   type AgwFixture,
 } from './_fixture';
-
 const d = AGW_E2E_ENABLED ? describe : describe.skip;
-
 d('agw create', () => {
   let f: AgwFixture;
   beforeAll(async () => {
     f = await setupAgw();
-  }, 300_000);
+  }, 300000);
   afterAll(() => f?.teardown());
-
   it('1. bare wallet: factory records the owner and index, no rules, no implicit funding', async () => {
     const before = await f.owner.agentic.derive();
     const created = await f.owner.agentic.create('e2e-bare', { rules: [] });
@@ -60,16 +57,19 @@ d('agw create', () => {
       block: created.tx.blockNumber,
     });
   });
-
   it('2. wallet with a native rule returns the receipt-confirmed rule ID', async () => {
     const created = await f.owner.agentic.create('e2e-rules', {
       rules: [
         {
           agent: f.agentAddress,
-          target: f.ownerAddress,
-          selector: 'value-only',
           validUntil: inSeconds(3600),
-          maxValuePerCall: BigInt(1),
+          allowedCalls: [
+            {
+              target: f.ownerAddress,
+              selector: 'value-only',
+              maxValue: BigInt(1),
+            },
+          ],
         },
       ],
     });

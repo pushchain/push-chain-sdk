@@ -4,25 +4,29 @@ import type { AgenticRuntime } from '../../src/lib/agentic/runtime';
 import { v5 } from '../../src/lib/agentic/contracts/v5';
 import { setupAgw, inSeconds, type AgwFixture } from './_fixture';
 import { readNativeCounters } from '../shared/agw-state';
-
 const d = process.env['AGW_E2E'] === '1' ? describe : describe.skip;
 const runtime = (client: PushChain) =>
-  (client as unknown as { agenticRuntime: AgenticRuntime }).agenticRuntime;
-
+  (
+    client as unknown as {
+      agenticRuntime: AgenticRuntime;
+    }
+  ).agenticRuntime;
 d('agw extended management', () => {
   let f: AgwFixture;
   beforeAll(async () => {
     f = await setupAgw();
-  }, 300_000);
+  }, 300000);
   afterAll(() => f?.teardown());
   const rule = (agent = f.agentAddress) => ({
     agent,
-    target: f.ownerAddress,
-    selector: 'value-only' as const,
     validUntil: inSeconds(3600),
-    maxValuePerCall: BigInt(10),
-    maxValueTotal: BigInt(100),
-    maxCalls: 10,
+    allowedCalls: [
+      {
+        target: f.ownerAddress,
+        selector: 'value-only' as const,
+        maxValue: BigInt(10),
+      },
+    ],
   });
   const count = (wallet: Address) =>
     f.push.readContract({
@@ -68,36 +72,37 @@ d('agw extended management', () => {
       txHash: made.tx.hash,
     });
   });
-  it('2. same-agent multiplicity is ambiguous before signing and selective revoke restores uncached lookup', async () => {
-    const made = await f.owner.agentic.create('e2e-ambiguous', {
-      rules: [rule(), rule()],
-    });
-    await f.fundPC(made.wallet, BigInt(10));
-    const agent = await f.agent(made.wallet),
-      nonce = await f.push.getTransactionCount({ address: f.agentAddress });
+  it('2. create and add reject duplicate agent/chain rules before signing', async () => {
+    const nonce = await f.push.getTransactionCount({ address: f.ownerAddress });
     await expect(
-      agent.universal.sendTransaction({ to: f.ownerAddress, value: BigInt(1) })
-    ).rejects.toMatchObject({
-      code: 'AMBIGUOUS_RULE',
-      details: { rulesIds: expect.arrayContaining(made.rulesIds) },
-    });
-    expect(await f.push.getTransactionCount({ address: f.agentAddress })).toBe(
+      f.owner.agentic.create('duplicate', { rules: [rule(), rule()] })
+    ).rejects.toMatchObject({ code: 'DUPLICATE_RULE' });
+    expect(await f.push.getTransactionCount({ address: f.ownerAddress })).toBe(
       nonce
     );
-    await (
-      await f.owner.agentic.wallet(made.wallet).rules.revoke([made.rulesIds[0]])
-    ).wait();
-    const tx = await agent.universal.sendTransaction({
-      to: f.ownerAddress,
-      value: BigInt(1),
+    const made = await f.owner.agentic.create('single', { rules: [rule()] });
+    const w = f.owner.agentic.wallet(made.wallet),
+      before = await count(made.wallet);
+    const afterCreate = await f.push.getTransactionCount({
+      address: f.ownerAddress,
     });
-    expect((await tx.wait()).status).toBe(1);
-    expect(tx.agentic?.rulesId).toBe(made.rulesIds[1]);
-    f.evidence('extended-uncached-lookup', {
+    await expect(w.rules.add([rule()])).rejects.toMatchObject({
+      code: 'DUPLICATE_RULE',
+    });
+    expect(await f.push.getTransactionCount({ address: f.ownerAddress })).toBe(
+      afterCreate
+    );
+    expect(await count(made.wallet)).toBe(before);
+    expect((await w.rules.list()).rules.map((r) => r.rulesId)).toEqual(
+      made.rulesIds
+    );
+    await (await w.rules.delete(made.rulesIds)).wait();
+    const added = await w.rules.add([rule()]);
+    expect(added.rulesIds[0]).not.toBe(made.rulesIds[0]);
+    f.evidence('duplicate-rule-guards', {
       wallet: made.wallet,
-      removed: made.rulesIds[0],
-      selected: made.rulesIds[1],
-      txHash: tx.hash,
+      deleted: made.rulesIds,
+      added: added.rulesIds,
     });
   });
   it('3. multi-rule add and revoke are atomic batches with exact checkpoint counts', async () => {
@@ -114,7 +119,7 @@ d('agw extended management', () => {
     expect((await w.rules.list()).rules.map((r) => r.rulesId)).toEqual(
       expect.arrayContaining(added.rulesIds)
     );
-    await (await w.rules.revoke(added.rulesIds)).wait();
+    await (await w.rules.delete(added.rulesIds)).wait();
     expect(await count(made.wallet)).toBe(BigInt(8));
     expect((await w.rules.list()).rules).toEqual([]);
     const cp = await w.checkpoints({ sinceBlock: added.tx.blockNumber });
@@ -132,14 +137,14 @@ d('agw extended management', () => {
       }),
       w = f.owner.agentic.wallet(made.wallet),
       nonce = await f.push.getTransactionCount({ address: f.ownerAddress });
-    await expect(w.rules.revoke([])).rejects.toMatchObject({
-      code: 'REVOKE_NEEDS_TARGET',
+    await expect(w.rules.delete([])).rejects.toMatchObject({
+      code: 'DELETE_NEEDS_TARGET',
     });
     await expect(
-      w.rules.revoke([made.rulesIds[0], made.rulesIds[0]])
+      w.rules.delete([made.rulesIds[0], made.rulesIds[0]])
     ).rejects.toMatchObject({ code: 'INVALID_RULE' });
     await expect(
-      w.rules.revoke([`0x${'12'.repeat(32)}`])
+      w.rules.delete([`0x${'12'.repeat(32)}`])
     ).rejects.toMatchObject({ code: 'RULE_NOT_FOUND' });
     expect(await f.push.getTransactionCount({ address: f.ownerAddress })).toBe(
       nonce
@@ -249,7 +254,13 @@ d('agw extended management', () => {
         ? (await f.owner.agentic.wallet(competing.wallet).rules.list()).rules
         : undefined;
       f.evidence('extended-index-race-error', {
-        code: (raceError as { code?: string } | undefined)?.code,
+        code: (
+          raceError as
+            | {
+                code?: string;
+              }
+            | undefined
+        )?.code,
         expectedWallet: expectedNext.address,
         expectedIndex: expectedNext.index,
         competingWallet: competing?.wallet,

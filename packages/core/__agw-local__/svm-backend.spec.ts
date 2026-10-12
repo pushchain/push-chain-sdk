@@ -212,7 +212,9 @@ describe('internal prepared SVM backend on v5', () => {
     expect(stored.chainNamespace).toBe(CHAIN.SOLANA_DEVNET);
     await expect(
       owner.agentic.wallet(s.wallet).rules.get(s.id)
-    ).resolves.toMatchObject({ rule: { format: 'decoded', pins: s.input.terms.pins } });
+    ).resolves.toMatchObject({
+      rule: { format: 'decoded', pins: s.input.terms.pins },
+    });
   });
   it('runs context, IDL, quote, allowance, wrapping and real token pull/burn as the agent', async () => {
     const s = await setup();
@@ -360,7 +362,7 @@ describe('internal prepared SVM backend on v5', () => {
   });
   it('generic owner revocation disables a SVM rule without public decoding', async () => {
     const s = await setup();
-    await (await owner.agentic.wallet(s.wallet).rules.revoke([s.id])).wait();
+    await (await owner.agentic.wallet(s.wallet).rules.delete([s.id])).wait();
     await expect(cfg(s.wallet, s.id)).rejects.toMatchObject({
       code: 'RULE_NOT_FOUND',
     });
@@ -407,7 +409,7 @@ describe('internal prepared SVM backend on v5', () => {
       runtime.execute = async (params, options) => {
         if (kind === 'revocation')
           await (
-            await owner.agentic.wallet(s.wallet).rules.revoke([s.id])
+            await owner.agentic.wallet(s.wallet).rules.delete([s.id])
           ).wait();
         else
           await h.write(0, s.wallet, v5.abis.wallet, 'execute', [

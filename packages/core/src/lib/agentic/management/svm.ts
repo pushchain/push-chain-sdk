@@ -61,7 +61,7 @@ export async function verifySvmWallet(
   );
   if (actual.addresses.factory !== gen.addresses.factory)
     throw new AgenticError(
-      AGENTIC_ERROR_CODE.GENERATION_UNSUPPORTED,
+      AGENTIC_ERROR_CODE.CAPABILITY_UNAVAILABLE,
       'SVM wallet generation mismatch'
     );
   await verifyPolicyVersion(runtime.reader, gen);

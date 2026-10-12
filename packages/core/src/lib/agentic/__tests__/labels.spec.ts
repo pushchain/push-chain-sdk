@@ -37,7 +37,7 @@ describe('v5 wallet labels', () => {
     expect(chain.calls).toEqual([]);
   });
 
-  it('encodes a reset through the owner door and forwards the per-call progress hook', async () => {
+  it('encodes a direct reset and forwards the per-call progress hook', async () => {
     const chain = new FakeChain();
     const w = chain.addWallet(ADDR.owner, 'custom');
     const rt = mockRuntime(chain, { signer: ADDR.owner });
@@ -47,14 +47,12 @@ describe('v5 wallet labels', () => {
     });
     const sent = rt.executeMock.mock.calls[0][0];
     expect(sent).toMatchObject({ to: w.address, value: BigInt(0) });
-    const outer = v5.decodeWalletCall(sent.data);
-    expect(outer?.kind).toBe('execute');
-    if (outer?.kind !== 'execute') throw new Error('expected owner execute');
-    expect(outer.calls).toHaveLength(1);
-    expect(outer.calls[0].target).toBe(w.address);
     expect(
-      decodeFunctionData({ abi: v5.abis.wallet, data: outer.calls[0].data })
+      decodeFunctionData({ abi: v5.abis.wallet, data: sent.data })
     ).toMatchObject({ functionName: 'setLabel', args: [''] });
+    expect(hook).toHaveBeenCalledWith(
+      expect.objectContaining({ id: PROGRESS_HOOK.AGENTIC_TX_106 })
+    );
     expect(hook).toHaveBeenCalledWith(
       expect.objectContaining({ id: PROGRESS_HOOK.AGENTIC_TX_199_01 })
     );
@@ -76,7 +74,7 @@ describe('v5 wallet labels', () => {
     expect(readOnly.executeMock).not.toHaveBeenCalled();
   });
 
-  it('uses the same owner door for an external owner identity', async () => {
+  it('uses a direct label call for an external owner identity', async () => {
     const chain = new FakeChain();
     const w = chain.addWallet(ADDR.owner, 'x');
     const rt = mockRuntime(chain, {
@@ -85,8 +83,11 @@ describe('v5 wallet labels', () => {
     });
     await setLabel(rt, gen(), w.address, 'UEA label');
     expect(
-      v5.decodeWalletCall(rt.executeMock.mock.calls[0][0].data)?.kind
-    ).toBe('execute');
+      decodeFunctionData({
+        abi: v5.abis.wallet,
+        data: rt.executeMock.mock.calls[0][0].data,
+      }).functionName
+    ).toBe('setLabel');
   });
 
   it('maps the new contract length error and emits a failed operation hook', async () => {

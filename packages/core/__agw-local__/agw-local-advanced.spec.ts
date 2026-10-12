@@ -24,7 +24,6 @@ import type { AgenticExecutionContext } from '../src/lib/agentic/context';
 import { buildSession, encodeEnvelope } from '../src/lib/agentic/codec/session';
 import { encodeUniversalTerms } from '../src/lib/agentic/codec/universal-terms';
 import { startHarness, type Harness } from './harness';
-
 const TARGET_ABI = parseAbi([
   'function increment()',
   'function deposit(address beneficiary, uint256 amount) payable',
@@ -46,13 +45,11 @@ const GATEWAY_ABI = parseAbi([
 const CORE_ABI = parseAbi([
   'function getOutboundTxGasAndFees(address,uint256) view returns (address,uint256,uint256,uint256,string,uint256)',
 ]);
-
 type Internals = {
   agenticRuntime: AgenticRuntime;
   agenticContext?: AgenticExecutionContext;
 };
 const internals = (c: PushChain) => c as unknown as Internals;
-
 async function chainNow(h: Harness): Promise<number> {
   return Number((await h.publicClient.getBlock()).timestamp);
 }
@@ -73,12 +70,10 @@ const fund = (h: Harness, to: Address, value: bigint) =>
     account: h.wallets[4].account!,
     chain: h.wallets[4].chain,
   });
-
 describe('AGW advanced paths against real v5 contracts', () => {
   let h: Harness;
   let owner: PushChain;
   let agentAddr: Address;
-
   beforeAll(async () => {
     h = await startHarness(18547);
     owner = await h.client(0);
@@ -87,26 +82,29 @@ describe('AGW advanced paths against real v5 contracts', () => {
   afterAll(async () => {
     await h?.stop();
   });
-
   describe('native pins, amount and value caps', () => {
     let wallet: Address;
     let agent: PushChain;
     const beneficiary = getAddress(
       '0x00000000000000000000000000000000000b0b0b'
     );
-
     beforeAll(async () => {
       const created = await owner.agentic.create('pins', {
         rules: [
           {
             agent: agentAddr,
-            target: h.addresses.target,
-            selector: 'deposit(address,uint256)',
             validUntil: (await chainNow(h)) + 3600,
-            pins: [{ arg: 0, expected: beneficiary }],
-            amount: { arg: 1, maxPerCall: BigInt(10), maxTotal: BigInt(15) },
-            maxValuePerCall: BigInt(1000),
-            maxValueTotal: BigInt(1000),
+            allowedCalls: [
+              {
+                target: h.addresses.target,
+                selector: 'deposit(address,uint256)',
+                maxValue: BigInt(1000),
+                pins: [
+                  { arg: 0, expected: beneficiary },
+                  { arg: 1, max: BigInt(10) },
+                ],
+              },
+            ],
           },
         ],
       });
@@ -116,7 +114,6 @@ describe('AGW advanced paths against real v5 contracts', () => {
       });
       agent = await h.client(1, { agenticWallet: wallet });
     });
-
     const deposit = (to: Address, amount: bigint, value = BigInt(0)) =>
       agent.universal.sendTransaction({
         to: h.addresses.target,
@@ -127,7 +124,6 @@ describe('AGW advanced paths against real v5 contracts', () => {
           args: [to, amount],
         }),
       });
-
     it('a pinned beneficiary and an in-cap amount pass', async () => {
       await (await deposit(beneficiary, BigInt(5), BigInt(10))).wait();
       expect(
@@ -138,7 +134,6 @@ describe('AGW advanced paths against real v5 contracts', () => {
         })
       ).toBe(beneficiary);
     });
-
     it('a wrong beneficiary is rejected by URP with a decoded error and no state change', async () => {
       const err = await deposit(agentAddr, BigInt(5)).catch((e) => e);
       expect(err).toBeInstanceOf(AgenticRevertError);
@@ -146,7 +141,11 @@ describe('AGW advanced paths against real v5 contracts', () => {
         'PolicyCheckReverted(ArgPinMismatch)'
       );
       const rec = await owner.agentic.wallet(wallet).rules.list();
-      expect(rec.rules[0]).not.toHaveProperty('spent');
+      expect(rec.rules[0].spent).toMatchObject({
+        kind: 'native',
+        amountSpent: BigInt(5),
+        callsUsed: 1,
+      });
       expect(
         await readNativeCounters(
           h.publicClient,
@@ -156,43 +155,46 @@ describe('AGW advanced paths against real v5 contracts', () => {
         )
       ).toMatchObject({ amountSpent: BigInt(5), callsUsed: 1 });
     });
-
-    it('per-call and lifetime amount caps are enforced on-chain', async () => {
+    it('per-call amounts are enforced and repeated valid calls remain usable', async () => {
       await expect(deposit(beneficiary, BigInt(11))).rejects.toBeInstanceOf(
         AgenticRevertError
       );
       await (await deposit(beneficiary, BigInt(10))).wait();
-      await expect(deposit(beneficiary, BigInt(1))).rejects.toBeInstanceOf(
-        AgenticRevertError
-      );
+      await (await deposit(beneficiary, BigInt(1))).wait();
     });
-
     it('the decoded native terms carry the pins and caps as stored', async () => {
       const { rules } = await owner.agentic.wallet(wallet).rules.list();
       expect(rules[0].rule).toMatchObject({
-        pins: [
+        allowedCalls: [
           {
-            offset: 4,
-            expected: `0x${'0'.repeat(24)}${beneficiary
-              .slice(2)
-              .toLowerCase()}`,
+            pins: [
+              {
+                arg: 0,
+                expected: `0x${'0'.repeat(24)}${beneficiary
+                  .slice(2)
+                  .toLowerCase()}`,
+              },
+              { arg: 1, max: BigInt(10) },
+            ],
+            maxValue: BigInt(1000),
           },
         ],
-        amount: { offset: 36, maxPerCall: BigInt(10), maxTotal: BigInt(15) },
-        maxValuePerCall: BigInt(1000),
       });
     });
   });
-
   describe('stale-spend replacement race', () => {
     it('an agent spend between the read and inclusion reverts the whole replacement atomically', async () => {
       const created = await owner.agentic.create('race', {
         rules: [
           {
             agent: agentAddr,
-            target: h.addresses.target,
-            selector: 'increment()',
             validUntil: (await chainNow(h)) + 3600,
+            allowedCalls: [
+              {
+                target: h.addresses.target,
+                selector: 'increment()',
+              },
+            ],
           },
         ],
       });
@@ -228,9 +230,9 @@ describe('AGW advanced paths against real v5 contracts', () => {
             rulesId: oldId,
             rule: {
               agent: agentAddr,
+              validUntil: (await chainNow(h)) + 3600,
               target: h.addresses.target,
               selector: 'increment()',
-              validUntil: (await chainNow(h)) + 3600,
             },
           },
         ],
@@ -248,16 +250,19 @@ describe('AGW advanced paths against real v5 contracts', () => {
       ).toBe(cpBefore);
     });
   });
-
   describe('expiry', () => {
     it('an expired-but-enabled rule still identifies the agent; the send fails on-chain', async () => {
       const created = await owner.agentic.create('expiring', {
         rules: [
           {
             agent: agentAddr,
-            target: h.addresses.target,
-            selector: 'increment()',
             validUntil: (await chainNow(h)) + 600,
+            allowedCalls: [
+              {
+                target: h.addresses.target,
+                selector: 'increment()',
+              },
+            ],
           },
         ],
       });
@@ -276,7 +281,6 @@ describe('AGW advanced paths against real v5 contracts', () => {
       expect(err.decodedError?.name).toBe('PolicyCheckReverted(RulesExpired)');
     });
   });
-
   describe('sequential create partial failure and recovery', () => {
     it('reports CREATE_PARTIAL with the deployed wallet and granted IDs; rules.add finishes it', async () => {
       // Chain time runs ahead of the local clock: the SDK accepts validUntil, the policy does not.
@@ -287,15 +291,23 @@ describe('AGW advanced paths against real v5 contracts', () => {
           rules: [
             {
               agent: agentAddr,
-              target: h.addresses.target,
-              selector: 'increment()',
               validUntil: (await chainNow(h)) + 3600,
+              allowedCalls: [
+                {
+                  target: h.addresses.target,
+                  selector: 'increment()',
+                },
+              ],
             },
             {
               agent: h.wallets[3].account!.address,
-              target: h.addresses.target,
-              selector: 'increment()',
               validUntil: skewedValidUntil,
+              allowedCalls: [
+                {
+                  target: h.addresses.target,
+                  selector: 'increment()',
+                },
+              ],
             },
           ],
         })
@@ -309,16 +321,19 @@ describe('AGW advanced paths against real v5 contracts', () => {
       const added = await owner.agentic.wallet(wallet).rules.add([
         {
           agent: h.wallets[3].account!.address,
-          target: h.addresses.target,
-          selector: 'increment()',
           validUntil: (await chainNow(h)) + 3600,
+          allowedCalls: [
+            {
+              target: h.addresses.target,
+              selector: 'increment()',
+            },
+          ],
         },
       ]);
       expect(added.rulesIds).toHaveLength(1);
       const { rules } = await owner.agentic.wallet(wallet).rules.list();
       expect(rules).toHaveLength(2);
     });
-
     it('rules.add with several rules is one atomic owner batch: OWNER_ACTION + RULES_GRANTED per rule', async () => {
       const created = await owner.agentic.create('multi-add', { rules: [] });
       const before = await h.publicClient.readContract({
@@ -329,15 +344,23 @@ describe('AGW advanced paths against real v5 contracts', () => {
       const added = await owner.agentic.wallet(created.wallet).rules.add([
         {
           agent: agentAddr,
-          target: h.addresses.target,
-          selector: 'increment()',
           validUntil: (await chainNow(h)) + 3600,
+          allowedCalls: [
+            {
+              target: h.addresses.target,
+              selector: 'increment()',
+            },
+          ],
         },
         {
           agent: h.wallets[3].account!.address,
-          target: h.addresses.target,
-          selector: 'increment()',
           validUntil: (await chainNow(h)) + 3600,
+          allowedCalls: [
+            {
+              target: h.addresses.target,
+              selector: 'increment()',
+            },
+          ],
         },
       ]);
       expect(added.rulesIds).toHaveLength(2);
@@ -355,7 +378,6 @@ describe('AGW advanced paths against real v5 contracts', () => {
       expect(before).toBe(BigInt(0));
     });
   });
-
   describe('agent EVM outbound (v5 multi-asset terms, stub gateway)', () => {
     const SEPOLIA = CHAIN.ETHEREUM_SEPOLIA;
     const CEA = getAddress('0x000000000000000000000000000000000000cea1');
@@ -366,7 +388,6 @@ describe('AGW advanced paths against real v5 contracts', () => {
     let runtime: AgenticRuntime;
     let ctx: AgenticExecutionContext;
     let ownerAgw: PushChain;
-
     beforeAll(async () => {
       token = await h.deploy(0, 'HarnessPRC20', 'HarnessFixtures.sol', [
         SEPOLIA,
@@ -374,7 +395,7 @@ describe('AGW advanced paths against real v5 contracts', () => {
       ]);
       const created = await owner.agentic.create('outbound', { rules: [] });
       wallet = created.wallet;
-      await h.write(0, token, TOKEN_ABI, 'mint', [wallet, BigInt(1_000_000)]);
+      await h.write(0, token, TOKEN_ABI, 'mint', [wallet, BigInt(1000000)]);
       await h.publicClient.waitForTransactionReceipt({
         hash: await fund(h, wallet, BigInt(10) ** BigInt(17)),
       });
@@ -421,7 +442,6 @@ describe('AGW advanced paths against real v5 contracts', () => {
         functionName: 'getPermissionIDs',
         args: [wallet],
       })) as Hex[];
-
       const agent = await h.client(1, { agenticWallet: wallet });
       ctx = internals(agent).agenticContext!;
       const base = internals(agent).agenticRuntime;
@@ -443,7 +463,6 @@ describe('AGW advanced paths against real v5 contracts', () => {
       };
       ownerAgw = await h.client(0, { agenticWallet: wallet });
     });
-
     // Explicit call array: the funds land in the wallet's CEA and the listed
     // call runs as given (a single `data` would also prepend transfer(target)).
     const send = (amount: bigint) =>
@@ -460,13 +479,11 @@ describe('AGW advanced paths against real v5 contracts', () => {
           },
         },
       });
-
     it('fails before signing when the owner has not set a gateway allowance', async () => {
       await expect(send(BigInt(100))).rejects.toMatchObject({
         code: AGENTIC_ERROR_CODE.GATEWAY_ALLOWANCE_INSUFFICIENT,
       });
     });
-
     it('owner sets a bounded allowance with an ordinary owner-door send; the agent outbound passes URP, pulls and burns', async () => {
       await (
         await ownerAgw.universal.sendTransaction({
@@ -546,7 +563,7 @@ describe('AGW advanced paths against real v5 contracts', () => {
               recipient: '0x',
               token,
               amount: BigInt(100),
-              gasLimit: BigInt(200_000),
+              gasLimit: BigInt(2000000),
               gasPrice: BigInt(0),
               maxPCForGas: BigInt(10) ** BigInt(15),
               payload,
@@ -572,7 +589,6 @@ describe('AGW advanced paths against real v5 contracts', () => {
       });
       expect(keccak256(toBytes(SEPOLIA))).toBeTruthy();
     });
-
     it('owner can remove the allowance; the agent is stopped before signing again', async () => {
       await (
         await ownerAgw.universal.sendTransaction({
@@ -588,7 +604,6 @@ describe('AGW advanced paths against real v5 contracts', () => {
         code: AGENTIC_ERROR_CODE.GATEWAY_ALLOWANCE_INSUFFICIENT,
       });
     });
-
     it('a call outside the allow-list is rejected by URP on-chain', async () => {
       await (
         await ownerAgw.universal.sendTransaction({

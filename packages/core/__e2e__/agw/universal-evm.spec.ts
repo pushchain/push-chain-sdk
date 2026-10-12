@@ -143,7 +143,7 @@ d('agw universal evm', () => {
     const tx = await agent.universal.sendTransaction({
       to: { address: counter, chain: SEPOLIA },
       data: [{ to: counter, value: BigInt(0), data: INCREMENT }],
-      gasLimit: DESTINATION_GAS,
+      // Omit gasLimit: the SDK must budget for this fresh CEA.
       funds: {
         amount: AMOUNT,
         token: MOVEABLE_TOKEN_CONSTANTS.ETHEREUM_SEPOLIA.ETH,

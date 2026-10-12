@@ -1,5 +1,5 @@
 /** Opt-in funded Donut acceptance. Nothing in this file runs in unit/local validation. */
-import type { UniversalRule } from '../../src';
+import type { Rule } from '../../src';
 import {
   createPublicClient,
   encodeFunctionData,
@@ -42,7 +42,7 @@ d('agw v5 multi-asset', () => {
   });
   afterAll(() => f?.teardown());
   it('1. public create reads and replaces an ordered two-token rule', async () => {
-    const rule: UniversalRule = {
+    const rule: Rule = {
       agent: f.agentAddress,
       chainNamespace: chain,
       validUntil: inSeconds(3600),
@@ -69,12 +69,18 @@ d('agw v5 multi-asset', () => {
       assets: [
         {
           maxPerCall: BigInt(1000),
-          maxTotal: BigInt(2) ** BigInt(256) - BigInt(1),
+          maxTotal: BigInt(0),
         },
         { maxPerCall: BigInt(10), maxTotal: BigInt(100) },
       ],
     });
-    expect(before).not.toHaveProperty('spent');
+    expect(before.spent).toMatchObject({
+      kind: 'universal',
+      assets: [
+        expect.objectContaining({ spent: BigInt(0) }),
+        expect.objectContaining({ spent: BigInt(0) }),
+      ],
+    });
     const count = await f.push.readContract({
       address: created.wallet,
       abi: v5.abis.wallet,

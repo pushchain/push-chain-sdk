@@ -1,3 +1,4 @@
+import { assertNoDuplicateRules } from './duplicates';
 import { getAddress, type Address, type Hex, type Log } from 'viem';
 import { PROGRESS_HOOK } from '../../progress-hook/progress-hook.types';
 import type { MultiCall } from '../../orchestrator/orchestrator.types';
@@ -9,7 +10,7 @@ import { prepareWalletRules } from './prepare';
 import { assertLabel } from './label';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
 import type { AgenticRuntime } from '../runtime';
-import type { CreateOptions, CreateResult } from '../agentic.types';
+import type { InternalCreateOptions, CreateResult } from '../agentic.types';
 import { Snapshot, scanLogs } from '../reads/snapshot';
 import { walletCount, walletInfo } from '../reads/wallets';
 import {
@@ -36,7 +37,7 @@ import {
 export async function createWallet(
   runtime: AgenticRuntime,
   label: string,
-  options: CreateOptions
+  options: InternalCreateOptions
 ): Promise<CreateResult> {
   const hook = options?.progressHook;
   assertLabel(label);
@@ -82,8 +83,9 @@ export async function createWallet(
     options.rules,
     snap
   );
-  const selfTarget = prepared.findIndex(
-    (p) => p.nativeTerms?.target === wallet
+  assertNoDuplicateRules(prepared);
+  const selfTarget = prepared.findIndex((p) =>
+    p.nativeTerms?.some((t) => t.target === wallet)
   );
   if (selfTarget >= 0) {
     throw new AgenticError(
@@ -387,7 +389,7 @@ async function createFailure(
 
 function emitFailure(
   runtime: AgenticRuntime,
-  hook: CreateOptions['progressHook'],
+  hook: InternalCreateOptions['progressHook'],
   err: unknown
 ): void {
   const e = err as { code?: string; message?: string; decodedError?: unknown };

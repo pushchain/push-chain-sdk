@@ -14,9 +14,7 @@ import {
   setupAgw,
   type AgwFixture,
 } from './_fixture';
-
 const d = AGW_E2E_ENABLED ? describe : describe.skip;
-
 d('agw lifecycle', () => {
   let f: AgwFixture;
   let wallet: Address;
@@ -24,11 +22,14 @@ d('agw lifecycle', () => {
   const sink = getAddress('0x000000000000000000000000000000000000dEaD');
   const rule = (maxValuePerCall: bigint) => ({
     agent: f.agentAddress,
-    target: sink,
-    selector: 'value-only' as const,
     validUntil: inSeconds(3600),
-    maxValuePerCall,
-    maxValueTotal: maxValuePerCall * BigInt(10),
+    allowedCalls: [
+      {
+        target: sink,
+        selector: 'value-only' as const,
+        maxValue: maxValuePerCall,
+      },
+    ],
   });
   const count = () =>
     f.push.readContract({
@@ -36,15 +37,13 @@ d('agw lifecycle', () => {
       abi: v5.abis.wallet,
       functionName: 'checkpointCount',
     }) as Promise<bigint>;
-
   beforeAll(async () => {
     f = await setupAgw();
     wallet = (await f.owner.agentic.create('e2e-lifecycle', { rules: [] }))
       .wallet;
     await f.fundPC(wallet, parseEther('0.01'));
-  }, 300_000);
+  }, 300000);
   afterAll(() => f?.teardown());
-
   it('1. rules.add grants with one RULES_GRANTED checkpoint', async () => {
     const before = await count();
     const added = await f.owner.agentic
@@ -60,7 +59,6 @@ d('agw lifecycle', () => {
       ref: original,
     });
   });
-
   it('2. rules.update: old ID disabled, new ID usable with reset counters, five checkpoint ticks', async () => {
     const agent = await f.agent(wallet);
     await (
@@ -107,7 +105,6 @@ d('agw lifecycle', () => {
       checkpointDelta: 5,
     });
   });
-
   it('3. checkpoint history is contiguous and matches checkpointCount()', async () => {
     const { checkpoints } = await f.owner.agentic.wallet(wallet).checkpoints();
     expect(checkpoints.map((c) => c.seq)).toEqual(
@@ -115,10 +112,9 @@ d('agw lifecycle', () => {
     );
     expect(BigInt(checkpoints.length)).toBe(await count());
   });
-
   it('4. revoke({ all: true }) leaves no enabled rules', async () => {
     await (
-      await f.owner.agentic.wallet(wallet).rules.revoke({ all: true })
+      await f.owner.agentic.wallet(wallet).rules.delete({ all: true })
     ).wait();
     expect((await f.owner.agentic.wallet(wallet).rules.list()).rules).toEqual(
       []

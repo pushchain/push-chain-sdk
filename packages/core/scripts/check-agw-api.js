@@ -21,6 +21,10 @@ const selected = [
   'AgenticError',
   'AgenticRevertError',
   'AGENTIC_ERROR_CODE',
+  'Rule',
+  'RuleInput',
+  'Pin',
+  'Spent',
   'NativeRule',
   'ArgPin',
   'AmountLimit',
@@ -320,7 +324,11 @@ function snapshot(entry) {
   const aType = checker.getTypeOfSymbolAtLocation(agw, file);
   const donut = aType.getProperty('TESTNET_DONUT');
   result.agwConstants = properties(
-    checker.getNonNullableType(checker.getTypeOfSymbolAtLocation(donut, file))
+    donut
+      ? checker.getNonNullableType(
+          checker.getTypeOfSymbolAtLocation(donut, file)
+        )
+      : aType
   );
   result.constants = properties(cType);
   return result;

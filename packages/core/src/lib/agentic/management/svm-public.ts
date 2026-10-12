@@ -3,7 +3,7 @@ import { getAddress, hexToBytes, zeroAddress } from 'viem';
 import type { Address, Hex } from 'viem';
 import { CHAIN, VM } from '../../constants/enums';
 import { CHAIN_INFO } from '../../constants/chain';
-import type { SolanaRule } from '../agentic.types';
+import type { SolanaRule, DecodedSolanaRule } from '../agentic.types';
 import type { AgenticRuntime } from '../runtime';
 import type { Snapshot } from '../reads/snapshot';
 import { readGasPrc20 } from '../contracts/prc20-metadata';
@@ -12,7 +12,7 @@ import { createSvmMetadataProvider } from './svm-metadata';
 import { deriveAgwSvmAta, svmKey } from '../codec/svm-accounts';
 import { compileSvmIdlRule } from '../codec/svm-idl';
 import { svmInvalid } from '../codec/svm-terms';
-import { UINT256_MAX } from '../codec/defaults';
+import { validateSvmTerms } from '../codec/svm-terms';
 
 export function svmMetadata(runtime: AgenticRuntime) {
   return (
@@ -29,14 +29,16 @@ export async function preparePublicSvmRule(
   runtime: AgenticRuntime,
   snap: Snapshot,
   wallet: Address,
-  rule: SolanaRule
+  rule: SolanaRule | DecodedSolanaRule
 ) {
   const chain = rule.chainNamespace as CHAIN;
   if (CHAIN_INFO[chain]?.vm !== VM.SVM)
     throw svmInvalid('unknown Solana chain');
   if (!Array.isArray(rule.assets) || rule.assets.length > 8)
     throw svmInvalid('assets must contain at most eight entries');
-  if (rule.outputTokens !== undefined && !Array.isArray(rule.outputTokens))
+  const raw = 'format' in rule && rule.format === 'decoded';
+  const outputTokens = 'outputTokens' in rule ? rule.outputTokens : undefined;
+  if (outputTokens !== undefined && !Array.isArray(outputTokens))
     throw svmInvalid('outputTokens must be an array of mint addresses');
   const metadata = svmMetadata(runtime);
   const requested = rule.assets.length
@@ -74,12 +76,12 @@ export async function preparePublicSvmRule(
     caps.push({
       token: getAddress(token),
       maxPerCall: asset.maxPerCall,
-      maxTotal: asset.maxTotal ?? UINT256_MAX,
+      maxTotal: asset.maxTotal ?? BigInt(0),
     });
     sources.push({ key, token });
     if (key) mints.add(key);
   }
-  const outputs = (rule.outputTokens ?? []).map((mint) => ({ mint }));
+  const outputs = (outputTokens ?? []).map((mint) => ({ mint }));
   outputs.forEach((o) => mints.add(svmKey(o.mint)));
   const ctx = await resolveSvmContext(
     snap,
@@ -113,8 +115,25 @@ export async function preparePublicSvmRule(
       throw svmInvalid('mint resolver returned another mint');
     tokenAccounts.set(mint, deriveAgwSvmAta(ctx.expectedCEA, token));
   }
+  if (raw) {
+    const stored = rule as DecodedSolanaRule;
+    if (
+      svmKey(stored.expectedCEA) !== ctx.expectedCEA ||
+      svmKey(stored.gatewayProgram) !== ctx.gatewayProgram
+    )
+      throw svmInvalid('decoded rule belongs to another wallet or gateway');
+    if (
+      ctx.ceaAccounts.some(
+        (a) => !stored.ceaAccounts.some((s) => svmKey(s) === a)
+      )
+    )
+      throw svmInvalid('decoded rule omits a required wallet value account');
+    const terms = { ...stored, assets: caps };
+    validateSvmTerms(terms, runtime.nowSeconds());
+    return terms;
+  }
   return compileSvmIdlRule(
-    rule,
+    rule as SolanaRule,
     { ...ctx, tokenAccounts },
     runtime.nowSeconds()
   );

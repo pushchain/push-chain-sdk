@@ -10,13 +10,13 @@ import { AgenticCapability, requireCapability } from '../capabilities';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
 import type {
   NativeRule,
-  Rule,
+  InternalRule,
   UniversalRule,
   SolanaRule,
 } from '../agentic.types';
 import {
   encodeNativeTerms,
-  nativeRuleToTerms,
+  nativeRuleToActionTerms,
   type NativeTermsWire,
 } from './native';
 import { buildSession, encodeEnvelope, type SessionWire } from './session';
@@ -25,21 +25,24 @@ import { encodeSvmTerms, type SvmTermsWire } from './svm-terms';
 import { SEND_OUTBOUND_SELECTOR } from '../contracts/v5';
 import type { UniversalTermsWire } from './universal-terms';
 
-export function isSolanaRule(rule: Rule): rule is SolanaRule {
+export function isSolanaRule(rule: InternalRule): rule is SolanaRule {
   return (
     typeof (rule as SolanaRule).chainNamespace === 'string' &&
     (rule as SolanaRule).chainNamespace.startsWith('solana:')
   );
 }
 
-export function isUniversalRule(rule: Rule): rule is UniversalRule {
+export function isUniversalRule(rule: InternalRule): rule is UniversalRule {
   return (
     (rule as UniversalRule).chainNamespace !== undefined && !isSolanaRule(rule)
   );
 }
 
 /** CAIP-2 chain a rule governs: omitted = the connected Push chain. */
-export function ruleChain(rule: Rule, pushChainNamespace: string): string {
+export function ruleChain(
+  rule: InternalRule,
+  pushChainNamespace: string
+): string {
   return (
     (rule as UniversalRule | SolanaRule).chainNamespace ?? pushChainNamespace
   );
@@ -68,19 +71,19 @@ export interface RuleEncodeContext {
 }
 
 export interface PreparedRule {
-  rule: Rule;
+  rule: InternalRule;
   agent: Address;
   chainNamespace: string;
   session: SessionWire;
-  /** Native terms when the rule is native (used for previews and assertions). */
-  nativeTerms?: NativeTermsWire;
+  /** Native terms, one per action in input order, when the rule is native. */
+  nativeTerms?: NativeTermsWire[];
   universalTerms?: UniversalTermsWire;
   svmTerms?: SvmTermsWire;
 }
 
 /** Validate before signing. V5 permits several grants for the same agent/chain. */
 export function prepareRules(
-  rules: readonly Rule[],
+  rules: readonly InternalRule[],
   ctx: RuleEncodeContext & {
     /** Wallet owner; when given, an agent equal to it is AGENT_IS_OWNER. */
     owner?: Address;
@@ -128,7 +131,7 @@ export function prepareRules(
     if ('ref' in rule) {
       throw new AgenticError(
         AGENTIC_ERROR_CODE.INVALID_RULE,
-        'Rule ref is not supported; remove it from the input'
+        'InternalRule ref is not supported; remove it from the input'
       );
     }
 
@@ -141,7 +144,7 @@ export function prepareRules(
       if (!terms || !ctx.gateway)
         throw new AgenticError(
           AGENTIC_ERROR_CODE.INVALID_RULE,
-          'SVM rules require resolved wallet context and named IDL inputs'
+          'SVM rules require resolved wallet context and validated instruction layouts'
         );
       return {
         rule,
@@ -169,30 +172,36 @@ export function prepareRules(
       return encodeUniversalRule(rule, ctx);
     }
     requireCapability(ctx.capabilities, AgenticCapability.NATIVE_RULES);
-    const { terms } = nativeRuleToTerms(rule as NativeRule, ctx);
+    const actions = nativeRuleToActionTerms(rule as NativeRule, ctx).map(
+      (a) => a.terms
+    );
     const forbidden = [
       '0x0000000000000000000000000000000000000000',
       '0x0000000000000000000000000000000000000001',
       ...(ctx.forbiddenTargets ?? []),
     ].map((a) => a.toLowerCase());
-    if (forbidden.includes(terms.target.toLowerCase())) {
-      throw new AgenticError(
-        AGENTIC_ERROR_CODE.INVALID_RULE,
-        `rules[${i}].target ${terms.target} is a wallet-infrastructure address the contracts refuse as a native target`
-      );
-    }
+    actions.forEach((terms, j) => {
+      if (forbidden.includes(terms.target.toLowerCase())) {
+        const where =
+          actions.length > 1 ? `rules[${i}].actions[${j}]` : `rules[${i}]`;
+        throw new AgenticError(
+          AGENTIC_ERROR_CODE.INVALID_RULE,
+          `${where}.target ${terms.target} is a wallet-infrastructure address the contracts refuse as a native target`
+        );
+      }
+    });
+    // One rule, one rule ID: every action is a separate (target, selector)
+    // entry of the same session, each with its own stored terms.
     const session = buildSession({
       validator: ctx.validator,
       agent,
       rulesPolicy: ctx.rulesPolicy,
-      actions: [
-        {
-          target: terms.target,
-          selector: terms.selector,
-          initData: encodeEnvelope(chainNamespace, encodeNativeTerms(terms)),
-        },
-      ],
+      actions: actions.map((terms) => ({
+        target: terms.target,
+        selector: terms.selector,
+        initData: encodeEnvelope(chainNamespace, encodeNativeTerms(terms)),
+      })),
     });
-    return { rule, agent, chainNamespace, session, nativeTerms: terms };
+    return { rule, agent, chainNamespace, session, nativeTerms: actions };
   });
 }

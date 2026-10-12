@@ -1,20 +1,18 @@
 /** Native policy limits, confirmed zero defaults and lossless raw-offset reuse. */
-import { PushChain, AgenticRevertError, type NativeRule } from '../../src';
+import { PushChain, AgenticRevertError, type RuleInput } from '../../src';
 import { encodeFunctionData, erc20Abi, type Address } from 'viem';
 import { getNativePRC20ForChain } from '../../src/lib/orchestrator/internals/helpers';
 import { readNativeCounters } from '../shared/agw-state';
 import { CHAIN } from '../../src/lib/constants/enums';
 import { setupAgw, inSeconds, type AgwFixture } from './_fixture';
-
 const d = process.env['AGW_E2E'] === '1' ? describe : describe.skip;
 const chain = PushChain.CONSTANTS.CHAIN.PUSH_TESTNET_DONUT;
-
 d('agw extended native policy', () => {
   let f: AgwFixture, token: Address;
   beforeAll(async () => {
     f = await setupAgw();
     token = getNativePRC20ForChain(CHAIN.ETHEREUM_SEPOLIA, f.manifest.network);
-  }, 300_000);
+  }, 300000);
   afterAll(() => f?.teardown());
   const transfer = (to: Address, amount: bigint) =>
     encodeFunctionData({
@@ -30,15 +28,18 @@ d('agw extended native policy', () => {
   ) {
     const rule = {
       agent: f.agentAddress,
-      target: token,
-      selector: 'transfer(address,uint256)' as const,
       validUntil: inSeconds(3600),
-      ...(omitPc
-        ? {}
-        : { maxValuePerCall: BigInt(0), maxValueTotal: BigInt(0) }),
-      maxCalls,
-      pins: [{ arg: 0, expected: f.ownerAddress }],
-      amount: { arg: 1, maxPerCall: BigInt(10), maxTotal: total },
+      allowedCalls: [
+        {
+          target: token,
+          selector: 'transfer(address,uint256)' as const,
+          ...(omitPc ? {} : { maxValue: BigInt(0) }),
+          pins: [
+            { arg: 0, expected: f.ownerAddress },
+            { arg: 1, max: total === BigInt(0) ? BigInt(0) : BigInt(10) },
+          ],
+        },
+      ],
     };
     const made = await f.owner.agentic.create('e2e-native-meter', {
       rules: [rule],
@@ -105,16 +106,20 @@ d('agw extended native policy', () => {
       .wallet(s.wallet)
       .rules.get(s.rulesIds[0]);
     expect(record.rule).toMatchObject({
-      pins: [
+      allowedCalls: [
         {
-          offset: 4,
-          expected: `0x${f.ownerAddress
-            .slice(2)
-            .toLowerCase()
-            .padStart(64, '0')}`,
+          pins: [
+            {
+              arg: 0,
+              expected: `0x${f.ownerAddress
+                .slice(2)
+                .toLowerCase()
+                .padStart(64, '0')}`,
+            },
+            { arg: 1, max: BigInt(10) },
+          ],
         },
       ],
-      amount: { offset: 36, maxPerCall: BigInt(10), maxTotal: BigInt(15) },
     });
     const before = await f.push.readContract({
       address: token,
@@ -155,23 +160,25 @@ d('agw extended native policy', () => {
     const s = await fixture();
     await refused(s, () => s.send(BigInt(11)), 'NativeAmountExceedsCap');
   });
-  it('4. cumulative amount accepts the exact total and refuses the next unit', async () => {
+  it('4. repeated per-call amounts accumulate spend without a removed lifetime cap', async () => {
     const s = await fixture(BigInt(50), 10);
     await (await s.send(BigInt(10))).wait();
     await (await s.send(BigInt(5))).wait();
     expect((await s.counters()).amountSpent).toBe(BigInt(15));
-    await refused(s, () => s.send(BigInt(1)), 'TotalNativeAmountExceeded');
+    await (await s.send(BigInt(1))).wait();
+    expect((await s.counters()).amountSpent).toBe(BigInt(16));
   });
-  it('5. call count accepts the exact count and refuses a zero-amount extra call', async () => {
+  it('5. repeated calls have no removed maxCalls limit', async () => {
     const s = await fixture();
     await (await s.send(BigInt(1))).wait();
     await (await s.send(BigInt(1))).wait();
     expect((await s.counters()).callsUsed).toBe(2);
-    await refused(s, () => s.send(BigInt(0)), 'CallLimitReached');
+    await (await s.send(BigInt(0))).wait();
+    expect((await s.counters()).callsUsed).toBe(3);
   });
-  it('6. explicit zero total forbids positive amount but permits a metered zero call', async () => {
+  it('6. explicit zero MAX pin forbids positive amount but permits a metered zero call', async () => {
     const s = await fixture(BigInt(50), 10, BigInt(0));
-    await refused(s, () => s.send(BigInt(1)), 'TotalNativeAmountExceeded');
+    await refused(s, () => s.send(BigInt(1)), 'NativeAmountExceedsCap');
     await (await s.send(BigInt(0))).wait();
     expect(await s.counters()).toMatchObject({
       amountSpent: BigInt(0),
@@ -216,10 +223,13 @@ d('agw extended native policy', () => {
       .wallet(s.wallet)
       .rules.get(s.rulesIds[0]);
     expect(record.rule).toMatchObject({
-      maxValuePerCall: BigInt(0),
-      maxValueTotal: BigInt(0),
+      allowedCalls: [{ maxValue: BigInt(0) }],
     });
-    await refused(s, () => s.send(BigInt(1), f.ownerAddress, BigInt(1)), 'ValueExceedsCap');
+    await refused(
+      s,
+      () => s.send(BigInt(1), f.ownerAddress, BigInt(1)),
+      'ValueExceedsCap'
+    );
     const sent = await s.send(BigInt(1));
     expect((await sent.wait()).status).toBe(1);
     expect(await s.counters()).toMatchObject({
@@ -228,21 +238,21 @@ d('agw extended native policy', () => {
     });
     f.evidence('zero-pc-defaults', { wallet: s.wallet, txHash: sent.hash });
   });
-  it('10. decoded raw-offset rules can be granted again without fabricated ref metadata', async () => {
+  it('10. decoded arg-index rules can be granted again without fabricated ref metadata', async () => {
     const s = await fixture(BigInt(0));
     const original = await f.owner.agentic
       .wallet(s.wallet)
       .rules.get(s.rulesIds[0]);
     expect(original).not.toHaveProperty('ref');
-    const made = await f.owner.agentic.create('raw-offset-reuse', {
-      rules: [original.rule as NativeRule],
+    const made = await f.owner.agentic.create('arg-index-reuse', {
+      rules: [original.rule as RuleInput],
     });
     const reread = await f.owner.agentic
       .wallet(made.wallet)
       .rules.get(made.rulesIds[0]);
     expect(reread.rule).toEqual(original.rule);
     expect(reread).not.toHaveProperty('ref');
-    f.evidence('raw-offset-reuse', {
+    f.evidence('arg-index-reuse', {
       wallet: made.wallet,
       txHash: made.tx.hash,
     });
@@ -251,9 +261,13 @@ d('agw extended native policy', () => {
     const nonce = await f.push.getTransactionCount({ address: f.ownerAddress });
     const rule = {
       agent: f.agentAddress,
-      target: token,
-      selector: 'transfer(address,uint256)',
       validUntil: inSeconds(3600),
+      allowedCalls: [
+        {
+          target: token,
+          selector: 'transfer(address,uint256)',
+        },
+      ],
     };
     await expect(
       f.owner.agentic.create('invalid-ref', {

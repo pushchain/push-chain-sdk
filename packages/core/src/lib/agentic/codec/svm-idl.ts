@@ -167,7 +167,7 @@ export function compileSvmIdlRule(
       ),
       discriminatorLen: ix.discriminator.length,
       dataless: false,
-      maxAccounts: names.length,
+      maxAccounts: entry.maxAccounts ?? names.length,
     });
     for (const a of entry.accounts) {
       const accountIndex = names.indexOf(a.name);

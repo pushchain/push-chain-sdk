@@ -12,7 +12,7 @@ import {
   deriveWallet as deriveWalletRaw,
   rulesId as rulesIdRaw,
 } from './codec/ids';
-import { decodeNativeTerms, nativeTermsToRule } from './codec/native';
+import { decodeNativeTerms, nativeActionTermsToRule } from './codec/native';
 import { prepareRules } from './codec/rules';
 import { parseSelector } from './codec/selectors';
 import { decodeEnvelope, decodeSession, encodeSession } from './codec/session';
@@ -26,7 +26,7 @@ import { decodeUniversalTerms } from './codec/universal-terms';
 import { universalTermsToRule } from './codec/universal';
 import type {
   AgenticHex,
-  Rule,
+  InternalRule,
   Selector,
   DecodedSolanaRule,
 } from './agentic.types';
@@ -105,7 +105,10 @@ export const internalAgenticUtils = {
    * Encode rules into the grant `Session` bytes, one per rule, in order.
    * EVM universal rules require wallet/token resolution in the internal context.
    */
-  encodeRules(rules: readonly Rule[], ctx: RulesEncodeContext): AgenticHex[] {
+  encodeRules(
+    rules: readonly InternalRule[],
+    ctx: RulesEncodeContext
+  ): AgenticHex[] {
     return prepareRules(rules, {
       owner: ctx.owner ? getAddress(ctx.owner) : undefined,
       pushChainNamespace: nativeNamespace(ctx),
@@ -122,7 +125,7 @@ export const internalAgenticUtils = {
   decodeRules(
     bytes: Hex,
     ctx: { network?: PUSH_NETWORK; pushChainNamespace?: string } = {}
-  ): Rule | DecodedSolanaRule {
+  ): InternalRule | DecodedSolanaRule {
     if (!isHex(bytes))
       throw new AgenticError(
         AGENTIC_ERROR_CODE.INVALID_RULE,
@@ -130,12 +133,12 @@ export const internalAgenticUtils = {
       );
     const session = decodeSession(bytes);
     if (
-      session.actions.length !== 1 ||
-      session.actions[0].actionPolicies.length !== 1
+      session.actions.length === 0 ||
+      session.actions.some((a) => a.actionPolicies.length !== 1)
     ) {
       throw new AgenticError(
         AGENTIC_ERROR_CODE.RULE_READ_FAILED,
-        'only single-action rules (one URP policy) are representable as a public Rule'
+        'every action needs exactly one URP policy to be representable as a public InternalRule'
       );
     }
     const agent = getAddress(
@@ -144,6 +147,15 @@ export const internalAgenticUtils = {
     const { chainNamespace, body } = decodeEnvelope(
       session.actions[0].actionPolicies[0].initData
     );
+    if (
+      chainNamespace !== nativeNamespace(ctx) &&
+      session.actions.length !== 1
+    ) {
+      throw new AgenticError(
+        AGENTIC_ERROR_CODE.RULE_READ_FAILED,
+        'only native rules carry more than one action'
+      );
+    }
     if (chainNamespace !== nativeNamespace(ctx)) {
       if (chainNamespace.startsWith('solana:')) {
         const terms = decodeSvmTerms(body);
@@ -237,7 +249,21 @@ export const internalAgenticUtils = {
         tokens
       );
     }
-    return nativeTermsToRule(decodeNativeTerms(body), agent);
+    // Native: one stored terms body per action, all on the native chain.
+    const terms = session.actions.map((a, i) => {
+      const env =
+        i === 0
+          ? { chainNamespace, body }
+          : decodeEnvelope(a.actionPolicies[0].initData);
+      if (env.chainNamespace !== chainNamespace) {
+        throw new AgenticError(
+          AGENTIC_ERROR_CODE.RULE_READ_FAILED,
+          `action ${i} names chain ${env.chainNamespace}, not ${chainNamespace}`
+        );
+      }
+      return decodeNativeTerms(env.body);
+    });
+    return nativeActionTermsToRule(terms, agent);
   },
 };
 

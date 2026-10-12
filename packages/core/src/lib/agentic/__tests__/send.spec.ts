@@ -350,6 +350,38 @@ describe('EVM outbound composition from the wallet', () => {
       : {}),
   });
 
+  it.each([
+    [false, undefined, BigInt(2_000_000)],
+    [true, undefined, BigInt(0)],
+    [false, BigInt(123456), BigInt(123456)],
+    [true, BigInt(123456), BigInt(123456)],
+    [false, BigInt(0), BigInt(0)],
+  ])(
+    'destination gas: deployed=%s explicit=%s quotes %s',
+    async (isDeployed, gasLimit, expected) => {
+      const s = universalSetup();
+      const quoteOutbound = jest.fn(async (_token: Address, _gas: bigint) => ({
+        protocolFee: BigInt(100),
+        nativeValueForGas: BigInt(1000),
+        gasLimitUsed: BigInt(200_000),
+      }));
+      const rt = mockRuntime(s.fake, {
+        signer: ADDR.agent,
+        resolvePrc20: () => token,
+        resolveCEA: async () => ({
+          cea: getAddress('0x000000000000000000000000000000000000cea1'),
+          isDeployed,
+        }),
+        quoteOutbound,
+      });
+      await agenticSend(rt, s.ctx, {
+        ...send(BigInt(100)),
+        ...(gasLimit === undefined ? {} : { gasLimit }),
+      });
+      expect(quoteOutbound.mock.calls[0][1]).toBe(expected);
+    }
+  );
+
   it('builds the policy-compatible request: empty recipient, wallet refund, nonzero gas cap, multicall payload, CEA of the wallet', async () => {
     const s = universalSetup();
     const resolveCEA = jest.fn(async () => ({

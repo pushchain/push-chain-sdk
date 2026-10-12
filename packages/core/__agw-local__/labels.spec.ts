@@ -66,13 +66,13 @@ describe('v5 label SDK against real contracts', () => {
         (x) => x.address === made.wallet
       )?.label
     ).toBe('after');
-    expect(await count(made.wallet)).toBe(before + BigInt(1));
+    expect(await count(made.wallet)).toBe(before);
     expect(hook).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'AGENTIC-TX-199-01' })
     );
     await w.setLabel('');
     expect((await w.info()).label).toBe(`AGW ${made.index + 1}`);
-    expect(await count(made.wallet)).toBe(before + BigInt(2));
+    expect(await count(made.wallet)).toBe(before);
   });
 
   it('direct contract rename changes no checkpoint; subsequent SDK reads show it', async () => {

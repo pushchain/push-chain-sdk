@@ -225,30 +225,14 @@ describe('public surface', () => {
     expect(new AgenticRevertError('x', { cause: 'c' }).cause).toBe('c');
   });
 
-  it('CONSTANTS.AGENTIC carries the checked Donut v5 proxies', () => {
-    expect(CONSTANTS.AGENTIC.TESTNET_DONUT).toMatchObject({
-      FACTORY: '0x8137F96A50EBF41d904e3678c84c391a0D1BCcc5',
-      RULES_POLICY: '0x603E7f0aF6e1aAFf46DDfb28b1e99364f8BC59af',
-      ENVELOPE_VERSION: 1,
-    });
+  it('exposes the wallet marker and preset API, keeping deployment wiring and codecs internal', () => {
+    expect(CONSTANTS.AGENTIC.WALLET).toBe('agentic:wallet');
+    expect(Object.keys(CONSTANTS.AGENTIC).sort()).toEqual([
+      'PRESETS',
+      'WALLET',
+    ]);
     expect(Object.isFrozen(CONSTANTS.AGENTIC)).toBe(true);
-  });
-
-  it('PushChain.utils.agentic is the pure helper set', () => {
-    expect(Object.keys(Utils.agentic).sort()).toEqual(
-      ['actionId', 'configId', 'decodeRules'].sort()
-    );
-    // @ts-expect-error generation context helpers are not public
-    expect(Utils.agentic.rulesId).toBeUndefined();
-    // @ts-expect-error the marketplace compiler is outside AGW
-    expect(Utils.agentic.compileCard).toBeUndefined();
-    for (const name of [
-      'rulesId',
-      'deriveWallet',
-      'encodeRules',
-      'compileCard',
-    ]) {
-      expect(Utils.agentic).not.toHaveProperty(name);
-    }
+    expect(Object.keys(Utils.agentic)).toEqual(['presets']);
+    expect(Object.keys(Utils.agentic.presets).sort()).toEqual(['get', 'list']);
   });
 });
