@@ -105,16 +105,15 @@ it('supports general destination EQ/MAX pins', async () => {
   })) as UniversalRule;
   expect(out.allowedCalls[0].pins?.map((p) => p.op)).toEqual([0, 1]);
 });
-it('refuses layouts whose top-level argument indexes cannot be reconstructed', async () => {
+it('computes top-level offsets after static arrays and preserves a raw-word round trip', async () => {
   const r = base();
   r.allowedCalls[0] = {
     target: ADDR.target,
     selector: 'f(uint256[2],uint256)',
     pins: [{ arg: 1, max: BigInt(1) }],
   };
-  await expect(normalize(r)).rejects.toMatchObject({
-    code: 'CAPABILITY_UNAVAILABLE',
-  });
+  const out = (await normalize(r)) as NativeMultiRule;
+  expect(out.actions[0].wirePins?.[0].offset).toBe(68);
 });
 it('compiles numeric Solana arg/account pins without a caller IDL', async () => {
   const program = new PublicKey(Buffer.alloc(32, 3)).toBase58();

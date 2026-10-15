@@ -1,3 +1,4 @@
+import { agenticPresets } from '../src/lib/agentic/presets';
 import { buildPresetApi } from '../src/lib/agentic/presets';
 import { publicRules } from '../src/lib/agentic/public-rule';
 /** Actual v6 AGW/URP/engine. Token/core/gateway and destination lookup are local fixtures; no bridge/TSS proof. */
@@ -226,6 +227,73 @@ describe('v6 multi-asset SDK management and execution', () => {
       owner.agentic.create('too-many', { rules })
     ).rejects.toMatchObject({ code: 'INVALID_RULE' });
     expect(await owner.agentic.derive()).toEqual(before);
+  });
+
+  it('the shipped DEX catalog enforces tuple receiver/token/amount pins on actual v6 URP', async () => {
+    const { rules } = agenticPresets.get('DEXES', {
+      chainNamespace: CHAIN_NS,
+      agent: h.wallets[1].account!.address,
+      validUntil: Math.floor(Date.now() / 1000) + 3600,
+      maxGasPerCall: BigInt(10) ** BigInt(16),
+      assets: [
+        { token: a, maxPerCall: BigInt(5), maxTotal: BigInt(20) },
+        { token: b, maxPerCall: BigInt(7), maxTotal: BigInt(20) },
+      ],
+    });
+    const { wallet, id, agent } = await setup(rules[0]);
+    const router = rules[0].allowedCalls[0].target as Address;
+    const abi = parseAbi([
+      'function exactInputSingle((address tokenIn,address tokenOut,uint24 fee,address recipient,uint256 amountIn,uint256 amountOutMinimum,uint160 sqrtPriceLimitX96)) returns (uint256)',
+    ]);
+    const send = (recipient = CEA, input = a, amount = BigInt(5)) =>
+      agent.universal.sendTransaction({
+        to: { address: router, chain: CHAIN_NS },
+        data: [
+          {
+            to: router,
+            value: BigInt(0),
+            data: encodeFunctionData({
+              abi,
+              functionName: 'exactInputSingle',
+              args: [
+                {
+                  tokenIn: input,
+                  tokenOut: b,
+                  fee: 3000,
+                  recipient,
+                  amountIn: amount,
+                  amountOutMinimum: BigInt(0),
+                  sqrtPriceLimitX96: BigInt(0),
+                },
+              ],
+            }),
+          },
+        ],
+      });
+    await waitPush(send());
+    await expect(send(DEST)).rejects.toMatchObject({
+      decodedError: { name: 'PolicyCheckReverted(ArgPinMismatch)' },
+    });
+    await expect(send(CEA, DEST)).rejects.toMatchObject({
+      decodedError: { name: 'PolicyCheckReverted(ArgPinMismatch)' },
+    });
+    await expect(send(CEA, a, BigInt(6))).rejects.toMatchObject({
+      decodedError: { name: 'PolicyCheckReverted(ArgPinAboveMax)' },
+    });
+    const handle = owner.agentic.wallet(wallet),
+      record = await handle.rules.get(id);
+    const changed = await handle.rules.update({
+      rules: [
+        {
+          rulesId: id,
+          rule: { ...record.rule, validUntil: record.validUntil + 60 },
+        },
+      ],
+    });
+    expect((await handle.rules.get(changed.rules[0].rulesId)).rule).toEqual({
+      ...record.rule,
+      validUntil: record.validUntil + 60,
+    });
   });
 
   it('a fixture preset produces rules accepted by public create and enforced by real contracts', async () => {

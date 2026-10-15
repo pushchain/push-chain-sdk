@@ -184,14 +184,16 @@ export interface InternalRulesRecord {
 
 /** Current SDK section 6 public rule shape; contract wire types above are internal. */
 export type WalletMarker = 'agentic:wallet';
+/** Top-level ABI argument, or a path through static tuple/fixed-array fields. */
+export type ArgumentPath = number | readonly number[];
 export type Pin =
   | {
-      arg: number;
+      arg: ArgumentPath;
       expected: AgenticHex | AgenticAddress | bigint | WalletMarker;
       max?: never;
       account?: never;
     }
-  | { arg: number; max: bigint; expected?: never; account?: never }
+  | { arg: ArgumentPath; max: bigint; expected?: never; account?: never }
   | {
       account: number;
       expected: string | WalletMarker;
