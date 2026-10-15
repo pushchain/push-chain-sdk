@@ -1,14 +1,12 @@
 # AGW SDK — contract delivery and confirmation
 
-October 12, 2026. Local draft; nothing has been sent. Source: [contract feedback §6](https://app.notion.com/p/pushprotocol/1-AGW-Contract-Changes-nomenclature-standard-change-set-3e9188aea7f4813aa31fc95ceb4e684d). The user confirms these changes are not deployed. Existing v5 labels and ref removal are already delivered.
+October 12, 2026. Local draft; nothing has been sent. Source: [contract feedback §6](https://app.notion.com/p/pushprotocol/1-AGW-Contract-Changes-nomenclature-standard-change-set-3e9188aea7f4813aa31fc95ceb4e684d). V6 is deployed; contract-owner dry runs are still ongoing. Existing v5 labels and ref removal are already delivered.
 
-## Delivery already requested by Harsh
+## V6 delivery received October 14
 
-- **§6.1:** exact gateway approval inside each outbound, on both doors, cleared afterward. SDK allowance checks stay until the implementation/deployment is verified.
-- **§6.2:** atomic factory create plus grants. Supply the final ABI and owner/signed entry points, preserving the intended wallet/index binding. Partial-create recovery stays until every supported owner uses the atomic path.
-- **§6.3:** general EQ/MAX pins on EVM destination calls. SDK supports the current single WALLET pin and rejects other destination pins until the new policy is available.
+Atomic factory creation, automatic gateway approvals and general EVM EQ/MAX pins are delivered in source `ffd567d` and the v6 address book. The SDK has migrated these locally; 99 contract-backed cases and all 69 live scenarios have passing coverage (full run plus focused follow-up). Your independent dry runs remain separate. No repeat request for these delivered interfaces or deployment addresses.
 
-These are delivery dependencies, not requests to reconsider the agreed design. Deployment addresses do not need to be supplied again here; the SDK will verify the updated address book and implementation when notified.
+New wire details are accounted for: native maxCalls = uint32 maximum, Solana any-count = 255, pins = (offset, op, value). The policy still reports 3.1.0, so deployment wiring/source pin identify v6.
 
 ## Confirmations still needed
 

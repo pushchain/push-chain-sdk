@@ -17,9 +17,9 @@ Source: [SDK spec §7](https://app.notion.com/p/pushprotocol/5-SDK-AGW-3e9188aea
 - One rule per chain, chain filtering, identity/expiry propagation and asset placement; unknown/mismatched chains and duplicate assets fail.
 - Caller/caller-result mutation cannot modify the catalog or subsequent results.
 - Missing caps become 0; explicit uint256 values are retained and invalid values fail.
-- Approvals for catalog-declared EVM spenders are pinned to that spender and bounded by maxPerCall. Native assets receive none. Conflicting spender entries or duplicate function entries fail rather than broadening permissions.
+- Approvals for catalog-declared EVM spenders are pinned to that spender and bounded by maxPerCall. Native assets receive none. With the October 14 v6 migration, distinct spender entries are separate pinned alternatives; an unpinned alternative beside them is refused.
 - Full signatures and the 32-call ceiling (including approvals) are checked. Metadata app/label is display-only.
-- Standard create/add capability checks still reject general destination pins on the old policy; presets cannot bypass contract-delivery gates.
+- The October 14 v6 adapter supports general destination EQ/MAX pins. Presets use the same create/add validation and do not bypass policy checks.
 
 ## Remaining activation work
 

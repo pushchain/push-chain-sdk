@@ -1,5 +1,7 @@
 # AGW SDK planning
 
+**Current — October 14:** [v6 SDK migration and acceptance](research/v6-integration-2026-10-14/status.md) supersede the deployment-dependent statements below. Code is local on v4: 2,073 units, 99 contract-backed tests, and 69 distinct live cases have passing coverage. V6 code committed on v4 (`7dca3f2a`) and v5 (`700a52a7`); not pushed yet.
+
 **Current — October 12:** [downloaded sections 6/7, changes and deployment dependencies](section6-action-items.md). SDK-only migration and the [preset framework](section7-presets.md) are implemented locally; [open items](pending-items.md) supersede older decision summaries below. Notion pages 1/5 were refreshed; other ten snapshots retain October 7 timestamps. The new contract feedback is not deployed.
 
 This package contains planning, source snapshots and review evidence for `feat/agw-sdk-v4`. Current runtime uses Donut v5 source `2e61e13`; legacy runtime adapters have been removed.

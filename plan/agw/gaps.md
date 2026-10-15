@@ -1,5 +1,7 @@
 # AGW contract and SDK gap register
 
+**October 14 override:** G31–G33 contract delivery is received in v6 (`ffd567d`). SDK migration is implemented locally; 99 pinned-contract tests and 69 distinct live cases pass (full run plus focused follow-up). The older pending-deployment statements below are historical. Native ceiling 8, preset catalog/tuple convention and downstream refund credit remain open. [V6 migration evidence](research/v6-integration-2026-10-14/status.md).
+
 **Current override — October 12:** new sections 6/7 supersede the October 7 decisions below. [Feedback work list](section6-action-items.md); [only remaining items](pending-items.md). Unified allowedCalls, zero caps, spend reads, numeric Solana authoring/raw decoded updates, duplicate creation checks and direct label calls are implemented locally. Live acceptance of this changed API is in progress.
 
 | ID | Status | Current dependency |

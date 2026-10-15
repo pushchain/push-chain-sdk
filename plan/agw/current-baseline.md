@@ -1,3 +1,5 @@
+> October 14 update: v6 source `ffd567d` and its fresh Donut deployment supersede the v5 runtime baseline below. The SDK migration is implemented locally; 69 distinct live cases have passing coverage across the full run and focused follow-up. See [v6 evidence](research/v6-integration-2026-10-14/status.md). Older version-specific details below are historical.
+
 # Current validated AGW baseline
 
 Updated October 7, 2026 after confirmed product decisions, fresh contract refs, and public Solana/native acceptance. **The v5 deployment and native/EVM SDK adapter/codecs are integrated locally. The opt-in `agw` group now includes 58 scenarios with selected-run live coverage, including owner funds-only Solana transfers and mapped policy refusals.** [Extended E2E evidence](research/extended-e2e-2026-10-06/README.md); [full deployment review](research/deployment-review-2026-10-06/README.md).
