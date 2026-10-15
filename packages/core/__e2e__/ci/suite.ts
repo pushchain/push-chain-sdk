@@ -37,6 +37,7 @@ export const GROUPS = [
   'agw',
   'agw-svm-wire',
   'agw-svm-replay',
+  'agw-presets',
 ] as const;
 
 export type Group = (typeof GROUPS)[number];
@@ -982,6 +983,22 @@ export const SCENARIOS: Scenario[] = [
     file: F.agwLifecycle,
     grep: 'agw lifecycle 4\\. revoke',
     needs: { masterPC: '0.5' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-preset-uniswap-live',
+    group: 'agw-presets',
+    file: '__e2e__/agw/presets-live.spec.ts',
+    grep: 'agw presets live 1',
+    needs: { masterPC: '75', masterPETH: '0.000002' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-preset-aave-live',
+    group: 'agw-presets',
+    file: '__e2e__/agw/presets-live.spec.ts',
+    grep: 'agw presets live 2',
+    needs: { masterPC: '75' },
     env: { AGW_E2E: '1' },
   },
   {
