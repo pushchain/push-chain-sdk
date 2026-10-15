@@ -25,6 +25,7 @@ import type {
   SolanaRule,
   UniversalRule,
   Pin,
+  ArgumentPath,
 } from './agentic.types';
 import {
   AGENTIC_ERROR_CODE,
@@ -32,7 +33,7 @@ import {
   capabilityUnavailable,
 } from './errors';
 import { parseSelector } from './codec/selectors';
-import { argumentOffset, encodeArgWord, headSize } from './codec/abi-layout';
+import { argumentLocation, encodeArgWord } from './codec/abi-layout';
 import { UINT256_MAX } from './codec/defaults';
 import { deriveAgwSvmCea, svmKey } from './codec/svm-accounts';
 import type { AgenticRuntime } from './runtime';
@@ -69,29 +70,33 @@ function uint(value: unknown, name: string): bigint {
 }
 export function evmPinOffset(
   selector: Rule['allowedCalls'][number]['selector'],
-  arg: number
+  arg: ArgumentPath
 ): number {
-  if (!Number.isInteger(arg) || arg < 0 || 4 + 32 * arg + 32 > 65535)
-    throw invalid('pin arg is outside the supported calldata range');
   const parsed = parseSelector(selector);
   if (parsed.valueOnly)
     throw invalid('value-only calls cannot have argument pins');
-  if (!parsed.inputs) return 4 + 32 * arg;
-  if (parsed.inputs.slice(0, arg).some((p) => headSize(p) !== 32))
-    throw capabilityUnavailable(
-      'argumentLayout',
-      'pins after multi-word tuple/array arguments need an explicit lossless index convention'
-    );
-  return argumentOffset(parsed.inputs, arg, 'pin');
+  if (parsed.inputs) return argumentLocation(parsed.inputs, arg, 'pin').offset;
+  if (
+    typeof arg !== 'number' ||
+    !Number.isSafeInteger(arg) ||
+    arg < 0 ||
+    4 + 32 * arg + 32 > 65535
+  )
+    throw invalid('a raw selector needs a valid scalar ABI word index');
+  return 4 + 32 * arg;
 }
 function expectedWord(
   selector: Rule['allowedCalls'][number]['selector'],
-  arg: number,
+  arg: ArgumentPath,
   value: unknown
 ): Hex {
   const parsed = parseSelector(selector);
   if (parsed.inputs)
-    return encodeArgWord(parsed.inputs[arg], value as Hex | bigint, 'pin');
+    return encodeArgWord(
+      argumentLocation(parsed.inputs, arg, 'pin').param,
+      value as Hex | bigint,
+      'pin'
+    );
   if (typeof value === 'bigint')
     return numberToHex(uint(value, 'pin.expected'), { size: 32 });
   if (typeof value === 'string' && isAddress(value, { strict: false }))

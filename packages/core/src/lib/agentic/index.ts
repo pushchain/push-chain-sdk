@@ -19,6 +19,7 @@ export type {
   Pin,
   Spent,
   WalletMarker,
+  ArgumentPath,
   RulesRecord,
   Selector,
   WalletInfo,

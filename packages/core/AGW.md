@@ -87,7 +87,7 @@ On deployed v6, native rules allow at most **eight** calls, eight equality/maxim
 
 ## Pins and zero defaults
 
-An equality pin fixes an argument; a maximum pin bounds it. For EVM signatures, `arg` is a zero-based static argument position. With a raw four-byte selector, it is a 32-byte ABI head-word position. Reads return a raw selector and these word positions. Unsupported dynamic/compound layouts fail explicitly; no guessed tuple-field indexes are produced.
+An equality pin fixes an argument; a maximum pin bounds it. For EVM signatures, `arg` is a zero-based static argument position. With a raw four-byte selector, it is a 32-byte ABI head-word position. Reads return a raw selector and these word positions. For full signatures, a path such as `arg: [0, 3]` selects a field within a static tuple or fixed array. Dynamic layouts fail explicitly. Reads retain exact word positions rather than guessing missing ABI metadata.
 
 `PushChain.CONSTANTS.AGENTIC.WALLET` resolves to the AGW on Push, its CEA on an EVM destination, or its CEA/selected token ATA on Solana. Deployment addresses and encoding helpers are internal.
 
@@ -167,29 +167,41 @@ The wire encoder uses uint32 maximum for unlimited native calls and 255 for unsp
 
 ## Preset discovery and templates (section 7)
 
-`PushChain.utils.agentic` contains only `presets.list/get`. The enumerable categories are `AGENTIC.PRESETS.CATEGORY.DEXES`, `LENDING` and `PREDICTION`. All three currently have empty `chains` lists because the app/address catalog is not approved yet; hide them in a UI. No production DEX/lending addresses ship in this framework.
+`PushChain.utils.agentic` contains `presets.list/get`. The categories are `AGENTIC.PRESETS.CATEGORY.DEXES`, `LENDING`, `STAKING` and `PREDICTION`. The catalog ships testnet templates only:
+
+- DEXES: Uniswap V3 on Sepolia, Base Sepolia and Arbitrum Sepolia; PancakeSwap V3 on BSC testnet.
+- LENDING: Aave on the three Ethereum testnets above, Moonwell on Base Sepolia and Venus on BSC testnet.
+- STAKING: EigenLayer deposits on Sepolia; withdrawals are not included.
+- PREDICTION: no entries yet. Hide categories with empty `chains` lists.
 
 ```ts
 const { presets } = PushChain.utils.agentic.presets.list({ type: 'CATEGORY' });
 const availablePresets = presets.filter(preset => preset.chains.length > 0);
-const { rules: reviewTemplates } = PushChain.utils.agentic.presets.get(
-  PushChain.CONSTANTS.AGENTIC.PRESETS.CATEGORY.DEXES,
-);
-// Currently [], since there is no approved catalog. Never treat an empty result as an active preset.
 
-function filledPreset(agent: Address) {
+function filledPreset(agent: Address, tokenIn: Address, tokenOut: Address) {
   return PushChain.utils.agentic.presets.get(
     PushChain.CONSTANTS.AGENTIC.PRESETS.CATEGORY.DEXES,
-    { agent, validUntil: Math.floor(Date.now() / 1000) + 3600 },
+    {
+      chainNamespace: 'eip155:11155111',
+      agent,
+      validUntil: Math.floor(Date.now() / 1000) + 3600,
+      maxGasPerCall: BigInt(10) ** BigInt(18),
+      assets: [
+        { token: tokenIn, maxPerCall: BigInt(100), maxTotal: BigInt(1000) },
+        { token: tokenOut, maxPerCall: BigInt(100), maxTotal: BigInt(1000) },
+      ],
+    },
   ).rules;
 }
 ```
 
-With catalog entries, `get` groups calls into one rule per chain. With agent and expiry supplied, its return type is `Rule[]`; otherwise it is `PresetRuleTemplate[]`, requiring those fields before `create`. Assets must name their chain unless a single chain filter is supplied. Missing `maxPerCall` or `maxTotal` defaults to zero (user decision, October 12), so missing caps do not grant token movement.
+The example caps are illustrative raw units; choose caps for the actual token decimals and gas requirements. `get` groups calls into one rule per chain. With agent and expiry supplied, its return type is `Rule[]`; otherwise it is `PresetRuleTemplate[]`, requiring those fields before `create`. Assets must name their chain unless a single chain filter is supplied. Omitted asset caps and `maxGasPerCall` default to zero.
 
-Reviewed EVM catalog spenders generate approvals pinned to that spender and bounded by the asset's per-call cap. Native assets need no approval. Distinct spenders for the same token become separate fully pinned alternatives under v6; unrestricted alternatives are rejected. Presets do not sign, fetch app ABIs or modify wallets.
+DEX templates require explicit ERC20 tokens for each selected chain. They expand ordered token pairs into exact-input and exact-output calls with token, wallet-recipient and input-amount pins. Missing tokens, native markers and expansions exceeding the policy's 32-pin limit are rejected. Two tokens fit the shipped router template; three do not. Static tuple fields use paths such as `[0, 3]`.
 
-The remaining catalog work includes selecting verified apps/functions/chains, struct-field indexing and checking approval combinations against the delivered policy. App ABIs remain with the UI.
+Reviewed EVM spenders generate approvals pinned to that spender and bounded by the asset's per-call cap. Money-market approvals are restricted to the market's underlying token. Distinct spenders become separate pinned alternatives under v6. These destination approvals are ordinary ERC20 allowances; the wallet's automatic Push-side gateway approval is separate.
+
+Templates describe permissions, not available liquidity or guaranteed execution. Verify destination token balances, supported reserves and source PRC20 routes before use: protocol testnet mock tokens may differ from MOVEABLE tokens. Presets do not sign, fetch app ABIs or modify wallets. No mainnet templates, dynamic-path swaps, Solana protocol templates or unconfirmed deployments ship in this catalog. Local policy tests do not execute the destination protocols.
 
 ## Validation
 

@@ -1,7 +1,7 @@
 import type { Address } from 'viem';
 import type { Rule, RuleAsset, ForeignChainNamespace } from '../agentic.types';
 
-export type PresetCategory = 'DEXES' | 'LENDING' | 'PREDICTION';
+export type PresetCategory = 'DEXES' | 'LENDING' | 'STAKING' | 'PREDICTION';
 export interface Preset {
   type: 'CATEGORY';
   constant: PresetCategory;
@@ -21,6 +21,8 @@ export interface PresetAsset {
   maxTotal?: bigint;
 }
 export interface PresetOptions {
+  /** Explicit Push-PC gas budget per outbound; omitted = zero. */
+  maxGasPerCall?: bigint;
   chainNamespace?: ForeignChainNamespace;
   agent?: Address;
   validUntil?: number;

@@ -4,7 +4,7 @@ import {
   AGENTIC_ERROR_CODE,
   capabilityUnavailable,
 } from '../errors';
-import type { RuleAsset, RuleCall } from '../agentic.types';
+import type { RuleAsset, RuleCall, Pin } from '../agentic.types';
 import type {
   AgenticPresets,
   PresetOptions,
@@ -27,12 +27,19 @@ function copyCall(call: RuleCall): RuleCall {
     ...call,
     ...(call.pins
       ? {
-          pins: call.pins.map((p) => ({
-            ...p,
-            ...('token' in p && p.token && typeof p.token === 'object'
-              ? { token: { ...p.token } }
-              : {}),
-          })),
+          pins: call.pins.map((pin): Pin => {
+            if (pin.account !== undefined)
+              return {
+                ...pin,
+                ...(pin.token && typeof pin.token === 'object'
+                  ? { token: { ...pin.token } }
+                  : {}),
+              };
+            return {
+              ...pin,
+              arg: typeof pin.arg === 'number' ? pin.arg : [...pin.arg],
+            };
+          }),
         }
       : {}),
   };
@@ -54,6 +61,7 @@ export function buildPresetApi(
       ...c,
       allowedCalls: c.allowedCalls.map(copyCall),
       approvals: c.approvals?.map((a) => ({ ...a })),
+      swapRouters: c.swapRouters?.map((r) => ({ ...r })),
     })),
   }));
   if (
@@ -95,6 +103,8 @@ export function buildPresetApi(
           options.validUntil >= 2 ** 48)
       )
         throw invalid('preset validUntil must be a future uint48 timestamp');
+      if (options.maxGasPerCall !== undefined)
+        cap(options.maxGasPerCall, 'maxGasPerCall');
       if (options.assets !== undefined && !Array.isArray(options.assets))
         throw invalid('preset assets must be an array');
       const chains =
@@ -153,6 +163,55 @@ export function buildPresetApi(
       }
       const rules: PresetRuleTemplate[] = chains.map((chain) => {
         const calls = chain.allowedCalls.map(copyCall);
+        if (chain.swapRouters?.length) {
+          const tokens = assets.get(chain.chainNamespace) ?? [];
+          if (tokens.length < 2)
+            throw invalid(
+              'DEX presets require at least two explicit ERC20 assets per selected chain; select one chain or supply assets for every chain'
+            );
+          if (
+            tokens.some(
+              (a) =>
+                tokenAddress(a.token) === zeroAddress ||
+                (typeof a.token !== 'string' && a.token.mechanism === 'native')
+            )
+          )
+            throw invalid(
+              'DEX token pins require explicit ERC20 addresses; use wrapped-native tokens instead of the native marker'
+            );
+          for (const router of chain.swapRouters)
+            for (const input of tokens)
+              for (const output of tokens) {
+                if (
+                  tokenAddress(input.token).toLowerCase() ===
+                  tokenAddress(output.token).toLowerCase()
+                )
+                  continue;
+                for (const exactInput of [true, false])
+                  calls.push({
+                    target: router.address,
+                    selector: `${
+                      exactInput ? 'exactInputSingle' : 'exactOutputSingle'
+                    }((address,address,uint24,address,uint256,uint256,uint160))`,
+                    pins: [
+                      {
+                        arg: [0, 0],
+                        expected: getAddress(tokenAddress(input.token)),
+                      },
+                      {
+                        arg: [0, 1],
+                        expected: getAddress(tokenAddress(output.token)),
+                      },
+                      { arg: [0, 3], expected: 'agentic:wallet' },
+                      { arg: [0, exactInput ? 4 : 5], max: input.maxPerCall },
+                    ],
+                    app: router.app,
+                    label: exactInput
+                      ? 'Swap exact input'
+                      : 'Swap exact output',
+                  });
+              }
+        }
         const approvals = new Set<string>();
         for (const asset of assets.get(chain.chainNamespace) ?? []) {
           const token = tokenAddress(asset.token);
@@ -168,6 +227,11 @@ export function buildPresetApi(
                 'presetApproval',
                 'Solana approvals require a separately reviewed instruction template'
               );
+            if (
+              approval.token &&
+              getAddress(token) !== getAddress(approval.token)
+            )
+              continue;
             const spender = getAddress(approval.spender);
             const target = getAddress(token);
             const approvalKey = `${target}:${spender}`;
@@ -189,6 +253,11 @@ export function buildPresetApi(
           throw capabilityUnavailable(
             'presetCalls',
             'preset must contain 1..32 allowed calls including approvals'
+          );
+        if (calls.reduce((n, c) => n + (c.pins?.length ?? 0), 0) > 32)
+          throw capabilityUnavailable(
+            'presetPins',
+            'preset expansion exceeds 32 pins; reduce the token list or split rules across wallets'
           );
         const pairs = new Map<string, boolean>();
         for (const call of calls) {
@@ -226,8 +295,13 @@ export function buildPresetApi(
           ...(options.assets !== undefined
             ? { assets: assets.get(chain.chainNamespace) ?? [] }
             : {}),
-          ...(chain.maxGasPerCall !== undefined
-            ? { maxGasPerCall: cap(chain.maxGasPerCall, 'maxGasPerCall') }
+          ...((options.maxGasPerCall ?? chain.maxGasPerCall) !== undefined
+            ? {
+                maxGasPerCall: cap(
+                  options.maxGasPerCall ?? chain.maxGasPerCall,
+                  'maxGasPerCall'
+                ),
+              }
             : {}),
         };
       });

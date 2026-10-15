@@ -45,27 +45,37 @@ function catalog(): PresetDefinition[] {
     },
   ];
 }
-it('exposes enumerable frozen categories with no invented production addresses', () => {
+it('ships only verified testnet catalog entries and keeps prediction empty', () => {
   expect(Object.values(AGENTIC.PRESETS.CATEGORY)).toEqual([
     'DEXES',
     'LENDING',
+    'STAKING',
     'PREDICTION',
   ]);
-  expect(Object.isFrozen(AGENTIC.PRESETS.CATEGORY)).toBe(true);
-  expect(
-    agenticPresets.list().presets.map((p) => [p.constant, p.chains])
-  ).toEqual([
-    ['DEXES', []],
-    ['LENDING', []],
-    ['PREDICTION', []],
+  const entries = agenticPresets.list().presets;
+  expect(entries.map((p) => [p.constant, p.chains.length])).toEqual([
+    ['DEXES', 4],
+    ['LENDING', 4],
+    ['STAKING', 1],
+    ['PREDICTION', 0],
   ]);
-  expect(agenticPresets.get('DEXES')).toEqual({ rules: [] });
-  expect(() => agenticPresets.get('DEXES', { chainNamespace: chain })).toThrow(
-    /no approved entry/
-  );
+  expect(
+    entries
+      .flatMap((p) => p.chains)
+      .every((c) =>
+        [
+          'eip155:11155111',
+          'eip155:84532',
+          'eip155:421614',
+          'eip155:97',
+        ].includes(c)
+      )
+  ).toBe(true);
+  expect(agenticPresets.get('PREDICTION')).toEqual({ rules: [] });
+  expect(() => agenticPresets.get('DEXES')).toThrow(/two explicit ERC20/);
   expect(() =>
-    agenticPresets.get('DEXES', { assets: [{ chainNamespace: chain, token }] })
-  ).toThrow(/no approved app entries/);
+    agenticPresets.get('LENDING', { chainNamespace: 'eip155:1' })
+  ).toThrow(/no approved entry/);
 });
 it('groups all apps on a chain into one editable template and omits unspecified fields', () => {
   const data = catalog();
