@@ -26,6 +26,8 @@ export interface PresetOptions {
   chainNamespace?: ForeignChainNamespace;
   agent?: Address;
   validUntil?: number;
+  /** DEX swaps with fewer than two tokens are zero-input-cap review templates.
+   * Call get again with a complete pair to generate token pins and amount limits. */
   assets?: PresetAsset[];
 }
 export interface ReadyPresetOptions extends PresetOptions {

@@ -177,6 +177,10 @@ The wire encoder uses uint32 maximum for unlimited native calls and 255 for unsp
 ```ts
 const { presets } = PushChain.utils.agentic.presets.list({ type: 'CATEGORY' });
 const availablePresets = presets.filter(preset => preset.chains.length > 0);
+const { rules: reviewTemplates } = PushChain.utils.agentic.presets.get(
+  PushChain.CONSTANTS.AGENTIC.PRESETS.CATEGORY.DEXES,
+);
+// Choose tokens in the review UI, then call get again as below.
 
 function filledPreset(agent: Address, tokenIn: Address, tokenOut: Address) {
   return PushChain.utils.agentic.presets.get(
@@ -197,7 +201,9 @@ function filledPreset(agent: Address, tokenIn: Address, tokenOut: Address) {
 
 The example caps are illustrative raw units; choose caps for the actual token decimals and gas requirements. `get` groups calls into one rule per chain. With agent and expiry supplied, its return type is `Rule[]`; otherwise it is `PresetRuleTemplate[]`, requiring those fields before `create`. Assets must name their chain unless a single chain filter is supplied. Omitted asset caps and `maxGasPerCall` default to zero.
 
-DEX templates require explicit ERC20 tokens for each selected chain. They expand ordered token pairs into exact-input and exact-output calls with token, wallet-recipient and input-amount pins. Missing tokens, native markers and expansions exceeding the policy's 32-pin limit are rejected. Two tokens fit the shipped router template; three do not. Static tuple fields use paths such as `[0, 3]`.
+DEX discovery works without options, with an empty asset list, or with assets for only some chains. A chain with fewer than two tokens returns full-signature review calls with wallet-recipient pins and an explicit zero input-amount maximum. A single supplied token is also pinned as the input. These calls cannot spend swap input tokens, even if asset budgets are filled later. Call `get` again after selecting both tokens to replace the review calls with the complete token-pinned rules; merely assigning `rule.assets` is insufficient.
+
+With two ERC20 tokens, `get` expands ordered pairs into exact-input and exact-output calls with token, wallet-recipient and input-amount pins. Native markers and expansions exceeding the policy's 32-pin limit are rejected. Two tokens fit the shipped router template; three do not. Static tuple fields use paths such as `[0, 3]`.
 
 Reviewed EVM spenders generate approvals pinned to that spender and bounded by the asset's per-call cap. Money-market approvals are restricted to the market's underlying token. Distinct spenders become separate pinned alternatives under v6. These destination approvals are ordinary ERC20 allowances; the wallet's automatic Push-side gateway approval is separate.
 

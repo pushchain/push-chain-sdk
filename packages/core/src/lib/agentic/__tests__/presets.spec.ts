@@ -72,7 +72,7 @@ it('ships only verified testnet catalog entries and keeps prediction empty', () 
       )
   ).toBe(true);
   expect(agenticPresets.get('PREDICTION')).toEqual({ rules: [] });
-  expect(() => agenticPresets.get('DEXES')).toThrow(/two explicit ERC20/);
+  expect(agenticPresets.get('DEXES').rules).toHaveLength(4);
   expect(() =>
     agenticPresets.get('LENDING', { chainNamespace: 'eip155:1' })
   ).toThrow(/no approved entry/);
