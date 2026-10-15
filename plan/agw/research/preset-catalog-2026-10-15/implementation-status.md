@@ -10,7 +10,9 @@ User scope: testnet templates only. Missing caps default to zero. Source body an
 - Static tuple/fixed-array argument paths; exact decoded word-offset roundtrips remain supported.
 - Explicit optional maxGasPerCall; omitted caps remain zero.
 
-DEX token omission is rejected rather than granting unrestricted swaps. This follows the conservative assumption stated during implementation; the optional follow-up question had no answer. Two supplied tokens fit; larger expansions exceeding 32 pins fail explicitly.
+Section 7 alignment follow-up: the user approved zero-cap review templates followed by regeneration with selected tokens. DEX get now accepts omitted assets, empty lists and a single token. Each incomplete chain returns full-signature calls with a wallet-recipient pin and an explicit zero swap-input cap. A single token also gets an input-token pin and its bounded spender approval. Call get again with two tokens to generate the complete input/output pins; filling rule.assets alone does not enable swaps. Chains without supplied tokens remain visible when no chain filter is set. Two supplied tokens fit; larger expansions exceeding 32 pins fail explicitly.
+
+The SDK page still needs editorial synchronization for this approved two-stage flow, omitted caps defaulting to zero, the catalog's STAKING category, and tuple paths such as [0,3]. These are documentation differences, not outstanding contract changes. This follow-up does not edit the remote Notion page.
 
 ## Exclusions and limits
 
@@ -33,3 +35,10 @@ Protocol sources and rpc-verification.json record official addresses, signatures
 - Targeted real-v6 contract suite: 14 passed, including generated DEX permissions, invalid recipient/token/amount rejection and get-to-update roundtrip. Gateway is a local recording fixture; destination protocols are not executed.
 - Library, unit and local-harness TypeScript checks passed.
 - No funded protocol transactions or mainnet broadcasts performed for this catalog.
+
+## Section 7 follow-up validation
+
+- 35 focused preset unit tests passed.
+- 16 real-v6 local contract tests passed. Both exact-input and exact-output review calls reject positive input amounts after adding asset budgets, proving the zero swap-input maximum is enforced by URP.
+- No destination protocol trade or new live-network transaction was run for this follow-up.
+- Remaining catalog expansion: excluded/unverified protocols, Solana templates requiring additional capabilities, and actual destination-protocol trade acceptance. These do not block the implemented review UI flow.
