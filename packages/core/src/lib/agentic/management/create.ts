@@ -1,8 +1,7 @@
 import { assertNoDuplicateRules } from './duplicates';
-import { getAddress, type Address, type Hex, type Log } from 'viem';
+import { getAddress, type Address, type Hex } from 'viem';
 import { PROGRESS_HOOK } from '../../progress-hook/progress-hook.types';
 import type { MultiCall } from '../../orchestrator/orchestrator.types';
-import { PushChainBatchExecutionError } from '../../orchestrator/internals/errors';
 import { AgenticCapability, requireCapability } from '../capabilities';
 import { currentGeneration, verifyFactoryWiring } from '../deployments';
 import { deriveWallet, rulesId as computeRulesId } from '../codec/ids';
@@ -11,8 +10,8 @@ import { assertLabel } from './label';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
 import type { AgenticRuntime } from '../runtime';
 import type { InternalCreateOptions, CreateResult } from '../agentic.types';
-import { Snapshot, scanLogs } from '../reads/snapshot';
-import { walletCount, walletInfo } from '../reads/wallets';
+import { Snapshot } from '../reads/snapshot';
+import { walletCount } from '../reads/wallets';
 import {
   assertCanSign,
   confirmedLogs,
@@ -21,19 +20,7 @@ import {
   wrapSendError,
 } from './common';
 
-/**
- * client.agentic.create(label, { rules }): deploy + grants only. Funding and
- * approvals are separate ordinary sends. Every input is validated and every
- * prediction re-read immediately before signing; IDs are returned from
- * receipts in input order.
- *
- * Strategy follows the signer: an external owner's UEA batches atomically, a
- * Push EOA uses an EIP-7702 batch when available and otherwise the documented
- * sequential fallback. A sequential failure raises CREATE_PARTIAL with the
- * deployed wallet, confirmed/pending hashes and granted IDs so the caller can
- * finish with `wallet(w).rules.add(remaining)` — the SDK never deploys another
- * wallet on its own.
- */
+/** One index-bound v6 factory call deploys and grants atomically for EOA/UEA owners. */
 export async function createWallet(
   runtime: AgenticRuntime,
   label: string,
@@ -110,40 +97,30 @@ export async function createWallet(
       grantNonce: BigInt(i),
     })
   );
+  if (prepared.length > 8)
+    throw new AgenticError(
+      AGENTIC_ERROR_CODE.INVALID_RULE,
+      'create accepts at most eight initial rules'
+    );
   const calls: MultiCall[] = [
-    // Index-bound: reverts (nothing committed) if another creation took this slot.
     {
       to: gen.addresses.factory,
       value: BigInt(0),
-      data: gen.contracts.encodeDeployWalletAt(owner, index, wallet, label),
+      data: gen.contracts.encodeCreateWalletAt(
+        owner,
+        index,
+        wallet,
+        label,
+        prepared.map((p) => p.session)
+      ),
     },
-    ...prepared.map((p) => ({
-      to: wallet,
-      value: BigInt(0),
-      data: gen.contracts.encodeGrantRules(p.session),
-    })),
   ];
-  const strategy =
-    calls.length === 1
-      ? 'single'
-      : runtime.signerIsPushNative()
-      ? 'push-eoa-batch'
-      : 'uea-multicall';
-  emitAgentic(runtime, hook, PROGRESS_HOOK.AGENTIC_TX_102, wallet, strategy);
-
+  emitAgentic(runtime, hook, PROGRESS_HOOK.AGENTIC_TX_102, wallet, 'single');
   let tx;
   try {
     tx = await sendOwnerCalls(runtime, calls, hook);
   } catch (err) {
-    const wrapped = await createFailure(
-      runtime,
-      gen,
-      wallet,
-      Number(index),
-      owner,
-      label,
-      err
-    );
+    const wrapped = atomicCreateFailure(err);
     emitFailure(runtime, hook, wrapped);
     throw wrapped;
   }
@@ -152,15 +129,7 @@ export async function createWallet(
   try {
     ({ logs } = await confirmedLogs(runtime, tx));
   } catch (err) {
-    const wrapped = await createFailure(
-      runtime,
-      gen,
-      wallet,
-      Number(index),
-      owner,
-      label,
-      err
-    );
+    const wrapped = atomicCreateFailure(err);
     emitFailure(runtime, hook, wrapped);
     throw wrapped;
   }
@@ -177,13 +146,13 @@ export async function createWallet(
     deployedEv[0].index !== index
   ) {
     const err = new AgenticError(
-      AGENTIC_ERROR_CODE.INDEX_RACE,
-      `deployWallet produced ${
+      AGENTIC_ERROR_CODE.RECEIPT_MISMATCH,
+      `createWallet produced ${
         deployedEv.map((d) => `${d.wallet}#${d.index}`).join(', ') ||
         'no wallet'
       }, expected ${wallet}#${index}; grants targeted ${wallet}`,
       {
-        hint: 'Another deployment by this owner raced this call. Inspect both wallets with client.agentic.list() before retrying.',
+        hint: 'The receipt does not describe the requested atomic creation. Inspect the submitted hash before retrying.',
         details: {
           expected: wallet,
           deployed: deployedEv,
@@ -228,163 +197,26 @@ function sameIds(a: readonly Hex[], b: readonly Hex[]): boolean {
   );
 }
 
-const RACE_ERRORS = new Set(['IndexMismatch', 'IntentWalletMismatch']);
-
-/**
- * Turn a create failure into an exact report. What committed is derived from
- * THIS operation's own receipts, never from a later state read; when those
- * receipts cannot be fetched the outcome is reported as unknown so callers do
- * not retry a creation that may have landed.
- */
-async function createFailure(
-  runtime: AgenticRuntime,
-  gen: ReturnType<typeof currentGeneration>,
-  wallet: Address,
-  index: number,
-  owner: Address,
-  label: string,
-  err: unknown
-): Promise<unknown> {
-  const wrapped = wrapSendError(err);
-  const batch = err instanceof PushChainBatchExecutionError ? err : undefined;
-  const confirmed = (batch?.transactionHashes ?? []) as Hex[];
-  const pending = batch?.pendingTransactionHash;
-  const receiptUnavailable =
-    wrapped instanceof AgenticError &&
-    wrapped.code === AGENTIC_ERROR_CODE.RECEIPT_UNAVAILABLE;
-
-  // The index-bound deploy reverted: another creation took the slot first and
-  // nothing from this call committed.
-  const decodedName = (wrapped as { decodedError?: { name?: string } })
-    .decodedError?.name;
+function atomicCreateFailure(error: unknown): unknown {
+  const wrapped = wrapSendError(error) as { decodedError?: { name?: string } };
   if (
-    confirmed.length === 0 &&
-    !pending &&
-    decodedName &&
-    RACE_ERRORS.has(decodedName)
-  ) {
+    ['IndexMismatch', 'IntentWalletMismatch'].includes(
+      wrapped?.decodedError?.name ?? ''
+    )
+  )
     return new AgenticError(
       AGENTIC_ERROR_CODE.INDEX_RACE,
-      `wallet slot ${index} (${wallet}) was taken by a concurrent creation; nothing was committed`,
+      'the predicted wallet slot changed; atomic creation committed nothing',
       {
-        hint: 'Retry agentic.create; it re-reads the next slot.',
-        details: { wallet, index, committed: false },
         cause: wrapped,
+        details: {
+          committed: false,
+          walletDeployed: false,
+          grantedRulesIds: [],
+        },
       }
     );
-  }
-  if (confirmed.length === 0 && !pending && !receiptUnavailable) {
-    // Some send paths flatten the factory revert to a generic execution
-    // error, losing the IndexMismatch selector. If the owner's next index has
-    // moved and immutable deployment metadata proves another label owns the
-    // predicted slot, this call could not have deployed or granted.
-    try {
-      const snap = await Snapshot.at(runtime.reader);
-      const next = await walletCount(snap, gen, owner);
-      if (next > BigInt(index)) {
-        const competing = await walletInfo(runtime.reader, gen, wallet);
-        // label() is mutable in v5: only the immutable deploy event proves
-        // which creation occupied this slot. A later rename proves nothing.
-        const logs = await scanLogs(
-          runtime.reader,
-          {
-            address: gen.addresses.factory,
-            event: gen.contracts.events.walletDeployed,
-            args: { wallet },
-          },
-          gen.startBlock,
-          snap.blockNumber
-        );
-        const deployed = gen.contracts
-          .parseWalletDeployed(logs, gen.addresses.factory)
-          .find((entry) => entry.wallet === wallet);
-        const competingLabel = deployed?.label;
-        if (
-          competing.deployed &&
-          competing.index === index &&
-          getAddress(competing.owner) === owner &&
-          competingLabel !== undefined &&
-          competingLabel !== label
-        ) {
-          return new AgenticError(
-            AGENTIC_ERROR_CODE.INDEX_RACE,
-            'wallet slot ' + index + ' was consumed by a concurrent deployment',
-            {
-              hint:
-                'Slot ' +
-                index +
-                ' belongs to "' +
-                competingLabel +
-                '". No wallet or rules from this create call were committed; retry agentic.create to use the next slot.',
-              details: {
-                wallet,
-                index,
-                committed: false,
-                competingLabel,
-              },
-              cause: wrapped,
-            }
-          );
-        }
-      }
-    } catch {
-      // If the owner counter/event cannot be reconciled, preserve the original
-      // error; never infer that a retry is safe from an incomplete read.
-    }
-    // Nothing was confirmed (pre-broadcast failure or a reverted atomic batch).
-    return wrapped;
-  }
-
-  let walletDeployed: boolean | 'unknown' = 'unknown';
-  let grantedRulesIds: Hex[] | undefined;
-  let recoveryError: string | undefined;
-  if (!receiptUnavailable) {
-    try {
-      const logs: Log[] = [];
-      for (const hash of confirmed) {
-        const r = await runtime.reader.getTransactionReceipt({ hash });
-        if (r.status === 'success') logs.push(...(r.logs as Log[]));
-      }
-      const deployed = gen.contracts
-        .parseWalletDeployed(logs, gen.addresses.factory)
-        .some((d) => d.wallet === wallet);
-      grantedRulesIds = gen.contracts
-        .parseRulesGranted(logs, wallet)
-        .map((g) => g.rulesId);
-      // A pending hash may itself be the deployment; only a confirmed deploy is certain.
-      walletDeployed = deployed ? true : pending ? 'unknown' : false;
-    } catch (e) {
-      recoveryError = e instanceof Error ? e.message : String(e);
-    }
-  }
-  const hint =
-    walletDeployed === true
-      ? `Wallet ${wallet} is deployed. Do not call create again; once any pending hash settles, finish with client.agentic.wallet('${wallet}').rules.add(<remaining rules>).`
-      : walletDeployed === false
-      ? 'No wallet was deployed by this call; it is safe to retry.'
-      : 'The outcome is unknown. Do not retry create until the listed hashes are reconciled (client.agentic.list() shows deployed wallets).';
-  return new AgenticError(
-    AGENTIC_ERROR_CODE.CREATE_PARTIAL,
-    `agentic.create did not complete: ${
-      (wrapped as Error)?.message ?? String(err)
-    }`,
-    {
-      hint,
-      details: {
-        wallet,
-        index,
-        walletDeployed,
-        grantedRulesIds,
-        confirmedHashes: confirmed,
-        pendingHash: pending,
-        ...(receiptUnavailable
-          ? { submitted: (wrapped as AgenticError).details }
-          : {}),
-        ...(recoveryError ? { recoveryError } : {}),
-      },
-      cause: wrapped,
-    }
-  );
+  return wrapped;
 }
 
 function emitFailure(

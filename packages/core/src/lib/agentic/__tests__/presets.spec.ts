@@ -197,18 +197,21 @@ it('rejects unknown presets, unsupported list types and unsupported chain filter
     /no approved entry/
   );
 });
-it('refuses conflicting spenders rather than emitting unrestricted or ambiguous approvals', () => {
+it('produces separate pinned alternatives for multiple spenders', () => {
   const data = catalog();
   data[0].chains[0].approvals = [
     { spender: target, app: 'One' },
     { spender: ADDR.other, app: 'Two' },
   ];
-  expect(() =>
-    buildPresetApi(data).get('DEXES', {
-      chainNamespace: chain,
-      assets: [{ token }],
-    })
-  ).toThrow(/multiple spenders/);
+  const result = buildPresetApi(data).get('DEXES', {
+    chainNamespace: chain,
+    assets: [{ token }],
+  });
+  expect(
+    result.rules[0].allowedCalls.filter(
+      (c) => c.selector === 'approve(address,uint256)'
+    )
+  ).toHaveLength(2);
 });
 it('enforces the 32-call ceiling including generated approvals', () => {
   const data = catalog();
@@ -232,20 +235,52 @@ it('requires full signatures and rejects duplicate function entries', () => {
     { target, selector: 'deposit()' },
     { target, selector: 'deposit()' },
   ];
-  expect(() => buildPresetApi(data).get('DEXES')).toThrow(/duplicate target/);
+  expect(() => buildPresetApi(data).get('DEXES')).toThrow(
+    /unpinned alternative/
+  );
 });
-it('cannot bypass current deployment limitations through a preset approval', async () => {
+it('compiles preset spender and amount pins with the deployed v6 policy', async () => {
   const { rules } = buildPresetApi(catalog()).get('DEXES', {
     chainNamespace: chain,
     agent,
     validUntil: until(),
     assets: [{ token, maxPerCall: BigInt(5) }],
   });
-  await expect(
-    normalizePublicRule(
-      publicRules(rules)[0],
-      ADDR.other,
-      mockRuntime(new FakeChain())
-    )
-  ).rejects.toMatchObject({ code: 'CAPABILITY_UNAVAILABLE' });
+  const normalized = await normalizePublicRule(
+    publicRules(rules)[0],
+    ADDR.other,
+    mockRuntime(new FakeChain())
+  );
+  expect(
+    (
+      normalized as import('../agentic.types').UniversalRule
+    ).allowedCalls[1].pins?.map((p) => p.op)
+  ).toEqual([0, 1]);
+});
+
+it('keeps OR alternatives EVM-only: repeated Solana instructions are refused', () => {
+  const api = buildPresetApi([
+    {
+      constant: 'DEXES',
+      name: 'fixture',
+      chains: [
+        {
+          chainNamespace: 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1',
+          allowedCalls: [
+            {
+              target: '11111111111111111111111111111111',
+              selector: 'deposit(u64)',
+              pins: [{ account: 0, expected: AGENTIC.WALLET }],
+            },
+            {
+              target: '11111111111111111111111111111111',
+              selector: 'deposit(u64)',
+              pins: [{ arg: 0, max: BigInt(1) }],
+            },
+          ],
+        },
+      ],
+    },
+  ]);
+  expect(() => api.get('DEXES')).toThrow(/Solana does not support alternative/);
 });

@@ -156,27 +156,18 @@ export async function sendPublicSvm(
       destinationTransfer = { recipient: target, token, amount };
       transferValue = quote.isNative ? amount : BigInt(0);
     }
-    const [pc, balance, allowance] = await Promise.all([
+    const [pc, balance] = await Promise.all([
       runtime.reader.getBalance({
         address: wallet,
         blockNumber: snap.blockNumber,
       }),
       snap.read<bigint>(token, erc20Abi, 'balanceOf', [wallet]),
-      snap.read<bigint>(token, erc20Abi, 'allowance', [
-        wallet,
-        gen.addresses.gateway,
-      ]),
     ]);
     const value = quote.protocolFee + quote.nativeValueForGas;
     if (pc < value || balance < amount)
       throw new AgenticError(
         AGENTIC_ERROR_CODE.WALLET_BALANCE_INSUFFICIENT,
         'wallet cannot cover Solana outbound'
-      );
-    if (allowance < amount)
-      throw new AgenticError(
-        AGENTIC_ERROR_CODE.GATEWAY_ALLOWANCE_INSUFFICIENT,
-        'set the wallet gateway allowance separately'
       );
     const call = buildAgwSvmAction({
       wallet,

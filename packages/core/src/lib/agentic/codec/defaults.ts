@@ -4,14 +4,14 @@
  * a fallback for these fields; update this table for future changes.
  *
  * Explicit zero always stays zero. In the native policy a zero value/amount
- * cap forbids positive value/amount, while maxCalls = 0 means unlimited.
+ * cap forbids positive value/amount, while maxCalls = uint32 maximum means unlimited.
  */
 export const UINT256_MAX = BigInt(2) ** BigInt(256) - BigInt(1);
 
 export interface DefaultRow {
   value: bigint;
   meaning: string;
-  source: 'product' | 'v5';
+  source: 'product' | 'v6';
 }
 
 export const AGENTIC_DEFAULTS = {
@@ -32,7 +32,7 @@ export const AGENTIC_DEFAULTS = {
       source: 'product',
     },
     maxCalls: {
-      value: BigInt(0),
+      value: BigInt(0xffffffff),
       meaning: 'unlimited calls until expiry',
       source: 'product',
     },

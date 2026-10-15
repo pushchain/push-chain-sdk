@@ -19,7 +19,7 @@ import {
 } from '../../src/lib/constants/chain';
 import { getNativePRC20ForChain } from '../../src/lib/orchestrator/internals/helpers';
 import type { AgenticRuntime } from '../../src/lib/agentic/runtime';
-import { v5 } from '../../src/lib/agentic/contracts/v5';
+import { v6 } from '../../src/lib/agentic/contracts/v6';
 import { actionId } from '../../src/lib/agentic/codec/ids';
 import { readNativeActionConfigs } from '@e2e/shared/agw-state';
 import {
@@ -145,13 +145,13 @@ d('agw native multi-action', () => {
       }),
       f.push.readContract({
         address: s.wallet,
-        abi: v5.abis.wallet,
+        abi: v6.abis.wallet,
         functionName: 'checkpointCount',
         blockNumber,
       }),
       f.push.readContract({
         address: s.wallet,
-        abi: v5.abis.wallet,
+        abi: v6.abis.wallet,
         functionName: 'grantNonce',
         blockNumber,
       }),
@@ -240,7 +240,7 @@ d('agw native multi-action', () => {
       callsUsed: 1,
     });
     expect(config(after, token, '0xa9059cbb')).toMatchObject({
-      amountSpent: BigInt(2),
+      amountSpent: BigInt(0),
       callsUsed: 1,
     });
     expect(after.checkpointCount).toBe(before.checkpointCount);
@@ -268,7 +268,7 @@ d('agw native multi-action', () => {
     await refused(
       s,
       () => sendToken(s, BigInt(4)),
-      'PolicyCheckReverted(NativeAmountExceedsCap)'
+      'PolicyCheckReverted(ArgPinAboveMax)'
     );
     await refused(
       s,
@@ -306,7 +306,7 @@ d('agw native multi-action', () => {
       callsUsed: 3,
     });
     expect(config(final, token, '0xa9059cbb')).toMatchObject({
-      amountSpent: BigInt(6),
+      amountSpent: BigInt(0),
       callsUsed: 3,
     });
     f.evidence('native-multi-independent-counters', {
@@ -336,7 +336,7 @@ d('agw native multi-action', () => {
     });
     expect(config(after, token, '0xa9059cbb')).toMatchObject({
       callsUsed: 1,
-      amountSpent: BigInt(2),
+      amountSpent: BigInt(0),
     });
     expect(after.checkpointCount).toBe(before.checkpointCount);
     const replay = await f.owner.universal.trackTransaction(tx.hash);
@@ -367,7 +367,7 @@ d('agw native multi-action', () => {
           to: f.ownerAddress,
           data: calls(BigInt(4)),
         }),
-      'PolicyCheckReverted(NativeAmountExceedsCap)'
+      'PolicyCheckReverted(ArgPinAboveMax)'
     );
     const executor = PUSH_BATCH_EXECUTOR_ADDRESS[CHAIN.PUSH_TESTNET_DONUT];
     if (!executor) throw new Error('Missing verified native batch executor');
@@ -381,11 +381,11 @@ d('agw native multi-action', () => {
       chain: getPushViemChain(CHAIN.PUSH_TESTNET_DONUT),
       transport: http(CHAIN_INFO[CHAIN.PUSH_TESTNET_DONUT].defaultRPC[0]),
     });
-    const data = v5.encodeExecute(
+    const data = v6.encodeExecute(
       calls(BigInt(4)).map((c) => ({
         target: s.wallet,
         value: ZERO,
-        data: v5.encodeExecuteAsAgent(s.id, {
+        data: v6.encodeExecuteAsAgent(s.id, {
           target: c.to,
           value: c.value,
           data: c.data,
@@ -434,7 +434,7 @@ d('agw native multi-action', () => {
     expect(
       await f.push.readContract({
         address: s.wallet,
-        abi: v5.abis.wallet,
+        abi: v6.abis.wallet,
         functionName: 'checkpointCount',
       })
     ).toBe(before.checkpointCount + BigInt(6));
@@ -518,7 +518,7 @@ d('agw native multi-action', () => {
       config(before, f.ownerAddress, '0xffffffff')
     );
     expect(config(after, token, '0xa9059cbb')).toMatchObject({
-      amountSpent: ONE,
+      amountSpent: ZERO,
       callsUsed: 1,
     });
     expect(after.walletToken).toBe(before.walletToken - ONE);
@@ -531,7 +531,7 @@ d('agw native multi-action', () => {
     expect(
       await f.push.readContract({
         address: s.wallet,
-        abi: v5.abis.wallet,
+        abi: v6.abis.wallet,
         functionName: 'checkpointCount',
       })
     ).toBe(before.checkpointCount + BigInt(6));

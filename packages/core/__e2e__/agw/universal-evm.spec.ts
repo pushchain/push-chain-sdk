@@ -21,12 +21,13 @@ import {
   type Hex,
 } from 'viem';
 import { sepolia } from 'viem/chains';
+import type { Rule } from '../../src';
 import { CHAIN } from '../../src/lib/constants/enums';
 import { CHAIN_INFO } from '../../src/lib/constants/chain';
 import { MOVEABLE_TOKEN_CONSTANTS } from '../../src/lib/constants/tokens';
 import { getCEAAddress } from '../../src/lib/orchestrator/cea-utils';
 import { getNativePRC20ForChain } from '../../src/lib/orchestrator/internals/helpers';
-import { v5 } from '../../src/lib/agentic/contracts/v5';
+import { v6 } from '../../src/lib/agentic/contracts/v6';
 import { EVM_CHAIN_FIXTURES } from '@e2e/shared/chain-fixtures';
 import { COUNTER_ABI } from '@e2e/shared/outbound-helpers';
 import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
@@ -97,23 +98,14 @@ d('agw universal evm', () => {
         }),
       })
     ).wait();
-    // Bounded allowance through the owner door.
-    const ownerAgw = await evmClient(
-      process.env['PUSH_PRIVATE_KEY'] as Hex,
-      CHAIN.PUSH_TESTNET_DONUT,
-      f.manifest.network,
-      wallet
-    );
-    await (
-      await ownerAgw.universal.sendTransaction({
-        to: token,
-        data: encodeFunctionData({
-          abi: erc20Abi,
-          functionName: 'approve',
-          args: [f.manifest.addresses.gateway, AMOUNT * BigInt(2)],
-        }),
+    expect(
+      await f.push.readContract({
+        address: token,
+        abi: erc20Abi,
+        functionName: 'allowance',
+        args: [wallet, f.manifest.addresses.gateway],
       })
-    ).wait();
+    ).toBe(BigInt(0));
   }, 900_000);
   afterAll(() => f?.teardown());
 
@@ -202,7 +194,7 @@ d('agw universal evm', () => {
         functionName: 'allowance',
         args: [wallet, f.manifest.addresses.gateway],
       })
-    ).toBe(AMOUNT);
+    ).toBe(BigInt(0));
     expect(
       (await sep.readContract({
         address: counter,
@@ -239,6 +231,94 @@ d('agw universal evm', () => {
       wallet,
       pushTx: tx.hash,
       externalStatus: receipt.externalStatus,
+    });
+  }, 900_000);
+  it('3. v6 destination EQ/MAX alternatives authorize only the pinned spender and amount', async () => {
+    const target = MOVEABLE_TOKEN_CONSTANTS.ETHEREUM_SEPOLIA.USDC
+      .address as Address;
+    const handle = f.owner.agentic.wallet(wallet);
+    const record = await handle.rules.get(rulesId);
+    const updated = await handle.rules.update({
+      rules: [
+        {
+          rulesId,
+          rule: {
+            ...record.rule,
+            allowedCalls: [f.ownerAddress, f.agentAddress].map((spender) => ({
+              target,
+              selector: 'approve(address,uint256)',
+              pins: [
+                { arg: 0, expected: spender },
+                { arg: 1, max: BigInt(1) },
+              ],
+            })),
+          } as Rule,
+        },
+      ],
+    });
+    rulesId = updated.rules[0].rulesId;
+    const agent = await f.agent(wallet);
+    const send = (spender: Address, amount: bigint) =>
+      agent.universal.sendTransaction({
+        to: { address: target, chain: SEPOLIA },
+        data: [
+          {
+            to: target,
+            value: BigInt(0),
+            data: encodeFunctionData({
+              abi: erc20Abi,
+              functionName: 'approve',
+              args: [spender, amount],
+            }),
+          },
+        ],
+      });
+    const nonce = await f.push.getTransactionCount({ address: f.agentAddress });
+    await expect(
+      send('0x000000000000000000000000000000000000dEaD', BigInt(1))
+    ).rejects.toMatchObject({
+      decodedError: { name: 'PolicyCheckReverted(ArgPinMismatch)' },
+    });
+    await expect(send(f.ownerAddress, BigInt(2))).rejects.toMatchObject({
+      decodedError: { name: 'PolicyCheckReverted(ArgPinAboveMax)' },
+    });
+    expect(await f.push.getTransactionCount({ address: f.agentAddress })).toBe(
+      nonce
+    );
+    // Use the SECOND alternative and a zero approval: no persistent spending authority is granted.
+    const tx = await send(f.agentAddress, BigInt(0));
+    const receipt = await tx.wait({ outboundTimeoutMs: 600_000 });
+    expect(receipt.externalStatus).toMatch(/success/i);
+    if (!receipt.externalTxHash) throw Error('missing destination receipt');
+    const sep = createPublicClient({
+      chain: sepolia,
+      transport: fallback(
+        CHAIN_INFO[SEPOLIA].defaultRPC.map((url) => http(url))
+      ),
+    });
+    const external = await sep.getTransactionReceipt({
+      hash: receipt.externalTxHash as Hex,
+    });
+    const events = parseEventLogs({
+      abi: erc20Abi,
+      eventName: 'Approval',
+      logs: external.logs,
+    });
+    expect(
+      events.some(
+        (e) =>
+          e.address.toLowerCase() === target.toLowerCase() &&
+          e.args.owner.toLowerCase() === cea.toLowerCase() &&
+          e.args.spender.toLowerCase() === f.agentAddress.toLowerCase() &&
+          e.args.value === BigInt(0)
+      )
+    ).toBe(true);
+    f.evidence('v6-destination-pins', {
+      wallet,
+      cea,
+      rulesId,
+      pushTx: tx.hash,
+      destinationTx: receipt.externalTxHash,
     });
   }, 900_000);
 });

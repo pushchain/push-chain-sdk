@@ -123,17 +123,6 @@ export async function prepareSvmAgentExecution(
         AGENTIC_ERROR_CODE.WALLET_BALANCE_INSUFFICIENT,
         'wallet token balance is below the SVM amount'
       );
-    const allowance = await snap.read<bigint>(
-      input.token,
-      erc20Abi,
-      'allowance',
-      [input.wallet, gen.addresses.gateway]
-    );
-    if (allowance < input.amount)
-      throw new AgenticError(
-        AGENTIC_ERROR_CODE.GATEWAY_ALLOWANCE_INSUFFICIENT,
-        'owner must establish the SVM gateway allowance separately'
-      );
   }
   const signerPc = await runtime.signerBalance();
   const gasReserve = (await runtime.getGasPrice()) * BigInt(10_000_000);

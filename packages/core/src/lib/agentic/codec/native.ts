@@ -1,3 +1,4 @@
+import { ARG_PIN_COMPONENTS, validatePins, type ArgPinWire } from './pins';
 import {
   decodeAbiParameters,
   encodeAbiParameters,
@@ -23,13 +24,13 @@ import {
   type ParsedSelector,
 } from './selectors';
 
-/** URP native limits at v5 (Types.sol MAX_PINS, AGW MAX_NATIVE_ACTIONS). */
+/** URP native limits at v6 (Types.sol MAX_PINS, AGW MAX_NATIVE_ACTIONS). */
 export const MAX_PINS = 8;
 export const MAX_NATIVE_ACTIONS = 8;
 const UINT32_MAX = 2 ** 32 - 1;
 const UINT48_MAX = 2 ** 48 - 1;
 
-/** NativeTerms (Types.sol:354-363 at v5). */
+/** NativeTerms in the pinned v6 Types.sol. */
 export interface NativeTermsWire {
   validUntil: number;
   target: Address;
@@ -43,7 +44,7 @@ export interface NativeTermsWire {
     maxTotal: bigint;
   };
   maxCalls: number;
-  pins: readonly { offset: number; expected: Hex }[];
+  pins: readonly ArgPinWire[];
 }
 
 export const NATIVE_TERMS_PARAM: AbiParameter = {
@@ -68,10 +69,7 @@ export const NATIVE_TERMS_PARAM: AbiParameter = {
     {
       name: 'pins',
       type: 'tuple[]',
-      components: [
-        { name: 'offset', type: 'uint16' },
-        { name: 'expected', type: 'bytes32' },
-      ],
+      components: ARG_PIN_COMPONENTS,
     },
   ],
 };
@@ -107,6 +105,7 @@ const SINGLE_ACTION_FIELDS = [
   'maxValueTotal',
   'maxCalls',
   'pins',
+  'wirePins',
   'amount',
 ] as const;
 
@@ -162,6 +161,7 @@ export function nativeActionsOf(
       maxValueTotal: single.maxValueTotal,
       maxCalls: single.maxCalls,
       pins: single.pins,
+      wirePins: single.wirePins,
       amount: single.amount,
       validUntil: single.validUntil,
     },
@@ -250,7 +250,10 @@ export function nativeActionToTerms(
   }
   const parsed = parseSelector(rule.selector);
   const pinsIn = rule.pins ?? [];
-  if (parsed.valueOnly && (pinsIn.length > 0 || rule.amount)) {
+  if (
+    parsed.valueOnly &&
+    (pinsIn.length > 0 || rule.wirePins?.length || rule.amount)
+  ) {
     throw invalid('a value-only rule cannot carry pins or an amount rule');
   }
   if (pinsIn.length > MAX_PINS) {
@@ -338,10 +341,22 @@ export function nativeActionToTerms(
     rule.maxCalls === undefined
       ? Number(AGENTIC_DEFAULTS.native.maxCalls.value)
       : rule.maxCalls;
-  if (!Number.isInteger(maxCalls) || maxCalls < 0 || maxCalls > UINT32_MAX) {
+  if (!Number.isInteger(maxCalls) || maxCalls <= 0 || maxCalls > UINT32_MAX) {
     throw invalid('maxCalls must be a uint32 integer');
   }
 
+  try {
+    validatePins(
+      rule.wirePins ??
+        pins.map((p) => ({
+          offset: p.offset,
+          op: 0 as const,
+          value: p.expected,
+        }))
+    );
+  } catch (error) {
+    throw invalid((error as Error).message);
+  }
   return {
     parsed,
     terms: {
@@ -352,7 +367,13 @@ export function nativeActionToTerms(
       maxValueTotal,
       amount,
       maxCalls,
-      pins,
+      pins:
+        rule.wirePins ??
+        pins.map((p) => ({
+          offset: p.offset,
+          op: 0 as const,
+          value: p.expected,
+        })),
     },
   };
 }
@@ -388,12 +409,7 @@ export function nativeTermsToRule(
     maxValueTotal: terms.maxValueTotal,
     maxCalls: Number(terms.maxCalls),
   };
-  if (terms.pins.length > 0) {
-    rule.pins = terms.pins.map((p) => ({
-      offset: Number(p.offset),
-      expected: p.expected.toLowerCase() as AgenticHex,
-    }));
-  }
+  if (terms.pins.length > 0) rule.wirePins = terms.pins.map((p) => ({ ...p }));
   if (terms.amount.enabled) {
     rule.amount = {
       offset: Number(terms.amount.offset),

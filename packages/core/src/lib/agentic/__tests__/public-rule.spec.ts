@@ -47,9 +47,11 @@ it('normalizes unified native calls into exact EQ/MAX words with zero PC default
     expect.objectContaining({
       maxValuePerCall: BigInt(0),
       maxValueTotal: UINT256_MAX,
-      maxCalls: 0,
-      pins: [{ offset: 4, expected: `0x${wallet.slice(2).padStart(64, '0')}` }],
-      amount: { offset: 36, maxPerCall: BigInt(5), maxTotal: UINT256_MAX },
+      maxCalls: 0xffffffff,
+      wirePins: [
+        { offset: 4, op: 0, value: `0x${wallet.slice(2).padStart(64, '0')}` },
+        { offset: 36, op: 1, value: `0x${'0'.repeat(63)}5` },
+      ],
     }),
   ]);
   const rt = mockRuntime(fake());
@@ -61,7 +63,10 @@ it('normalizes unified native calls into exact EQ/MAX words with zero PC default
     publicRules([base()]),
     await Snapshot.at(rt.reader)
   );
-  expect(p.nativeTerms?.[0].amount.maxPerCall).toBe(BigInt(5));
+  expect(p.nativeTerms?.[0].pins[1]).toMatchObject({
+    op: 1,
+    value: `0x${'0'.repeat(63)}5`,
+  });
 });
 it.each(['actions', 'target', 'amount', 'maxCalls', 'maxValueTotal', 'ref'])(
   'rejects retired top-level %s before signing',
@@ -71,15 +76,15 @@ it.each(['actions', 'target', 'amount', 'maxCalls', 'maxValueTotal', 'ref'])(
     );
   }
 );
-it('rejects two native MAX pins on the deployed policy', async () => {
+it('supports multiple native MAX pins', async () => {
   const r = base();
   r.allowedCalls[0].pins = [
     { arg: 0, max: BigInt(1) },
     { arg: 1, max: BigInt(2) },
   ];
-  await expect(normalize(r)).rejects.toMatchObject({
-    code: 'CAPABILITY_UNAVAILABLE',
-  });
+  expect(
+    ((await normalize(r)) as NativeMultiRule).actions[0].wirePins
+  ).toHaveLength(2);
 });
 it('compiles the existing EVM WALLET beneficiary and defaults asset total to zero', async () => {
   const r = base();
@@ -88,15 +93,17 @@ it('compiles the existing EVM WALLET beneficiary and defaults asset total to zer
   r.allowedCalls[0].pins = [{ arg: 0, expected: WALLET }];
   const out = (await normalize(r)) as UniversalRule;
   expect(out.allowedCalls[0]).toMatchObject({
-    beneficiaryOffset: 4,
+    pins: [expect.objectContaining({ offset: 4, op: 0 })],
     maxValue: BigInt(0),
   });
   expect(out.assets[0].maxTotal).toBe(BigInt(0));
 });
-it('rejects unavailable destination MAX pins before contract deployment', async () => {
-  await expect(
-    normalize({ ...base(), chainNamespace: 'eip155:11155111' })
-  ).rejects.toMatchObject({ code: 'CAPABILITY_UNAVAILABLE' });
+it('supports general destination EQ/MAX pins', async () => {
+  const out = (await normalize({
+    ...base(),
+    chainNamespace: 'eip155:11155111',
+  })) as UniversalRule;
+  expect(out.allowedCalls[0].pins?.map((p) => p.op)).toEqual([0, 1]);
 });
 it('refuses layouts whose top-level argument indexes cannot be reconstructed', async () => {
   const r = base();
@@ -154,7 +161,7 @@ it('compiles numeric Solana arg/account pins without a caller IDL', async () => 
     },
     now
   );
-  expect(terms.programs[0].maxAccounts).toBe(0);
+  expect(terms.programs[0].maxAccounts).toBe(255);
   expect(terms.pins).toEqual([
     { ruleIndex: 0, accountIndex: 0, expected: cea },
   ]);
@@ -196,12 +203,34 @@ it('does not silently discard a token qualifier on an argument pin', async () =>
 it('reads native wallet equality as WALLET and re-encodes its exact word', async () => {
   const { getRule } = await import('../reads/rules');
   const { ruleId } = await import('./fake-chain');
-  const chain=fake();const w=chain.addWallet(ADDR.owner,'wallet-pin');
-  const word=`0x${w.address.slice(2).toLowerCase().padStart(64,'0')}` as const;
-  w.rules.push(chain.nativeRule(ADDR.agent,ruleId(1),{pins:[{offset:4,expected:word}]}));
-  const rt=mockRuntime(chain);
-  const rec=await getRule(await Snapshot.at(chain),currentGeneration(PUSH_NETWORK.TESTNET_DONUT),w.address,ruleId(1),rt.pushChainNamespace);
-  expect(rec.rule).toMatchObject({allowedCalls:[{pins:[{arg:0,expected:WALLET}]}]});
-  const normalized=await normalizePublicRule(publicRules([rec.rule])[0],w.address,rt) as NativeMultiRule;
-  expect(normalized.actions[0].pins).toEqual([{offset:4,expected:word}]);
+  const chain = fake();
+  const w = chain.addWallet(ADDR.owner, 'wallet-pin');
+  const word = `0x${w.address
+    .slice(2)
+    .toLowerCase()
+    .padStart(64, '0')}` as const;
+  w.rules.push(
+    chain.nativeRule(ADDR.agent, ruleId(1), {
+      pins: [{ offset: 4, op: 0, value: word }],
+    })
+  );
+  const rt = mockRuntime(chain);
+  const rec = await getRule(
+    await Snapshot.at(chain),
+    currentGeneration(PUSH_NETWORK.TESTNET_DONUT),
+    w.address,
+    ruleId(1),
+    rt.pushChainNamespace
+  );
+  expect(rec.rule).toMatchObject({
+    allowedCalls: [{ pins: [{ arg: 0, expected: WALLET }] }],
+  });
+  const normalized = (await normalizePublicRule(
+    publicRules([rec.rule])[0],
+    w.address,
+    rt
+  )) as NativeMultiRule;
+  expect(normalized.actions[0].wirePins).toEqual([
+    { offset: 4, op: 0, value: word },
+  ]);
 });

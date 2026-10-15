@@ -1,6 +1,6 @@
 import { buildPresetApi } from '../src/lib/agentic/presets';
 import { publicRules } from '../src/lib/agentic/public-rule';
-/** Actual v5 AGW/URP/engine. Token/core/gateway and destination lookup are local fixtures; no bridge/TSS proof. */
+/** Actual v6 AGW/URP/engine. Token/core/gateway and destination lookup are local fixtures; no bridge/TSS proof. */
 import {
   encodeFunctionData,
   getAddress,
@@ -36,7 +36,7 @@ const DEST = getAddress('0x0000000000000000000000000000000000001234');
 const internal = (c: PushChain) =>
   (c as unknown as { agenticRuntime: AgenticRuntime }).agenticRuntime;
 
-describe('v5 multi-asset SDK management and execution', () => {
+describe('v6 multi-asset SDK management and execution', () => {
   let h: Harness, owner: PushChain, a: Address, b: Address;
   beforeAll(async () => {
     h = await startHarness(18551);
@@ -152,6 +152,82 @@ describe('v5 multi-asset SDK management and execution', () => {
       args: [configId(wallet, id, action), wallet],
     });
   }
+  it('v6 EVM alternatives enforce both spender and MAX, and reads update losslessly', async () => {
+    const input = rule();
+    input.allowedCalls = [DEST, CEA].map((spender) => ({
+      target: a,
+      selector: 'approve(address,uint256)',
+      pins: [
+        { arg: 0, expected: spender },
+        { arg: 1, max: BigInt(5) },
+      ],
+    }));
+    const { wallet, id, agent } = await setup(input);
+    const send = (spender: Address, amount: bigint) =>
+      agent.universal.sendTransaction({
+        to: { address: a, chain: CHAIN_NS },
+        data: [
+          {
+            to: a,
+            value: BigInt(0),
+            data: encodeFunctionData({
+              abi: TOKEN,
+              functionName: 'approve',
+              args: [spender, amount],
+            }),
+          },
+        ],
+      });
+    await waitPush(send(DEST, BigInt(5)));
+    await waitPush(send(CEA, BigInt(4)));
+    await expect(
+      send(h.wallets[3].account!.address, BigInt(1))
+    ).rejects.toMatchObject({
+      decodedError: { name: 'PolicyCheckReverted(ArgPinMismatch)' },
+    });
+    await expect(send(DEST, BigInt(6))).rejects.toMatchObject({
+      decodedError: { name: 'PolicyCheckReverted(ArgPinAboveMax)' },
+    });
+    const handle = owner.agentic.wallet(wallet),
+      record = await handle.rules.get(id);
+    expect((record.rule as Rule).allowedCalls).toHaveLength(2);
+    const updated = await handle.rules.update({
+      rules: [
+        {
+          rulesId: id,
+          rule: { ...record.rule, validUntil: record.validUntil + 60 },
+        },
+      ],
+    });
+    expect((await handle.rules.get(updated.rules[0].rulesId)).rule).toEqual({
+      ...record.rule,
+      validUntil: record.validUntil + 60,
+    });
+  });
+  it('v6 refuses a bare alternative that bypasses a pinned function and too many initial rules', async () => {
+    const input = rule();
+    input.allowedCalls = [
+      { target: DEST, selector: 'increment()', pins: [] },
+      {
+        target: DEST,
+        selector: 'increment()',
+        pins: [{ arg: 0, max: BigInt(1) }],
+      },
+    ];
+    await expect(
+      owner.agentic.create('bypass', { rules: [input] })
+    ).rejects.toMatchObject({ code: 'INVALID_RULE' });
+    const rules = Array.from({ length: 9 }, (_, i) => ({
+      ...rule(),
+      agent: getAddress(`0x${(100 + i).toString(16).padStart(40, '0')}`),
+    }));
+    const before = await owner.agentic.derive();
+    await expect(
+      owner.agentic.create('too-many', { rules })
+    ).rejects.toMatchObject({ code: 'INVALID_RULE' });
+    expect(await owner.agentic.derive()).toEqual(before);
+  });
+
   it('a fixture preset produces rules accepted by public create and enforced by real contracts', async () => {
     const presets = buildPresetApi([
       {
@@ -374,7 +450,7 @@ describe('v5 multi-asset SDK management and execution', () => {
       })
     ).rejects.toMatchObject({ code: 'AMBIGUOUS_RULE' });
   });
-  it('a legacy two-field envelope is refused by the actual v5 grant path', async () => {
+  it('a legacy two-field envelope is refused by the actual v6 grant path', async () => {
     const bare = await owner.agentic.create('old-envelope', { rules: [] });
     const { encodeAbiParameters } = await import('viem');
     const terms = nativeRuleToTerms(

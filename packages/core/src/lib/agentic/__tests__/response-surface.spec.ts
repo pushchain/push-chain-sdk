@@ -10,8 +10,8 @@ import { PUSH_NETWORK } from '../../constants/enums';
 import { UNIVERSAL_GATEWAY_PC } from '../../constants/abi';
 import { PushChainExecutionError } from '../../orchestrator/internals/errors';
 import { Utils } from '../../utils';
-import { AGW_ABI } from '../contracts/abi/v5';
-import { v5 } from '../contracts/v5';
+import { AGW_ABI } from '../contracts/abi/v6';
+import { v6 } from '../contracts/v6';
 import { resetAgenticGenerations } from '../deployments';
 import { AgenticRevertError } from '../errors';
 import { adaptAgenticResponse, adaptTrackedResponse } from '../response';
@@ -58,7 +58,7 @@ describe('response identity', () => {
     registerFakeGeneration();
     const fake = new FakeChain();
     const w = fake.addWallet(ADDR.owner, 'w');
-    const data = v5.encodeExecuteAsAgent(ruleId(4), {
+    const data = v6.encodeExecuteAsAgent(ruleId(4), {
       target: ADDR.target,
       value: BigInt(0),
       data: '0xd09de08a',
@@ -120,7 +120,7 @@ describe('response identity', () => {
         },
       ],
     });
-    const data = v5.encodeExecuteAsAgent(ruleId(4), {
+    const data = v6.encodeExecuteAsAgent(ruleId(4), {
       target: ADDR.gateway,
       value: BigInt(5),
       data: gatewayCall,
@@ -155,7 +155,7 @@ describe('response identity', () => {
     registerFakeGeneration();
     const spoof = fakeResponse({
       to: ADDR.target,
-      data: v5.encodeExecute([
+      data: v6.encodeExecute([
         { target: ADDR.other, value: BigInt(0), data: '0x' },
       ]),
     });

@@ -13,7 +13,7 @@ import { PushChainExecutionError } from '../../orchestrator/internals/errors';
 import { PROGRESS_HOOK } from '../../progress-hook/progress-hook.types';
 import type { AgenticExecutionContext } from '../context';
 import { currentGeneration, resetAgenticGenerations } from '../deployments';
-import { v5 } from '../contracts/v5';
+import { v6 } from '../contracts/v6';
 import { actionId } from '../codec/ids';
 import { AGENTIC_ERROR_CODE, AgenticRevertError } from '../errors';
 import { agenticSend } from '../execution/send';
@@ -111,7 +111,7 @@ describe('guards fail before the signer is ever invoked', () => {
         data: Hex;
       }[];
       expect(batch.map((c) => c.to)).toEqual([ctx.wallet, ctx.wallet]);
-      expect(batch.map((c) => v5.decodeWalletCall(c.data))).toEqual(
+      expect(batch.map((c) => v6.decodeWalletCall(c.data))).toEqual(
         calls.map((c) => ({
           kind: 'executeAsAgent',
           rulesId: ruleId(1),
@@ -186,7 +186,7 @@ describe('explicit Push destinations', () => {
       data,
     });
     expect(
-      v5.decodeWalletCall(rt.executeMock.mock.calls[0][0].data)
+      v6.decodeWalletCall(rt.executeMock.mock.calls[0][0].data)
     ).toMatchObject({ kind: 'executeAsAgent', rulesId: ruleId(1) });
     expect(tx.route).not.toBe('UOA_TO_CEA');
     expect(tx.to).toBe(ADDR.target);
@@ -199,7 +199,7 @@ describe('explicit Push destinations', () => {
       data,
     });
     expect(
-      v5.decodeWalletCall(rt.executeMock.mock.calls[0][0].data)
+      v6.decodeWalletCall(rt.executeMock.mock.calls[0][0].data)
     ).toMatchObject({ kind: 'execute', calls: [{ target: ADDR.target }] });
   });
 
@@ -228,7 +228,7 @@ describe('native wrapping and logical identity', () => {
     const sent = rt.executeMock.mock.calls[0][0];
     expect(sent.to).toBe(w.address);
     expect(sent.value).toBe(BigInt(0));
-    expect(v5.decodeWalletCall(sent.data)).toEqual({
+    expect(v6.decodeWalletCall(sent.data)).toEqual({
       kind: 'executeAsAgent',
       rulesId: ruleId(1),
       mode: `0x${'00'.repeat(32)}`,
@@ -267,7 +267,7 @@ describe('native wrapping and logical identity', () => {
         { to: ADDR.other, value: BigInt(1), data: '0x' },
       ],
     });
-    const decoded = v5.decodeWalletCall(rt.executeMock.mock.calls[0][0].data);
+    const decoded = v6.decodeWalletCall(rt.executeMock.mock.calls[0][0].data);
     expect(decoded).toMatchObject({
       kind: 'execute',
       mode: `0x01${'00'.repeat(31)}`,
@@ -398,7 +398,7 @@ describe('EVM outbound composition from the wallet', () => {
       s.w.address,
       CHAIN.ETHEREUM_SEPOLIA
     );
-    const outer = v5.decodeWalletCall(rt.executeMock.mock.calls[0][0].data) as {
+    const outer = v6.decodeWalletCall(rt.executeMock.mock.calls[0][0].data) as {
       kind: string;
       rulesId: Hex;
       calls: { target: Address; value: bigint; data: Hex }[];
@@ -438,19 +438,18 @@ describe('EVM outbound composition from the wallet', () => {
     );
   });
 
-  it('never injects an approval into the agent path; missing allowance fails before signing', async () => {
+  it('agent sends without a standing allowance; the wallet handles approval', async () => {
     const s = universalSetup();
     s.fake.balances.set(`allowance:${token.toLowerCase()}`, BigInt(10));
     const rt = mockRuntime(s.fake, {
       signer: ADDR.agent,
       resolvePrc20: () => token,
     });
-    await expect(
-      agenticSend(rt, s.ctx, send(BigInt(100)))
-    ).rejects.toMatchObject({
-      code: AGENTIC_ERROR_CODE.GATEWAY_ALLOWANCE_INSUFFICIENT,
-    });
-    expect(rt.executeMock).not.toHaveBeenCalled();
+    await agenticSend(rt, s.ctx, send(BigInt(100)));
+    expect(rt.executeMock).toHaveBeenCalledTimes(1);
+    expect(s.fake.calls.some((c) => c.functionName === 'allowance')).toBe(
+      false
+    );
   });
 
   it('wallet funding is checked locally; rule PC limits are enforced by the contract', async () => {
@@ -532,7 +531,7 @@ describe('EVM outbound composition from the wallet', () => {
       resolvePrc20: () => token,
     });
     await agenticSend(rt, s.ctx, send(BigInt(100)));
-    const outer = v5.decodeWalletCall(rt.executeMock.mock.calls[0][0].data) as {
+    const outer = v6.decodeWalletCall(rt.executeMock.mock.calls[0][0].data) as {
       kind: string;
       calls: { target: Address; data: Hex }[];
     };
@@ -540,7 +539,7 @@ describe('EVM outbound composition from the wallet', () => {
     expect(outer.calls.map((c) => c.target)).toEqual([ADDR.gateway]);
   });
 
-  it('owner door with too small an allowance fails before signing (no implicit approval)', async () => {
+  it('owner sends without a standing allowance', async () => {
     const s = universalSetup();
     s.ctx.door = 'owner';
     s.ctx.signerPushAccount = ADDR.owner;
@@ -549,12 +548,11 @@ describe('EVM outbound composition from the wallet', () => {
       signer: ADDR.owner,
       resolvePrc20: () => token,
     });
-    await expect(
-      agenticSend(rt, s.ctx, send(BigInt(100)))
-    ).rejects.toMatchObject({
-      code: AGENTIC_ERROR_CODE.GATEWAY_ALLOWANCE_INSUFFICIENT,
-    });
-    expect(rt.executeMock).not.toHaveBeenCalled();
+    await agenticSend(rt, s.ctx, send(BigInt(100)));
+    expect(rt.executeMock).toHaveBeenCalledTimes(1);
+    expect(s.fake.calls.some((c) => c.functionName === 'allowance')).toBe(
+      false
+    );
   });
 
   it('an existing unlimited allowance is consumed as-is', async () => {
@@ -590,7 +588,7 @@ describe('EVM outbound composition from the wallet', () => {
       to: { address: recipient, chain: CHAIN.ETHEREUM_SEPOLIA },
       funds: { amount: BigInt(100), token: usdc },
     });
-    const outer = v5.decodeWalletCall(rt.executeMock.mock.calls[0][0].data) as {
+    const outer = v6.decodeWalletCall(rt.executeMock.mock.calls[0][0].data) as {
       calls: { data: Hex }[];
     };
     const { args } = decodeFunctionData({
@@ -638,7 +636,7 @@ describe('EVM outbound composition from the wallet', () => {
       to: { address: ADDR.other, chain: CHAIN.ETHEREUM_SEPOLIA },
       value: BigInt(7),
     });
-    const outer = v5.decodeWalletCall(rt.executeMock.mock.calls[0][0].data) as {
+    const outer = v6.decodeWalletCall(rt.executeMock.mock.calls[0][0].data) as {
       calls: { data: Hex }[];
     };
     const req = decodeFunctionData({

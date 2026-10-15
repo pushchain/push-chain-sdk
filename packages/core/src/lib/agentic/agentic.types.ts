@@ -1,4 +1,5 @@
-/** Public section-6 rules and internal adapters for the deployed v5 wire format.
+import type { ArgPinWire } from './codec/pins';
+/** Public section-6 rules and internal adapters for the deployed v6 wire format.
  * Source snapshot: October 12, 2026. Internal normalized types are not package exports.
  */
 import type { Idl } from '@coral-xyz/anchor';
@@ -17,6 +18,7 @@ export type Selector = AgenticHex | `${string}(${string})`;
 
 /** One Push function a native rule allows, with its own limits and counters. */
 export interface NativeAction {
+  wirePins?: ArgPinWire[];
   target: AgenticAddress;
   selector: Selector | 'value-only';
   /** Default 0: no native PC value allowance. */
@@ -102,6 +104,7 @@ export interface AssetCap {
 }
 
 export interface AllowedCall {
+  pins?: ArgPinWire[];
   target: AgenticAddress;
   selector: Selector;
   /** Argument index whose address must be the wallet's destination account. */

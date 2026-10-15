@@ -6,7 +6,7 @@ import { encodeFunctionData, erc20Abi, parseEther, type Hex } from 'viem';
 import { CHAIN, PUSH_NETWORK } from '../../src/lib/constants/enums';
 import { MOVEABLE_TOKEN_CONSTANTS } from '../../src/lib/constants/tokens';
 import { getPRC20Address } from '../../src/lib/universal/prc20-address';
-import { v5 } from '../../src/lib/agentic/contracts/v5';
+import { v6 } from '../../src/lib/agentic/contracts/v6';
 import {
   AGW_E2E_ENABLED,
   evmClient,
@@ -102,20 +102,18 @@ d('agw svm spl transfer', () => {
       f.manifest.network,
       made.wallet
     );
-    await (
-      await owner.universal.sendTransaction({
-        to: token,
-        data: encodeFunctionData({
-          abi: erc20Abi,
-          functionName: 'approve',
-          args: [f.manifest.addresses.gateway, amount],
-        }),
+    expect(
+      await f.push.readContract({
+        address: token,
+        abi: erc20Abi,
+        functionName: 'allowance',
+        args: [made.wallet, f.manifest.addresses.gateway],
       })
-    ).wait();
+    ).toBe(BigInt(0));
     const beforeRecipient = await recipientBalance();
     const beforeCheckpoints = await f.push.readContract({
       address: made.wallet,
-      abi: v5.abis.wallet,
+      abi: v6.abis.wallet,
       functionName: 'checkpointCount',
     });
     const tx = await owner.universal.sendTransaction({
@@ -164,7 +162,7 @@ d('agw svm spl transfer', () => {
     expect(
       await f.push.readContract({
         address: made.wallet,
-        abi: v5.abis.wallet,
+        abi: v6.abis.wallet,
         functionName: 'checkpointCount',
       })
     ).toBe(beforeCheckpoints + BigInt(1));

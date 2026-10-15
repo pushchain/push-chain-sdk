@@ -18,8 +18,8 @@ import { isPC20Reference } from '../../orchestrator/orchestrator.types';
 import { resolveR2DestinationFundsToken } from '../../orchestrator/internals/route-handlers';
 import { AgenticCapability, requireCapability } from '../capabilities';
 import type { AgenticGeneration } from '../deployments';
-import type { Call } from '../contracts/v5';
-import { UEA_MULTICALL_PREFIX } from '../contracts/v5';
+import type { Call } from '../contracts/v6';
+import { UEA_MULTICALL_PREFIX } from '../contracts/v6';
 import {
   AGENTIC_ERROR_CODE,
   AgenticError,
@@ -30,7 +30,7 @@ import type { AgenticRuntime } from '../runtime';
 /** Includes first-use CEA deployment; explicit caller gas always takes precedence. */
 const FIRST_USE_EVM_GAS_LIMIT = BigInt(2_000_000);
 
-/** URP MAX_ACTIONS_PER_REQUEST at v5. */
+/** URP MAX_ACTIONS_PER_REQUEST at v6. */
 export const MAX_DESTINATION_CALLS = 10;
 
 const MULTICALL_TUPLE = [
@@ -123,8 +123,8 @@ export function destinationCalls(
  *  - payload   = UEA_MULTICALL ‖ abi.encode(Multicall[1..10]) executed by the AGW's CEA
  *  - value     = protocolFee + maxPCForGas, paid from the AGW's PC
  * The destination account is resolved from the AGW, never from the signer.
- * The SDK never writes a gateway allowance on either door: the gateway pulls
- * from an allowance the owner set separately with an ordinary send.
+ * The SDK does not add approval calls: the v6 wallet approves and clears
+ * the gateway allowance within its own outbound execution.
  */
 export async function composeOutbound(
   runtime: AgenticRuntime,

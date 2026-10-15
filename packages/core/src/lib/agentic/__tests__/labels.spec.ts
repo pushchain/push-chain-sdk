@@ -1,7 +1,7 @@
 import { decodeFunctionData, encodeErrorResult } from 'viem';
 import { PUSH_NETWORK } from '../../constants/enums';
 import { PROGRESS_HOOK } from '../../progress-hook/progress-hook.types';
-import { v5 } from '../contracts/v5';
+import { v6 } from '../contracts/v6';
 import { currentGeneration, resetAgenticGenerations } from '../deployments';
 import { AGENTIC_ERROR_CODE } from '../errors';
 import { createWallet } from '../management/create';
@@ -48,7 +48,7 @@ describe('v5 wallet labels', () => {
     const sent = rt.executeMock.mock.calls[0][0];
     expect(sent).toMatchObject({ to: w.address, value: BigInt(0) });
     expect(
-      decodeFunctionData({ abi: v5.abis.wallet, data: sent.data })
+      decodeFunctionData({ abi: v6.abis.wallet, data: sent.data })
     ).toMatchObject({ functionName: 'setLabel', args: [''] });
     expect(hook).toHaveBeenCalledWith(
       expect.objectContaining({ id: PROGRESS_HOOK.AGENTIC_TX_106 })
@@ -84,7 +84,7 @@ describe('v5 wallet labels', () => {
     await setLabel(rt, gen(), w.address, 'UEA label');
     expect(
       decodeFunctionData({
-        abi: v5.abis.wallet,
+        abi: v6.abis.wallet,
         data: rt.executeMock.mock.calls[0][0].data,
       }).functionName
     ).toBe('setLabel');
@@ -94,7 +94,7 @@ describe('v5 wallet labels', () => {
     const chain = new FakeChain();
     const w = chain.addWallet(ADDR.owner, 'x');
     const data = encodeErrorResult({
-      abi: v5.abis.wallet,
+      abi: v6.abis.wallet,
       errorName: 'LabelTooLong',
       args: [BigInt(65)],
     });

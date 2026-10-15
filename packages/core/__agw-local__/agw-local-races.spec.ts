@@ -1,15 +1,15 @@
 /**
  * Race regressions found during independent SDK review,
- * against the real pinned v5 contracts on local anvil.
+ * against the real pinned v6 contracts on local anvil.
  *  R1 — a concurrent creation must never let this create() grant on a wallet it
  *       did not deploy (the deploy is index-bound through deployWalletWithSig).
  *  R4 — an owner outbound must never restore an allowance revoked after the
  *       SDK read it (the SDK never writes allowances).
  */
-import { encodeFunctionData, parseAbi, type Address } from 'viem';
+import { encodeFunctionData, parseAbi, type Address, type Hex } from 'viem';
 import { AgenticRevertError, CHAIN, type PushChain } from '../src';
 import type { AgenticRuntime } from '../src/lib/agentic/runtime';
-import { v5 } from '../src/lib/agentic/contracts/v5';
+import { v6 } from '../src/lib/agentic/contracts/v6';
 import { AGENTIC_ERROR_CODE } from '../src/lib/agentic/errors';
 import { startHarness, type Harness } from './harness';
 const TOKEN = parseAbi([
@@ -23,7 +23,7 @@ const internalsOf = (c: PushChain) =>
       agenticRuntime: AgenticRuntime;
     }
   ).agenticRuntime;
-describe('AGW race regressions (real v5 contracts)', () => {
+describe('AGW race regressions (real v6 contracts)', () => {
   let h: Harness;
   let owner: PushChain;
   beforeAll(async () => {
@@ -87,7 +87,7 @@ describe('AGW race regressions (real v5 contracts)', () => {
     const retried = await owner.agentic.create('intended', { rules: [] });
     expect(retried.index).toBe(next.index);
   });
-  it('R4 an allowance revoked after the SDK read it stays revoked; the outbound fails on-chain', async () => {
+  it('v6 outbound succeeds after a standing allowance is revoked and leaves zero allowance', async () => {
     const { wallet } = await owner.agentic.create('allowance-race', {
       rules: [],
     });
@@ -129,7 +129,7 @@ describe('AGW race regressions (real v5 contracts)', () => {
     const execute = rt.execute;
     rt.execute = async (params, options) => {
       rt.execute = execute;
-      const revoke = v5.encodeExecute([
+      const revoke = v6.encodeExecute([
         {
           target: token,
           value: BigInt(0),
@@ -156,8 +156,13 @@ describe('AGW race regressions (real v5 contracts)', () => {
       .finally(() => {
         rt.execute = execute;
       });
-    expect(err).toBeInstanceOf(AgenticRevertError);
-    expect(err.message).toContain('0x10bad147'); // LowAllowance() — the token refused the pull
+    expect(
+      (
+        await h.publicClient.waitForTransactionReceipt({
+          hash: err.hash as Hex,
+        })
+      ).status
+    ).toBe('success');
     expect(
       await h.publicClient.readContract({
         address: token,

@@ -1,5 +1,5 @@
 /**
- * Multi-action native rules against the real pinned v5 contracts: one rule ID
+ * Multi-action native rules against the real pinned v6 contracts: one rule ID
  * allows several Push functions, each metered by its own stored terms.
  * Unified section-6 public shape; the contract support
  * (AGW MAX_NATIVE_ACTIONS = 8) is what these tests exercise.
@@ -73,7 +73,7 @@ async function rule(): Promise<Rule> {
     ],
   };
 }
-describe('multi-action native rules (real v5 contracts)', () => {
+describe('multi-action native rules (real v6 contracts)', () => {
   let wallet: Address;
   let rulesId: Hex;
   let agent: PushChain;
@@ -186,7 +186,7 @@ describe('multi-action native rules (real v5 contracts)', () => {
       kind: 'native',
       actions: [
         { callsUsed: 3, amountSpent: BigInt(0) },
-        { callsUsed: 2, amountSpent: BigInt(10) },
+        { callsUsed: 2, amountSpent: BigInt(0) },
       ],
     });
   });

@@ -15,7 +15,7 @@ import { readNativeCounters } from '@e2e/shared/agw-state';
 import { privateKeyToAccount } from 'viem/accounts';
 import { PushChain } from '../../src';
 import { CHAIN } from '../../src/lib/constants/enums';
-import { v5, MODE_SINGLE } from '../../src/lib/agentic/contracts/v5';
+import { v6, MODE_SINGLE } from '../../src/lib/agentic/contracts/v6';
 import { decodeAgenticRevert } from '../../src/lib/agentic/revert';
 import {
   AGW_E2E_ENABLED,
@@ -34,7 +34,7 @@ d('agw labels', () => {
   const count = (address: Address) =>
     f.push.readContract({
       address,
-      abi: v5.abis.wallet,
+      abi: v6.abis.wallet,
       functionName: 'checkpointCount',
     });
   it('1. default and custom deployment labels are stored and listed', async () => {
@@ -81,7 +81,7 @@ d('agw labels', () => {
       if (log.address.toLowerCase() !== made.wallet.toLowerCase()) return [];
       try {
         const ev = decodeEventLog({
-          abi: v5.abis.wallet,
+          abi: v6.abis.wallet,
           data: log.data,
           topics: log.topics,
         });
@@ -127,7 +127,7 @@ d('agw labels', () => {
       await expect(
         f.push.simulateContract({
           address: made.wallet,
-          abi: v5.abis.wallet,
+          abi: v6.abis.wallet,
           functionName: 'setLabel',
           args: [label],
           account: f.ownerAddress,
@@ -166,7 +166,7 @@ d('agw labels', () => {
     await expect(
       f.push.simulateContract({
         address: made.wallet,
-        abi: v5.abis.wallet,
+        abi: v6.abis.wallet,
         functionName: 'setLabel',
         args: ['attack'],
         account: f.agentAddress,
@@ -175,15 +175,15 @@ d('agw labels', () => {
     const agentDoorError = await f.push
       .simulateContract({
         address: made.wallet,
-        abi: v5.abis.wallet,
+        abi: v6.abis.wallet,
         functionName: 'executeAsAgent',
         args: [
           made.rulesIds[0],
           MODE_SINGLE,
-          v5.packSingle({
+          v6.packSingle({
             target: made.wallet,
             value: BigInt(0),
-            data: v5.encodeSetLabel('attack'),
+            data: v6.encodeSetLabel('attack'),
           }),
         ],
         account: f.agentAddress,
@@ -332,7 +332,7 @@ d('agw labels', () => {
     const checkpointsBefore = await count(made.wallet);
     const nonceBefore = await f.push.readContract({
       address: made.wallet,
-      abi: v5.abis.wallet,
+      abi: v6.abis.wallet,
       functionName: 'grantNonce',
     });
     const rename = await w.setLabel('active-after');
@@ -349,7 +349,7 @@ d('agw labels', () => {
     expect(
       await f.push.readContract({
         address: made.wallet,
-        abi: v5.abis.wallet,
+        abi: v6.abis.wallet,
         functionName: 'grantNonce',
       })
     ).toBe(nonceBefore);
@@ -411,12 +411,12 @@ d('agw labels', () => {
       {
         to: made.wallet,
         value: BigInt(0),
-        data: v5.encodeSetLabel('temporary'),
+        data: v6.encodeSetLabel('temporary'),
       },
       {
         to: made.wallet,
         value: BigInt(0),
-        data: v5.encodeSetLabel('a'.repeat(65)),
+        data: v6.encodeSetLabel('a'.repeat(65)),
       },
     ];
     await expect(
@@ -434,7 +434,7 @@ d('agw labels', () => {
       chain: client.chain,
       to: made.wallet,
       gas: BigInt(400000),
-      data: v5.encodeExecute(
+      data: v6.encodeExecute(
         calls.map((call) => ({
           target: call.to,
           value: call.value,

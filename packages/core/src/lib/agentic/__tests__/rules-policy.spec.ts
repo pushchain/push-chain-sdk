@@ -6,7 +6,7 @@ import { encodeUniversalTerms } from '../codec/universal-terms';
 import { buildSession, encodeEnvelope, encodeSession } from '../codec/session';
 import { prepareRules } from '../codec/rules';
 import { validateUniversalRuleShape } from '../codec/universal';
-import { V5_CAPABILITIES } from '../deployments';
+import { V6_CAPABILITIES } from '../deployments';
 import { AGENTIC_ERROR_CODE } from '../errors';
 import { internalAgenticUtils } from '../utils';
 import type {
@@ -22,7 +22,7 @@ const ctx = {
   pushChainNamespace: PUSH_NS,
   validator: ADDR.validator,
   rulesPolicy: ADDR.policy,
-  capabilities: V5_CAPABILITIES,
+  capabilities: V6_CAPABILITIES,
   nowSeconds: NOW,
   forbiddenTargets: [
     ADDR.factory,
@@ -217,7 +217,12 @@ describe('universal rules — validated, then capability-gated (A01, A05)', () =
       validateUniversalRuleShape(
         universal({
           allowedCalls: [
-            { target: ADDR.target, selector: '0x617ba037', beneficiary: 2 },
+            {
+              target: ADDR.target,
+              selector: '0x617ba037',
+              pins: [],
+              beneficiary: 2,
+            },
           ],
         }),
         NOW
@@ -270,10 +275,13 @@ describe('internal generation codecs (pure)', () => {
       maxCalls: 4,
       validUntil: NOW + 100,
     });
-    expect((back as NativeRule).pins).toEqual([
+    expect(
+      (back as import('../agentic.types').NativeSingleRule).wirePins
+    ).toEqual([
       {
         offset: 4,
-        expected: `0x${'0'.repeat(24)}${ADDR.other.slice(2).toLowerCase()}`,
+        op: 0,
+        value: `0x${'0'.repeat(24)}${ADDR.other.slice(2).toLowerCase()}`,
       },
     ]);
   });
@@ -323,6 +331,7 @@ describe('internal generation codecs (pure)', () => {
                   {
                     target: ADDR.target,
                     selector: '0x617ba037',
+                    pins: [],
                     beneficiaryOffset: 68,
                     hasBeneficiary: true,
                     maxValue: BigInt(0),

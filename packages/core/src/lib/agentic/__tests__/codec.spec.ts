@@ -1,5 +1,5 @@
 import { decodeFunctionData, getAddress, type Address, type Hex } from 'viem';
-import vectorsJson from '../__fixtures__/v5-vectors.json';
+import vectorsJson from '../__fixtures__/v6-vectors.json';
 import {
   actionId,
   agentConfig,
@@ -23,8 +23,8 @@ import {
 import { parseSelector, VALUE_ONLY_SELECTOR } from '../codec/selectors';
 import { argumentOffset, headSize } from '../codec/abi-layout';
 import { UINT256_MAX } from '../codec/defaults';
-import { v5 } from '../contracts/v5';
-import { AGW_ABI } from '../contracts/abi/v5';
+import { v6 } from '../contracts/v6';
+import { AGW_ABI } from '../contracts/abi/v6';
 import { AGENTIC_ERROR_CODE } from '../errors';
 import type { NativeRule } from '../agentic.types';
 
@@ -59,7 +59,7 @@ const vectors = revive(vectorsJson) as unknown as {
     configInitialized: boolean;
     storedTarget: Address;
     storedSelector: Hex;
-    storedPins: { offset: number; expected: Hex }[];
+    storedPins: { offset: number; op: number; value: Hex }[];
     storedAmountOffset: number;
     encodedSession: Hex;
   };
@@ -141,8 +141,8 @@ describe('native rule codec', () => {
     expect(back).toEqual({ ...terms, validUntil: terms.validUntil });
     const rule = nativeTermsToRule(back, v.rule.agent);
     // Stored terms carry offsets, not an ABI: decoded rules report the raw offset form.
-    expect(rule.pins).toEqual([
-      { offset: 4, expected: terms.pins[0].expected.toLowerCase() },
+    expect(rule.wirePins).toEqual([
+      { offset: 4, op: 0, value: terms.pins[0].value.toLowerCase() },
     ]);
     expect(rule.amount).toEqual({
       offset: 36,
@@ -165,8 +165,8 @@ describe('native rule codec', () => {
     const { terms } = nativeRuleToTerms(input, { nowSeconds: NOW });
     expect(terms.pins[0].offset).toBe(4 + 64);
     const decoded = nativeTermsToRule(terms, agent);
-    expect(decoded.pins).toEqual([
-      { offset: 68, expected: terms.pins[0].expected },
+    expect(decoded.wirePins).toEqual([
+      { offset: 68, op: 0, value: terms.pins[0].value },
     ]);
     expect(nativeRuleToTerms(decoded, { nowSeconds: NOW }).terms).toEqual(
       terms
@@ -182,7 +182,7 @@ describe('native rule codec', () => {
       pins: [{ arg: 0, expected: agent }],
     };
     const { terms } = nativeRuleToTerms(input, { nowSeconds: NOW });
-    const word = terms.pins[0].expected;
+    const word = terms.pins[0].value;
     expect(
       nativeRuleToTerms(
         { ...input, pins: [{ arg: 0, expected: word }] },
@@ -221,7 +221,7 @@ describe('native rule codec', () => {
         { ...base, pins: [{ offset: 36, expected: `0x${'00'.repeat(31)}01` }] },
         { nowSeconds: NOW }
       ).terms.pins
-    ).toEqual([{ offset: 36, expected: `0x${'00'.repeat(31)}01` }]);
+    ).toEqual([{ offset: 36, op: 0, value: `0x${'00'.repeat(31)}01` }]);
   });
 
   it('applies confirmed zero PC defaults and independent token/call defaults', () => {
@@ -235,18 +235,39 @@ describe('native rule codec', () => {
       },
       { nowSeconds: NOW }
     );
-    expect(terms.maxValuePerCall).toBe(
-      BigInt(0)
-    );
+    expect(terms.maxValuePerCall).toBe(BigInt(0));
     expect(terms.maxValueTotal).toBe(BigInt(0));
-    expect(terms.maxCalls).toBe(0);
+    expect(terms.maxCalls).toBe(0xffffffff);
     expect(terms.amount.maxTotal).toBe(UINT256_MAX);
   });
 
   it('rejects ambiguous arg-plus-offset authoring for both pins and amount', () => {
-    const rule = { agent, target, selector: 'transfer(address,uint256)' as const, validUntil: NOW + 10 };
-    expect(() => nativeRuleToTerms({ ...rule, pins: [{ arg: 0, offset: 4, expected: `0x${'00'.repeat(32)}` } as never] }, { nowSeconds: NOW })).toThrow('mutually exclusive');
-    expect(() => nativeRuleToTerms({ ...rule, amount: { arg: 1, offset: 36, maxPerCall: BigInt(1) } as never }, { nowSeconds: NOW })).toThrow('mutually exclusive');
+    const rule = {
+      agent,
+      target,
+      selector: 'transfer(address,uint256)' as const,
+      validUntil: NOW + 10,
+    };
+    expect(() =>
+      nativeRuleToTerms(
+        {
+          ...rule,
+          pins: [
+            { arg: 0, offset: 4, expected: `0x${'00'.repeat(32)}` } as never,
+          ],
+        },
+        { nowSeconds: NOW }
+      )
+    ).toThrow('mutually exclusive');
+    expect(() =>
+      nativeRuleToTerms(
+        {
+          ...rule,
+          amount: { arg: 1, offset: 36, maxPerCall: BigInt(1) } as never,
+        },
+        { nowSeconds: NOW }
+      )
+    ).toThrow('mutually exclusive');
   });
 
   it('keeps an explicit zero as zero', () => {
@@ -403,12 +424,12 @@ describe('wallet call encoders decode back to the same calls', () => {
   const call = { target, value: BigInt(7), data: '0xd09de08a' as Hex };
 
   it('execute single uses packed ERC-7579 calldata', () => {
-    const data = v5.encodeExecute([call]);
+    const data = v6.encodeExecute([call]);
     const { functionName, args } = decodeFunctionData({ abi: AGW_ABI, data });
     expect(functionName).toBe('execute');
     expect(args[0]).toBe(`0x${'00'.repeat(32)}`);
     expect((args[1] as Hex).length).toBe(2 + 2 * (20 + 32 + 4));
-    expect(v5.decodeWalletCall(data)).toEqual({
+    expect(v6.decodeWalletCall(data)).toEqual({
       kind: 'execute',
       mode: args[0],
       calls: [call],
@@ -416,8 +437,8 @@ describe('wallet call encoders decode back to the same calls', () => {
   });
 
   it('execute batch uses abi.encode(Execution[])', () => {
-    const data = v5.encodeExecute([call, { ...call, value: BigInt(0) }]);
-    const decoded = v5.decodeWalletCall(data);
+    const data = v6.encodeExecute([call, { ...call, value: BigInt(0) }]);
+    const decoded = v6.decodeWalletCall(data);
     expect(decoded).toMatchObject({
       kind: 'execute',
       mode: `0x01${'00'.repeat(31)}`,
@@ -430,7 +451,7 @@ describe('wallet call encoders decode back to the same calls', () => {
 
   it('executeAsAgent carries the rule ID and one packed call', () => {
     const id = `0x${'42'.repeat(32)}` as Hex;
-    expect(v5.decodeWalletCall(v5.encodeExecuteAsAgent(id, call))).toEqual({
+    expect(v6.decodeWalletCall(v6.encodeExecuteAsAgent(id, call))).toEqual({
       kind: 'executeAsAgent',
       rulesId: id,
       mode: `0x${'00'.repeat(32)}`,
@@ -439,6 +460,6 @@ describe('wallet call encoders decode back to the same calls', () => {
   });
 
   it('unknown calldata is not mistaken for a wallet call', () => {
-    expect(v5.decodeWalletCall('0xdeadbeef')).toBeNull();
+    expect(v6.decodeWalletCall('0xdeadbeef')).toBeNull();
   });
 });

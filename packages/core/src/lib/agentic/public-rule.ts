@@ -1,4 +1,9 @@
-/** Public section-6 rule normalization into the deployed v5 wire model. */
+import {
+  UNLIMITED_CALLS,
+  ANY_ACCOUNT_COUNT,
+  type ArgPinWire,
+} from './codec/pins';
+/** Public section-6 rule normalization into the deployed v6 wire model. */
 import type { Idl } from '@coral-xyz/anchor';
 import { PublicKey } from '@solana/web3.js';
 import {
@@ -180,75 +185,54 @@ export async function normalizePublicRule(
   if (native && r.allowedCalls.length > 8)
     throw capabilityUnavailable(
       'nativeActions',
-      'the deployed v5 wallet permits at most eight native actions'
+      'the deployed v6 wallet permits at most eight native actions'
     );
   if (native && (r.assets !== undefined || r.maxGasPerCall !== undefined))
     throw invalid('native rules do not carry assets or maxGasPerCall');
   const own = native
     ? wallet
-    : (await runtime.resolveCEA(wallet, r.chainNamespace as CHAIN)).cea;
+    : getAddress(
+        (await runtime.resolveCEA(wallet, r.chainNamespace as CHAIN)).cea
+      );
   const nativeActions: NativeAction[] = [];
   const calls: UniversalRule['allowedCalls'] = [];
   for (const call of r.allowedCalls) {
     const pins = call.pins ?? [];
-    let amount: NativeAction['amount'];
-    const eq: NonNullable<NativeAction['pins']> = [];
-    let beneficiaryOffset: number | undefined;
+    const wirePins: ArgPinWire[] = [];
     const occupied = new Set<number>();
     for (const pin of pins) {
       if ('account' in pin) throw invalid('account pins only apply to Solana');
       const offset = evmPinOffset(call.selector, pin.arg);
       if (occupied.has(offset)) throw invalid('duplicate pin argument');
       occupied.add(offset);
-      if (!native) {
-        if (
-          !('expected' in pin) ||
-          pin.expected !== WALLET ||
-          beneficiaryOffset !== undefined
-        )
-          throw capabilityUnavailable(
-            'evmDestinationPins',
-            'general or multiple EVM destination pins require contract change 6.3; v5 supports one WALLET pin per call'
-          );
-        beneficiaryOffset = offset;
-      } else if ('max' in pin) {
-        if (amount)
-          throw capabilityUnavailable(
-            'nativeMaxPins',
-            'v5 supports one max pin per native call'
-          );
-        amount = {
-          offset,
-          maxPerCall: uint(pin.max, 'pin.max'),
-          maxTotal: UINT256_MAX,
-        };
-      } else {
-        eq.push({
-          offset,
-          expected: expectedWord(
-            call.selector,
-            pin.arg,
-            pin.expected === WALLET ? own : pin.expected
-          ),
-        });
-      }
+      wirePins.push({
+        offset,
+        op: 'max' in pin ? 1 : 0,
+        value:
+          'max' in pin
+            ? numberToHex(uint(pin.max, 'pin.max'), { size: 32 })
+            : expectedWord(
+                call.selector,
+                pin.arg,
+                pin.expected === WALLET ? own : pin.expected
+              ),
+      });
     }
     if (native)
       nativeActions.push({
         target: getAddress(call.target),
         selector: call.selector,
-        pins: eq,
-        amount,
+        wirePins,
         maxValuePerCall: call.maxValue ?? BigInt(0),
         maxValueTotal: UINT256_MAX,
-        maxCalls: 0,
+        maxCalls: UNLIMITED_CALLS,
       });
     else
       calls.push({
         target: getAddress(call.target),
         selector:
           call.selector as UniversalRule['allowedCalls'][number]['selector'],
-        beneficiaryOffset,
+        pins: wirePins,
         maxValue: call.maxValue ?? BigInt(0),
       });
   }
@@ -375,7 +359,7 @@ function svmRule(rule: Rule, cea: Hex): SolanaRule {
         ],
       };
       return {
-        maxAccounts: 0,
+        maxAccounts: ANY_ACCOUNT_COUNT,
         program: call.target,
         instruction: { idl, name },
         accounts: accounts.map((p) => ({

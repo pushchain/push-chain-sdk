@@ -17,8 +17,8 @@ import {
 } from '../../orchestrator/internals/helpers';
 import { AgenticCapability, requireCapability } from '../capabilities';
 import type { AgenticExecutionContext } from '../context';
-import type { Call, UniversalConfigRead } from '../contracts/v5';
-import { SEND_OUTBOUND_SELECTOR } from '../contracts/v5';
+import type { Call, UniversalConfigRead } from '../contracts/v6';
+import { SEND_OUTBOUND_SELECTOR } from '../contracts/v6';
 import { actionId, configId } from '../codec/ids';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
 import {
@@ -252,7 +252,7 @@ export async function agenticSend(
     });
     outboundChain = out.chain;
     meta = { route: 'UOA_TO_CEA', destinationAccount: out.destinationAccount };
-    const [walletPc, tokenBalance, allowance] = await Promise.all([
+    const [walletPc, tokenBalance] = await Promise.all([
       runtime.reader.getBalance({
         address: wallet,
         blockNumber: snap.blockNumber,
@@ -265,12 +265,6 @@ export async function agenticSend(
             [wallet]
           )
         : Promise.resolve(BigInt(0)),
-      snap.read<bigint>(
-        out.token,
-        ERC20_EVM as unknown as readonly unknown[],
-        'allowance',
-        [wallet, gen.addresses.gateway]
-      ),
     ]);
     if (walletPc < out.value) {
       throw new AgenticError(
@@ -283,17 +277,6 @@ export async function agenticSend(
       throw new AgenticError(
         AGENTIC_ERROR_CODE.WALLET_BALANCE_INSUFFICIENT,
         `wallet ${wallet} holds ${tokenBalance} of ${out.token}; this outbound burns ${out.amount}`
-      );
-    }
-    // Both doors only consume an allowance the owner set separately; the SDK
-    // never writes one (a write from a stale read could restore revoked authority).
-    if (out.amount > allowance) {
-      throw new AgenticError(
-        AGENTIC_ERROR_CODE.GATEWAY_ALLOWANCE_INSUFFICIENT,
-        `the gateway may pull ${allowance} of ${out.token} from the wallet; this outbound needs ${out.amount}`,
-        {
-          hint: 'Set a bounded allowance first with an owner-door send: approve(gateway, cap) on the token (approve(gateway, 0) removes it).',
-        }
       );
     }
     if (actx.door === 'agent') {

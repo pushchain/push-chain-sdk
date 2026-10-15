@@ -18,16 +18,16 @@ import {
   ruleId,
 } from './fake-chain';
 import { mockRuntime } from './mock-runtime';
-import { v5 } from '../contracts/v5';
+import { v6 } from '../contracts/v6';
 import { readOriginToken } from '../contracts/prc20-metadata';
 
 describe('generation registry', () => {
   afterEach(() => resetAgenticGenerations());
 
-  it('ships Donut v5 only; other networks are unsupported', () => {
+  it('ships Donut v6 only; other networks are unsupported', () => {
     resetAgenticGenerations();
     expect(currentGeneration(PUSH_NETWORK.TESTNET_DONUT)).toMatchObject({
-      id: 'v5',
+      id: 'v6',
       advertised: true,
     });
     for (const n of Object.values(PUSH_NETWORK).filter(
@@ -61,7 +61,7 @@ describe('Donut log-range limit', () => {
     const getLogs = jest.spyOn(fake, 'getLogs');
     await scanLogs(
       fake,
-      { address: ADDR.factory, event: v5.events.walletDeployed },
+      { address: ADDR.factory, event: v6.events.walletDeployed },
       BigInt(10),
       BigInt(2010)
     );
@@ -298,7 +298,7 @@ describe('rules.list / rules.get', () => {
       fake.nativeRule(ADDR.agent, ruleId(1), {
         callsUsed: 3,
         valueSpent: BigInt(5),
-        maxCalls: 0,
+        maxCalls: 0xffffffff,
       }),
     ]);
     const rules = await listRules(
@@ -396,7 +396,7 @@ describe('rules.list / rules.get', () => {
     fake.extraLogs.push(
       log(
         w.address,
-        v5.events.rulesRevoked,
+        v6.events.rulesRevoked,
         { rulesId: ruleId(9) },
         {},
         BigInt(50)

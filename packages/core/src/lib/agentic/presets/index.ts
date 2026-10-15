@@ -153,7 +153,7 @@ export function buildPresetApi(
       }
       const rules: PresetRuleTemplate[] = chains.map((chain) => {
         const calls = chain.allowedCalls.map(copyCall);
-        const approvals = new Map<string, string>();
+        const approvals = new Set<string>();
         for (const asset of assets.get(chain.chainNamespace) ?? []) {
           const token = tokenAddress(asset.token);
           if (
@@ -170,14 +170,9 @@ export function buildPresetApi(
               );
             const spender = getAddress(approval.spender);
             const target = getAddress(token);
-            const previous = approvals.get(target);
-            if (previous && previous !== spender)
-              throw capabilityUnavailable(
-                'presetApproval',
-                'multiple spenders for one token need a reviewed policy representation; no unrestricted approval is generated'
-              );
-            if (previous) continue;
-            approvals.set(target, spender);
+            const approvalKey = `${target}:${spender}`;
+            if (approvals.has(approvalKey)) continue;
+            approvals.add(approvalKey);
             calls.push({
               target,
               selector: 'approve(address,uint256)',
@@ -195,7 +190,7 @@ export function buildPresetApi(
             'presetCalls',
             'preset must contain 1..32 allowed calls including approvals'
           );
-        const pairs = new Set<string>();
+        const pairs = new Map<string, boolean>();
         for (const call of calls) {
           if (!/^[A-Za-z_$][\w$]*\(.*\)$/.test(call.selector))
             throw invalid('preset selectors must be full signatures');
@@ -207,12 +202,17 @@ export function buildPresetApi(
               ? call.target.toLowerCase()
               : call.target
           }:${selector}`;
-          if (pairs.has(pair))
+          if (pairs.has(pair) && !chain.chainNamespace.startsWith('eip155:'))
             throw capabilityUnavailable(
               'presetCalls',
-              'duplicate target/function entries need a reviewed policy representation'
+              'Solana does not support alternative entries for one program/instruction'
             );
-          pairs.add(pair);
+          if (pairs.has(pair) && (!call.pins?.length || !pairs.get(pair)))
+            throw capabilityUnavailable(
+              'presetCalls',
+              'an unpinned alternative would bypass restrictions for this target/function'
+            );
+          pairs.set(pair, !!call.pins?.length);
         }
         return {
           chainNamespace: chain.chainNamespace,

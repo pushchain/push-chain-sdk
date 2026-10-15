@@ -351,7 +351,7 @@ describe('S12–S18 payload checks', () => {
         )
       )
     ).toThrow(/SvmAccountPinMismatch/);
-    t.programs = [{ ...t.programs[0], maxAccounts: 0 }];
+    t.programs = [{ ...t.programs[0], maxAccounts: 255 }];
     expect(() =>
       validateAgwSvmPayload(
         t,

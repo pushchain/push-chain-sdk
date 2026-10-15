@@ -17,7 +17,7 @@ import { decodeEnvelope, decodeSession } from '../codec/session';
 import {
   currentGeneration,
   resetAgenticGenerations,
-  V5_CAPABILITIES,
+  V6_CAPABILITIES,
 } from '../deployments';
 import { AGENTIC_ERROR_CODE } from '../errors';
 import { decodeActiveRule, readActiveRules } from '../reads/rules';
@@ -58,7 +58,7 @@ const ctx = {
   validator: ADDR.validator,
   rulesPolicy: ADDR.policy,
   gateway: ADDR.gateway,
-  capabilities: V5_CAPABILITIES,
+  capabilities: V6_CAPABILITIES,
   nowSeconds: NOW,
   forbiddenTargets: [
     ADDR.factory,
@@ -325,7 +325,7 @@ describe('rules.get / rules.list — reading several stored actions', () => {
           [a0.toLowerCase()]: {
             target: ADDR.target,
             selector: '0xd09de08a',
-            maxCalls: 0,
+            maxCalls: 0xffffffff,
             callsUsed: 5,
           },
           [a1.toLowerCase()]: {

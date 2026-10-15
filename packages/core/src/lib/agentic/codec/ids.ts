@@ -12,7 +12,7 @@ import {
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
 
 /**
- * Pure identity helpers mirroring the pinned AGW generation (v5):
+ * Pure identity helpers mirroring the pinned AGW generation (v6):
  *   smartsessions IdLib.toActionId / toConfigId / toPermissionId and
  *   AGWFactory._predict (OZ Clones immutable-args CREATE2).
  * Every input that changes the result is explicit — validator, factory and
