@@ -2,7 +2,11 @@ import { getAddress, type Address } from 'viem';
 import { CHAIN, PUSH_NETWORK } from '../constants/enums';
 import type { MoveableToken } from '../constants/tokens';
 import { AtomicBatchUnavailableError } from '../orchestrator/internals/errors';
-import { capabilityUnavailable } from './errors';
+import {
+  AgenticError,
+  AGENTIC_ERROR_CODE,
+  capabilityUnavailable,
+} from './errors';
 import type { Orchestrator } from '../orchestrator/orchestrator';
 import type {
   ExecuteParams,
@@ -162,15 +166,25 @@ export function createAgenticRuntime(
       );
       return { cea: getAddress(r.cea), isDeployed: r.isDeployed };
     },
-    resolvePrc20: (token, chain) =>
-      getAddress(
-        token
-          ? getPRC20Address(
-              typeof token === 'string' ? { chain, address: token } : token,
-              { network }
-            ).address
-          : getNativePRC20ForChain(chain, network)
-      ),
+    resolvePrc20: (token, chain) => {
+      if (!token) return getAddress(getNativePRC20ForChain(chain, network));
+      // Native ETH shares a symbol/address across chains. A plain token must
+      // resolve within the known destination, never the first global match.
+      if (typeof token === 'object' && 'prc20Address' in token) {
+        if (!('sourceChain' in token) || token.sourceChain !== chain)
+          throw new AgenticError(
+            AGENTIC_ERROR_CODE.ASSET_CHAIN_MISMATCH,
+            'Push token source chain must match the destination chain'
+          );
+        return getAddress(getPRC20Address(token, { network }).address);
+      }
+      return getAddress(
+        getPRC20Address(
+          { chain, address: typeof token === 'string' ? token : token.address },
+          { network }
+        ).address
+      );
+    },
     nowSeconds: () => Math.floor(Date.now() / 1000),
   };
 }
