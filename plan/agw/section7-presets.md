@@ -1,30 +1,26 @@
-# Section 7 preset framework
+# Section 7 presets — current alignment
 
-Source: [SDK spec §7](https://app.notion.com/p/pushprotocol/5-SDK-AGW-3e9188aea7f481cf8e8de324956549b9), [October 12 snapshot](notion/5-sdk-agw.md). Implementation is tracked on feat/agw-sdk-v4, with non-plan changes mirrored to feat/agw-sdk-v5.
+Updated October 15, 2026. [Live SDK §7](https://app.notion.com/p/pushprotocol/5-SDK-AGW-3e9188aea7f481cf8e8de324956549b9#07ce163677ef44dfae03a38ea4c16da0) and the [catalog proposal snapshot](notion/agw-presets-proposal-and-rules.md) are the sources. Work is on v4; non-plan changes are mirrored to v5.
 
-## User decisions
+## Approved decisions
 
-- Build the framework now; approved app/address catalog comes later.
-- Missing asset maxPerCall or maxTotal defaults to zero, superseding the spec's proposed throw.
-- An incomplete result is an editable PresetRuleTemplate; supplying agent and expiry narrows the return to Rule[]. This avoids pretending a template is ready for create.
+- Missing asset caps default to zero, superseding the SDK page's proposed throw.
+- Mainnet templates are included following the user's October 15 scope expansion. Live tests remain testnet-only.
+- DEX get without a complete token pair returns zero-input-cap review templates. Call get again after choosing both tokens. The user explicitly approved this flow; merely adding assets to an earlier result cannot enable its swaps.
+- Static struct/fixed-array fields use argument paths such as [0,3]. Decoded EVM rules use raw selectors and exact ABI word positions for lossless get/update; no ABI metadata is invented.
 
 ## Implemented
 
-- Enumerable, frozen CATEGORY constants: DEXES, LENDING, PREDICTION.
-- Public utils.agentic.presets.list/get, with no encoder, ID or deployment helpers restored.
-- All production categories currently expose chains: []; get without a chain filter returns rules: []. A requested unavailable chain fails explicitly. No placeholder addresses ship.
-- Internal bundled catalog schema and fixture-injectable builder; no public runtime registration or network fetching.
-- One rule per chain, chain filtering, identity/expiry propagation and asset placement; unknown/mismatched chains and duplicate assets fail.
-- Caller/caller-result mutation cannot modify the catalog or subsequent results.
-- Missing caps become 0; explicit uint256 values are retained and invalid values fail.
-- Approvals for catalog-declared EVM spenders are pinned to that spender and bounded by maxPerCall. Native assets receive none. With the October 14 v6 migration, distinct spender entries are separate pinned alternatives; an unpinned alternative beside them is refused.
-- Full signatures and the 32-call ceiling (including approvals) are checked. Metadata app/label is display-only.
-- The October 14 v6 adapter supports general destination EQ/MAX pins. Presets use the same create/add validation and do not bypass policy checks.
+Enumerable DEXES/LENDING/STAKING/PREDICTION constants; list/get only; one rule per chain; full signatures; wallet recipient pins; token pair pins; bounded spender-pinned approvals; mutation isolation; omitted identity/expiry; explicit chain filtering; zero cap defaults; 32-call and 32-pin limits. Unfiltered discovery includes both mainnet and testnet templates. PREDICTION remains empty.
 
-## Remaining activation work
+[Catalog coverage, read-only mainnet verification and exclusions](research/preset-mainnet-2026-10-15/README.md). [Testnet source snapshots and review flow](research/preset-catalog-2026-10-15/implementation-status.md).
 
-Approved catalog data, tuple-field convention and review of approval combinations against the new policy. Solana approvals require a separately reviewed instruction template; no EVM approval is fabricated for them. App ABIs stay in the UI. No funded app-preset E2E is meaningful until approved entries exist.
+## Remaining
+
+- Remote Notion wording needs synchronization: zero-cap review/regenerate flow, missing caps default zero, STAKING, [0,3] tuple paths. No remote page was edited.
+- Additional protocol rows need deployment/function/permission review. Dynamic paths and currently unrepresentable Solana flows are not silently enabled.
+- Live protocol tests are separate from local policy tests and from read-only address verification. Coverage does not extend to every app/chain merely because its templates are present.
 
 ## Validation
 
-Preset/public-surface tests: 30 passed (20 new preset cases). Pinned-contract multi-asset suite: 11 passed, including a new fixture preset passed through public create and actual policy execution/accounting (stub gateway, no live app). Guide: 5 TypeScript blocks typechecked. Final full unit regression: 2,075 passed, 12 skipped, no failures. Build, typechecks, compiled package/declaration examples and API comparison pass. [Commands and logs](research/section7-presets-2026-10-12/commands.md). An earlier 100ms timing failure passed on retry and in the final full run.
+Latest full unit run: 2,096 passed, 12 skipped, zero failures. Focused preset tests: 44 passed. The zero-cap review flow passed 16 local real-v6 contract tests. Test selection includes two separate opt-in agw-presets scenarios (Uniswap and Aave), and leaves the default all group unchanged. Uniswap and Aave LINK live scenarios passed in separate runs; Aave USDC hit its protocol supply cap before the LINK correction. [Live results and transaction evidence](research/preset-live-2026-10-15/README.md).

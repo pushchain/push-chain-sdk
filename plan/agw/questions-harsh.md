@@ -1,15 +1,12 @@
-# AGW SDK — remaining preset catalog decisions
+# AGW presets — documentation follow-up
 
-Updated October 12, 2026 after the user authorized the section-7 framework. Local draft; nothing sent.
+Updated October 15, 2026. Local draft; nothing sent. No blocking preset product question remains for the implemented scope.
 
-## Catalog to provide later
+Please synchronize SDK section 7 with the decisions recorded during implementation:
 
-Which verified apps, functions, deployed addresses and chains should ship for `DEXES` and `LENDING`? The framework is implemented, but all categories currently have empty `chains` lists. UI callers should hide them.
+1. Missing preset asset caps default to zero, rather than throwing.
+2. DEX get can populate a review screen before tokens are selected. Incomplete pairs have a zero swap-input maximum; call get again with both tokens to generate usable token-pinned rules.
+3. The catalog includes STAKING (EigenLayer deposits and mainnet Lido), and mainnet as well as testnet templates. Discovery does not guarantee destination support on the connected Push network.
+4. Static tuple fields use paths such as arg: [0,3], replacing the ambiguous Uniswap arg: 3 example. Decoded rules preserve exact ABI word positions with a raw selector.
 
-The contract/SDK review of those entries must settle tuple-field positions and how multiple apps can safely receive approvals for the same token. V6 now supplies general EVM pins and OR-matching alternatives. The SDK supports separate spender-pinned approval alternatives and rejects unpinned bypasses. Approved app-specific entries and tuple-field conventions still need review.
-
-## Decisions already made — no repeated question
-
-The user chose zero defaults for either omitted preset asset cap and deferred the catalog. Omitting agent or expiry returns a typed `PresetRuleTemplate`; providing both yields `Rule[]`. Per-action native spend and raw decoded Solana get→update were already approved. The new preset namespace contains only `list/get`; encoding and ID helpers remain internal.
-
-[Implementation and acceptance](section7-presets.md).
+These decisions are already approved in the user session; this is documentation synchronization, not a request to approve them again. [Current scope and remaining expansion](section7-presets.md).

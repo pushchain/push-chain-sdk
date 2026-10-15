@@ -1,6 +1,6 @@
 # Testnet preset catalog — October 15, 2026
 
-User scope: testnet templates only. Missing caps default to zero. Source body and original native export are retained here; source.json records the Notion URL and observed edit date. The sibling README.md is downloaded EigenLayer documentation, not this implementation report.
+Initial user scope: testnet templates only; subsequently expanded to mainnet templates on October 15 (see ../preset-mainnet-2026-10-15/README.md). Missing caps default to zero. Source body and original native export are retained here; source.json records the Notion URL and observed edit date. The sibling README.md is downloaded EigenLayer documentation, not this implementation report.
 
 ## Implemented
 
@@ -18,7 +18,7 @@ The SDK page still needs editorial synchronization for this approved two-stage f
 
 | Entry | Reason |
 | --- | --- |
-| Mainnet | User requested testnets only |
+| Mainnet | Initial exclusion superseded by the October 15 scope expansion; verified counterparts now included |
 | Prediction | No approved entries |
 | Dynamic-path V2 swaps | Cannot statically pin token paths with this policy |
 | Solana protocol templates | Required ratios/layouts or multi-instruction flows are not represented by the current template API |

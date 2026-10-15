@@ -1,15 +1,17 @@
 # AGW SDK implementation status
 
+**October 15 — presets:** Verified mainnet/testnet templates, static tuple paths and the approved zero-cap review/regenerate flow are implemented. Full unit suite: **2,096 passed**, 12 skipped. Preset-focused tests: **44 passed**; review-flow local contract suite: **16 passed**. [Current scope and remaining work](section7-presets.md). Dated entries below are historical where they differ. **Two real Donut→Sepolia protocol scenarios passed** (Uniswap swap and Aave LINK supply/withdraw, separate runs). Mainnet templates are read-only verified. Live app coverage is tracked in [preset acceptance](research/preset-live-2026-10-15/README.md).
+
 **October 14 — v6 integration complete locally:** source `ffd567d`; v6-only deployment/ABIs, atomic indexed creation, automatic outbound approvals, native/EVM EQ/MAX pins, new unlimited sentinels and linked Solana error decoding are integrated.
 
 - **2,073 unit tests passed**, 12 skipped; **99 local contract tests passed**.
 - **69 distinct live scenarios pass across the full run and focused follow-up.** The original run was 67 passed/1 failed (stale allowance assertion), followed by 2/2 passing focused cases, including the new EVM pin alternative proof. Not one clean full invocation.
 - Build, lib/spec/local typechecks, guide examples, package imports/declarations and API comparison pass.
-- V6 code committed on v4 (`7dca3f2a`) and v5 (`700a52a7`); not pushed yet. Preset catalog/struct-field conventions, the native eight-call ceiling clarification, and downstream revert credit remain separate items.
+- V6 code and preset review fixes are now pushed on v4/v5. Native eight-call ceiling clarification and downstream revert credit remain separate items.
 
 [Detailed evidence and commands](research/v6-integration-2026-10-14/status.md).
 
-**Current — October 12 sections 6/7:** SDK-only feedback and the preset framework are implemented locally. [Section 6 work list](section6-action-items.md) · [Preset scope/decisions](section7-presets.md) · [Open items](pending-items.md).
+**Historical — October 12 sections 6/7:** SDK-only feedback and the preset framework are implemented locally. [Section 6 work list](section6-action-items.md) · [Preset scope/decisions](section7-presets.md) · [Open items](pending-items.md).
 
 - Full unit run: **2,075 passed, 0 failed, 12 skipped**. An earlier 100ms timing-test failure passed both on retry and in this final full run.
 - Section-6 real-contract coverage: all 97 cases pass across the suite and focused correction run. Presets add one fixture integration; its complete 11-case multi-asset suite passes.

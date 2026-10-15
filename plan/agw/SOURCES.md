@@ -73,3 +73,5 @@ The historical SDK refers to AGW-SDK-v1-agent.md, 05-universal-marketplace-start
 October 7 v5 deployment: label contract dependency delivered. [New source snapshots and live read-only check](research/deployment-review-2026-10-07-v5/README.md); [SDK implementation and test evidence](research/v5-implementation-2026-10-07/README.md). Earlier dated deployment statements above are historical.
 
 October 15 focused import: [AGW Presets proposal and rules](https://app.notion.com/p/pushprotocol/AGW-Presets-proposal-and-rules-3f8188aea7f48020a9f0d10ea5325467), [snapshot](notion/agw-presets-proposal-and-rules.md), [catalog scope and verification](research/preset-catalog-2026-10-15/implementation-status.md). This was a single-page import, not a refresh of all sources.
+
+October 15 mainnet scope expansion: [official snapshots and pinned read-only verification](research/preset-mainnet-2026-10-15/README.md). [Separate live testnet acceptance](research/preset-live-2026-10-15/README.md). No mainnet transactions were broadcast.
