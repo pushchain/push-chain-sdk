@@ -1,3 +1,13 @@
+@pushchain/core@6.0.27-alpha.1 (2026-10-15)
+
+- fix: resolve AGW tokens by destination and expand live coverage
+- feat: add mainnet AGW presets and live protocol coverage
+- fix: return safe AGW preset review templates
+- feat: add verified testnet AGW preset templates
+- feat: migrate AGW SDK to deployed v6 contracts
+
+---
+
 @pushchain/core@6.0.27-alpha.0 (2026-10-12)
 
 - feat: align AGW rules and presets with October SDK feedback
