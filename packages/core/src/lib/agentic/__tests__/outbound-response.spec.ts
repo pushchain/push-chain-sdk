@@ -8,7 +8,7 @@ import { transformToUniversalTxResponse } from '../../orchestrator/internals/res
 import { adaptTrackedResponse } from '../response';
 import { composeOutbound, type DestinationCall } from '../execution/outbound';
 import { agenticSend } from '../execution/send';
-import { v5 } from '../contracts/v5';
+import { v6 } from '../contracts/v6';
 import { currentGeneration, resetAgenticGenerations } from '../deployments';
 import type { AgenticExecutionContext } from '../context';
 import { ADDR, FakeChain, registerFakeGeneration, ruleId } from './fake-chain';
@@ -187,8 +187,8 @@ describe.each(['owner', 'agent'] as const)(
         );
         const input =
           door === 'owner'
-            ? v5.encodeExecute([out.gatewayCall])
-            : v5.encodeExecuteAsAgent(ruleId(1), out.gatewayCall);
+            ? v6.encodeExecute([out.gatewayCall])
+            : v6.encodeExecuteAsAgent(ruleId(1), out.gatewayCall);
         const signer = door === 'owner' ? ADDR.owner : ADDR.agent;
         const tx = {
           hash: PUSH_HASH,

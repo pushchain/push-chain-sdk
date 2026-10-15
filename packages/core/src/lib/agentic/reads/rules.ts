@@ -8,7 +8,7 @@ import type {
   NativeConfigRead,
   ModeRead,
   UniversalConfigRead,
-} from '../contracts/v5';
+} from '../contracts/v6';
 import { configId } from '../codec/ids';
 import { nativeActionTermsToRule } from '../codec/native';
 import { UINT256_MAX } from '../codec/defaults';
@@ -287,9 +287,26 @@ export async function decodeActiveRule(
           target: c.target,
           selector: c.selector,
           maxValue: c.maxValue,
-          pins: c.hasBeneficiary
-            ? [{ arg: storedArg(c.beneficiaryOffset), expected: WALLET }]
-            : [],
+          pins: [
+            ...c.pins.map((p) =>
+              p.op === 1
+                ? { arg: storedArg(p.offset), max: BigInt(p.value) }
+                : {
+                    arg: storedArg(p.offset),
+                    expected:
+                      p.value.toLowerCase() ===
+                      `0x${cfg.expectedCEA
+                        .slice(2)
+                        .toLowerCase()
+                        .padStart(64, '0')}`
+                        ? WALLET
+                        : p.value,
+                  }
+            ),
+            ...(c.hasBeneficiary
+              ? [{ arg: storedArg(c.beneficiaryOffset), expected: WALLET }]
+              : []),
+          ],
         })),
       },
     };
@@ -322,7 +339,7 @@ export async function decodeActiveRule(
     configs.some(
       (c) =>
         c.maxValueTotal !== UINT256_MAX ||
-        Number(c.maxCalls) !== 0 ||
+        Number(c.maxCalls) !== 0xffffffff ||
         (c.amount.enabled && c.amount.maxTotal !== UINT256_MAX) ||
         Number(c.validUntil) !== decoded.validUntil
     )
@@ -338,14 +355,18 @@ export async function decodeActiveRule(
       c.selector === '0xffffffff' ? ('value-only' as const) : c.selector,
     maxValue: c.maxValuePerCall,
     pins: [
-      ...c.pins.map((p) => ({
-        arg: storedArg(p.offset),
-        expected:
-          p.expected.toLowerCase() ===
-          `0x${wallet.slice(2).toLowerCase().padStart(64, '0')}`
-            ? WALLET
-            : p.expected,
-      })),
+      ...c.pins.map((p) =>
+        p.op === 1
+          ? { arg: storedArg(p.offset), max: BigInt(p.value) }
+          : {
+              arg: storedArg(p.offset),
+              expected:
+                p.value.toLowerCase() ===
+                `0x${wallet.slice(2).toLowerCase().padStart(64, '0')}`
+                  ? WALLET
+                  : p.value,
+            }
+      ),
       ...(c.amount.enabled
         ? [{ arg: storedArg(c.amount.offset), max: c.amount.maxPerCall }]
         : []),

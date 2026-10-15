@@ -98,6 +98,364 @@
   },
   {
     "type": "function",
+    "name": "createWallet",
+    "inputs": [
+      {
+        "name": "label",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "rules",
+        "type": "tuple[]",
+        "internalType": "struct Session[]",
+        "components": [
+          {
+            "name": "sessionValidator",
+            "type": "address",
+            "internalType": "contract ISessionValidator"
+          },
+          {
+            "name": "sessionValidatorInitData",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "salt",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "userOpPolicies",
+            "type": "tuple[]",
+            "internalType": "struct PolicyData[]",
+            "components": [
+              {
+                "name": "policy",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "initData",
+                "type": "bytes",
+                "internalType": "bytes"
+              }
+            ]
+          },
+          {
+            "name": "erc7739Policies",
+            "type": "tuple",
+            "internalType": "struct ERC7739Data",
+            "components": [
+              {
+                "name": "allowedERC7739Content",
+                "type": "tuple[]",
+                "internalType": "struct ERC7739Context[]",
+                "components": [
+                  {
+                    "name": "appDomainSeparator",
+                    "type": "bytes32",
+                    "internalType": "bytes32"
+                  },
+                  {
+                    "name": "contentNames",
+                    "type": "string[]",
+                    "internalType": "string[]"
+                  }
+                ]
+              },
+              {
+                "name": "erc1271Policies",
+                "type": "tuple[]",
+                "internalType": "struct PolicyData[]",
+                "components": [
+                  {
+                    "name": "policy",
+                    "type": "address",
+                    "internalType": "address"
+                  },
+                  {
+                    "name": "initData",
+                    "type": "bytes",
+                    "internalType": "bytes"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "name": "actions",
+            "type": "tuple[]",
+            "internalType": "struct ActionData[]",
+            "components": [
+              {
+                "name": "actionTargetSelector",
+                "type": "bytes4",
+                "internalType": "bytes4"
+              },
+              {
+                "name": "actionTarget",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "actionPolicies",
+                "type": "tuple[]",
+                "internalType": "struct PolicyData[]",
+                "components": [
+                  {
+                    "name": "policy",
+                    "type": "address",
+                    "internalType": "address"
+                  },
+                  {
+                    "name": "initData",
+                    "type": "bytes",
+                    "internalType": "bytes"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "name": "permitERC4337Paymaster",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "wallet",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "rulesIds",
+        "type": "bytes32[]",
+        "internalType": "bytes32[]"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "createWalletWithSig",
+    "inputs": [
+      {
+        "name": "intent",
+        "type": "tuple",
+        "internalType": "struct OwnerIntent",
+        "components": [
+          {
+            "name": "owner",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "wallet",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "executor",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "index",
+            "type": "uint96",
+            "internalType": "uint96"
+          },
+          {
+            "name": "sessionHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "mode",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "execCalldataHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "nonceKey",
+            "type": "uint192",
+            "internalType": "uint192"
+          },
+          {
+            "name": "nonceSeq",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "grantNonce",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "deadline",
+            "type": "uint48",
+            "internalType": "uint48"
+          },
+          {
+            "name": "signerChainId",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "sig",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "label",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "rules",
+        "type": "tuple[]",
+        "internalType": "struct Session[]",
+        "components": [
+          {
+            "name": "sessionValidator",
+            "type": "address",
+            "internalType": "contract ISessionValidator"
+          },
+          {
+            "name": "sessionValidatorInitData",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "salt",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "userOpPolicies",
+            "type": "tuple[]",
+            "internalType": "struct PolicyData[]",
+            "components": [
+              {
+                "name": "policy",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "initData",
+                "type": "bytes",
+                "internalType": "bytes"
+              }
+            ]
+          },
+          {
+            "name": "erc7739Policies",
+            "type": "tuple",
+            "internalType": "struct ERC7739Data",
+            "components": [
+              {
+                "name": "allowedERC7739Content",
+                "type": "tuple[]",
+                "internalType": "struct ERC7739Context[]",
+                "components": [
+                  {
+                    "name": "appDomainSeparator",
+                    "type": "bytes32",
+                    "internalType": "bytes32"
+                  },
+                  {
+                    "name": "contentNames",
+                    "type": "string[]",
+                    "internalType": "string[]"
+                  }
+                ]
+              },
+              {
+                "name": "erc1271Policies",
+                "type": "tuple[]",
+                "internalType": "struct PolicyData[]",
+                "components": [
+                  {
+                    "name": "policy",
+                    "type": "address",
+                    "internalType": "address"
+                  },
+                  {
+                    "name": "initData",
+                    "type": "bytes",
+                    "internalType": "bytes"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "name": "actions",
+            "type": "tuple[]",
+            "internalType": "struct ActionData[]",
+            "components": [
+              {
+                "name": "actionTargetSelector",
+                "type": "bytes4",
+                "internalType": "bytes4"
+              },
+              {
+                "name": "actionTarget",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "actionPolicies",
+                "type": "tuple[]",
+                "internalType": "struct PolicyData[]",
+                "components": [
+                  {
+                    "name": "policy",
+                    "type": "address",
+                    "internalType": "address"
+                  },
+                  {
+                    "name": "initData",
+                    "type": "bytes",
+                    "internalType": "bytes"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "name": "permitERC4337Paymaster",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "wallet",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "rulesIds",
+        "type": "bytes32[]",
+        "internalType": "bytes32[]"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "defaultAdmin",
     "inputs": [],
     "outputs": [
@@ -1014,6 +1372,28 @@
   },
   {
     "type": "error",
+    "name": "IntentGrantNonceNotZero",
+    "inputs": [
+      {
+        "name": "provided",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "IntentRulesMismatch",
+    "inputs": [
+      {
+        "name": "actual",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "IntentWalletMismatch",
     "inputs": [
       {
@@ -1078,6 +1458,17 @@
         "name": "deadline",
         "type": "uint48",
         "internalType": "uint48"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "TooManyInitialRules",
+    "inputs": [
+      {
+        "name": "count",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ]
   },

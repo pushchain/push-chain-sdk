@@ -70,7 +70,7 @@ const fund = (h: Harness, to: Address, value: bigint) =>
     account: h.wallets[4].account!,
     chain: h.wallets[4].chain,
   });
-describe('AGW advanced paths against real v5 contracts', () => {
+describe('AGW advanced paths against real v6 contracts', () => {
   let h: Harness;
   let owner: PushChain;
   let agentAddr: Address;
@@ -143,7 +143,7 @@ describe('AGW advanced paths against real v5 contracts', () => {
       const rec = await owner.agentic.wallet(wallet).rules.list();
       expect(rec.rules[0].spent).toMatchObject({
         kind: 'native',
-        amountSpent: BigInt(5),
+        amountSpent: BigInt(0),
         callsUsed: 1,
       });
       expect(
@@ -153,7 +153,7 @@ describe('AGW advanced paths against real v5 contracts', () => {
           wallet,
           rec.rules[0].rulesId
         )
-      ).toMatchObject({ amountSpent: BigInt(5), callsUsed: 1 });
+      ).toMatchObject({ amountSpent: BigInt(0), callsUsed: 1 });
     });
     it('per-call amounts are enforced and repeated valid calls remain usable', async () => {
       await expect(deposit(beneficiary, BigInt(11))).rejects.toBeInstanceOf(
@@ -281,8 +281,9 @@ describe('AGW advanced paths against real v5 contracts', () => {
       expect(err.decodedError?.name).toBe('PolicyCheckReverted(RulesExpired)');
     });
   });
-  describe('sequential create partial failure and recovery', () => {
-    it('reports CREATE_PARTIAL with the deployed wallet and granted IDs; rules.add finishes it', async () => {
+  describe('atomic create rollback', () => {
+    it('a rejected initial rule rolls back wallet creation and every grant', async () => {
+      const predicted = await owner.agentic.derive();
       // Chain time runs ahead of the local clock: the SDK accepts validUntil, the policy does not.
       const skewedValidUntil = Math.floor(Date.now() / 1000) + 600;
       await warp(h, 7200);
@@ -312,27 +313,11 @@ describe('AGW advanced paths against real v5 contracts', () => {
           ],
         })
         .catch((e) => e);
-      expect(err).toBeInstanceOf(AgenticError);
-      expect(err.code).toBe(AGENTIC_ERROR_CODE.CREATE_PARTIAL);
-      expect(err.details.walletDeployed).toBe(true);
-      expect(err.details.grantedRulesIds).toHaveLength(1);
-      expect(err.details.confirmedHashes.length).toBeGreaterThanOrEqual(2);
-      const wallet = err.details.wallet as Address;
-      const added = await owner.agentic.wallet(wallet).rules.add([
-        {
-          agent: h.wallets[3].account!.address,
-          validUntil: (await chainNow(h)) + 3600,
-          allowedCalls: [
-            {
-              target: h.addresses.target,
-              selector: 'increment()',
-            },
-          ],
-        },
-      ]);
-      expect(added.rulesIds).toHaveLength(1);
-      const { rules } = await owner.agentic.wallet(wallet).rules.list();
-      expect(rules).toHaveLength(2);
+      expect(err).toBeInstanceOf(AgenticRevertError);
+      expect(await owner.agentic.derive()).toEqual(predicted);
+      expect(
+        await h.publicClient.getCode({ address: predicted.address })
+      ).toBeUndefined();
     });
     it('rules.add with several rules is one atomic owner batch: OWNER_ACTION + RULES_GRANTED per rule', async () => {
       const created = await owner.agentic.create('multi-add', { rules: [] });
@@ -378,7 +363,7 @@ describe('AGW advanced paths against real v5 contracts', () => {
       expect(before).toBe(BigInt(0));
     });
   });
-  describe('agent EVM outbound (v5 multi-asset terms, stub gateway)', () => {
+  describe('agent EVM outbound (v6 multi-asset terms, stub gateway)', () => {
     const SEPOLIA = CHAIN.ETHEREUM_SEPOLIA;
     const CEA = getAddress('0x000000000000000000000000000000000000cea1');
     const destTarget = getAddress('0x00000000000000000000000000000000000d0d0d');
@@ -399,7 +384,7 @@ describe('AGW advanced paths against real v5 contracts', () => {
       await h.publicClient.waitForTransactionReceipt({
         hash: await fund(h, wallet, BigInt(10) ** BigInt(17)),
       });
-      // Fixture setup (raw owner call): grant a v5 multi-asset universal rule.
+      // Fixture setup (raw owner call): grant a v6 multi-asset universal rule.
       const terms = encodeUniversalTerms({
         validUntil: (await chainNow(h)) + 3600,
         expectedCEA: CEA,
@@ -411,6 +396,7 @@ describe('AGW advanced paths against real v5 contracts', () => {
           {
             target: destTarget,
             selector: '0xd09de08a',
+            pins: [],
             beneficiaryOffset: 0,
             hasBeneficiary: false,
             maxValue: BigInt(0),
@@ -479,10 +465,14 @@ describe('AGW advanced paths against real v5 contracts', () => {
           },
         },
       });
-    it('fails before signing when the owner has not set a gateway allowance', async () => {
-      await expect(send(BigInt(100))).rejects.toMatchObject({
-        code: AGENTIC_ERROR_CODE.GATEWAY_ALLOWANCE_INSUFFICIENT,
-      });
+    it('sends successfully without an owner gateway allowance', async () => {
+      expect(
+        (
+          await h.publicClient.waitForTransactionReceipt({
+            hash: (await send(BigInt(100))).hash as Hex,
+          })
+        ).status
+      ).toBe('success');
     });
     it('owner sets a bounded allowance with an ordinary owner-door send; the agent outbound passes URP, pulls and burns', async () => {
       await (
@@ -526,7 +516,7 @@ describe('AGW advanced paths against real v5 contracts', () => {
           functionName: 'allowance',
           args: [wallet, h.addresses.gateway],
         })
-      ).toBe(BigInt(200));
+      ).toBe(BigInt(0));
       // The request the wallet sent: empty recipient, wallet refund, nonzero gas cap, multicall payload.
       const payload = `0x2cc2842d${encodeAbiParameters(
         [
@@ -589,7 +579,7 @@ describe('AGW advanced paths against real v5 contracts', () => {
       });
       expect(keccak256(toBytes(SEPOLIA))).toBeTruthy();
     });
-    it('owner can remove the allowance; the agent is stopped before signing again', async () => {
+    it('zero standing allowance does not revoke an otherwise valid rule', async () => {
       await (
         await ownerAgw.universal.sendTransaction({
           to: token,
@@ -600,9 +590,13 @@ describe('AGW advanced paths against real v5 contracts', () => {
           }),
         })
       ).wait();
-      await expect(send(BigInt(10))).rejects.toMatchObject({
-        code: AGENTIC_ERROR_CODE.GATEWAY_ALLOWANCE_INSUFFICIENT,
-      });
+      expect(
+        (
+          await h.publicClient.waitForTransactionReceipt({
+            hash: (await send(BigInt(10))).hash as Hex,
+          })
+        ).status
+      ).toBe('success');
     });
     it('a call outside the allow-list is rejected by URP on-chain', async () => {
       await (

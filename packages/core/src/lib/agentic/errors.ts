@@ -34,12 +34,10 @@ export const AGENTIC_ERROR_CODE = {
   RULE_READ_FAILED: 'RULE_READ_FAILED',
   INCONSISTENT_READ: 'INCONSISTENT_READ',
   INDEX_RACE: 'INDEX_RACE',
-  CREATE_PARTIAL: 'CREATE_PARTIAL',
   RECEIPT_MISMATCH: 'RECEIPT_MISMATCH',
   RECEIPT_UNAVAILABLE: 'RECEIPT_UNAVAILABLE',
   AGENT_GAS_INSUFFICIENT: 'AGENT_GAS_INSUFFICIENT',
   WALLET_BALANCE_INSUFFICIENT: 'WALLET_BALANCE_INSUFFICIENT',
-  GATEWAY_ALLOWANCE_INSUFFICIENT: 'GATEWAY_ALLOWANCE_INSUFFICIENT',
 } as const;
 
 export type AgenticErrorCode =
@@ -48,7 +46,7 @@ export type AgenticErrorCode =
 /**
  * Pre-signature AGW failure: invalid input, unsupported capability, failed
  * eligibility or a read that cannot be trusted. Nothing was signed or sent
- * unless `details` explicitly records committed hashes (CREATE_PARTIAL).
+ * except receipt errors, which retain the submitted transaction hash.
  */
 export class AgenticError extends Error {
   readonly code: AgenticErrorCode;
@@ -82,8 +80,6 @@ export class AgenticError extends Error {
  */
 export class AgenticRevertError extends PushChainExecutionError {
   readonly agenticCode?: string;
-  readonly transactionHashes?: `0x${string}`[];
-  readonly pendingTransactionHash?: `0x${string}`;
 
   constructor(
     message: string,
@@ -91,8 +87,6 @@ export class AgenticRevertError extends PushChainExecutionError {
       decodedError?: DecodedErrorPayload;
       gatewayTxHash?: string;
       agenticCode?: string;
-      transactionHashes?: `0x${string}`[];
-      pendingTransactionHash?: `0x${string}`;
       cause?: unknown;
     } = {}
   ) {
@@ -103,10 +97,6 @@ export class AgenticRevertError extends PushChainExecutionError {
     });
     this.name = 'AgenticRevertError';
     this.agenticCode = opts.agenticCode;
-    this.transactionHashes = opts.transactionHashes
-      ? [...opts.transactionHashes]
-      : undefined;
-    this.pendingTransactionHash = opts.pendingTransactionHash;
   }
 }
 

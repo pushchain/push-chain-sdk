@@ -985,6 +985,14 @@ export const SCENARIOS: Scenario[] = [
     env: { AGW_E2E: '1' },
   },
   {
+    id: 'agw-v6-destination-pins',
+    group: 'agw',
+    file: '__e2e__/agw/universal-evm.spec.ts',
+    grep: 'agw universal evm 3\\. v6 destination',
+    needs: { masterPC: '25' },
+    env: { AGW_E2E: '1' },
+  },
+  {
     id: 'agw-universal-outbound',
     group: 'agw',
     file: F.agwUniversal,

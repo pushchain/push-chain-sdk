@@ -16,7 +16,7 @@ import {
   encodeAgwSvmPayload,
   validateAgwSvmPayload,
 } from '../src/lib/agentic/execution/svm-payload';
-import { v5 } from '../src/lib/agentic/contracts/v5';
+import { v6 } from '../src/lib/agentic/contracts/v6';
 import { deriveAgwSvmValueAccounts } from '../src/lib/agentic/codec/svm-accounts';
 import { decodeAgenticRevert } from '../src/lib/agentic/revert';
 import { startHarness, type Harness } from './harness';
@@ -208,7 +208,7 @@ describe('seeded SVM differential validation', () => {
       try {
         await h.publicClient.call({
           to: wallet,
-          data: v5.encodeGrantRules(session(c.terms)),
+          data: v6.encodeGrantRules(session(c.terms)),
           account: h.wallets[0].account!.address,
         });
       } catch (e) {
@@ -237,7 +237,7 @@ describe('seeded SVM differential validation', () => {
 
   it('payload mutation corpus agrees with actual URP authorization and rejects without metering', async () => {
     const t = clone(terms);
-    t.programs[0].maxAccounts = 0;
+    t.programs[0].maxAccounts = 255;
     t.dataPins = [
       {
         ruleIndex: 0,
@@ -251,10 +251,10 @@ describe('seeded SVM differential validation', () => {
         den: BigInt(0),
       },
     ];
-    await h.write(0, wallet, v5.abis.wallet, 'grantRules', [session(t)]);
+    await h.write(0, wallet, v6.abis.wallet, 'grantRules', [session(t)]);
     const [id] = await h.publicClient.readContract({
       address: h.addresses.engine,
-      abi: v5.abis.engine,
+      abi: v6.abis.engine,
       functionName: 'getPermissionIDs',
       args: [wallet],
     });
@@ -267,9 +267,9 @@ describe('seeded SVM differential validation', () => {
       }),
     });
     await h.write(0, token, TOKEN, 'mint', [wallet, BigInt(100)]);
-    await h.write(0, wallet, v5.abis.wallet, 'execute', [
+    await h.write(0, wallet, v6.abis.wallet, 'execute', [
       key('00'),
-      v5.packSingle({
+      v6.packSingle({
         target: token,
         value: BigInt(0),
         data: encodeFunctionData({
@@ -370,12 +370,12 @@ describe('seeded SVM differential validation', () => {
       try {
         await h.publicClient.simulateContract({
           address: wallet,
-          abi: v5.abis.wallet,
+          abi: v6.abis.wallet,
           functionName: 'executeAsAgent',
           args: [
             id,
             key('00'),
-            v5.packSingle({
+            v6.packSingle({
               target: h.addresses.gateway,
               value: BigInt(11) * BigInt(10) ** BigInt(14),
               data,

@@ -11,7 +11,7 @@ import {
   AGW_FACTORY_ABI,
   SMART_SESSION_ABI,
   UNIVERSAL_RULES_POLICY_ABI,
-} from './contracts/abi/v5';
+} from './contracts/abi/v6';
 
 /** URP reverts reached through the engine are truncated to this wrapper. */
 export const POLICY_CHECK_REVERTED_SELECTOR = '0xf4270752';

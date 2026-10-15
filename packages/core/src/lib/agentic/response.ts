@@ -22,11 +22,11 @@ import type {
   UniversalTxResponse,
 } from '../orchestrator/orchestrator.types';
 import {
-  v5,
+  v6,
   SEND_OUTBOUND_SELECTOR,
   UEA_MULTICALL_PREFIX,
   type Call,
-} from './contracts/v5';
+} from './contracts/v6';
 import { generationsFor, resolveWalletGeneration } from './deployments';
 import type { AgenticRuntime } from './runtime';
 import type {
@@ -115,7 +115,7 @@ export async function adaptTrackedResponse(
   if (resp.agentic || generationsFor(runtime.network).length === 0) return resp;
   const batch = await adaptNativeAgentBatch(runtime, resp);
   if (batch) return batch;
-  const decoded = v5.decodeWalletCall(resp.data as Hex);
+  const decoded = v6.decodeWalletCall(resp.data as Hex);
   if (
     !decoded ||
     (decoded.kind !== 'execute' && decoded.kind !== 'executeAsAgent')
@@ -276,7 +276,7 @@ async function adaptNativeAgentBatch(
         data: c.data,
       }));
     } else {
-      const batch = v5.decodeWalletCall(resp.data as Hex);
+      const batch = v6.decodeWalletCall(resp.data as Hex);
       if (batch?.kind !== 'execute' || batch.mode !== `0x01${'00'.repeat(31)}`)
         return;
       outer = batch.calls;
@@ -286,7 +286,7 @@ async function adaptNativeAgentBatch(
       outer.some((c) => c.value !== BigInt(0) || c.target !== outer[0].target)
     )
       return;
-    const inner = outer.map((c) => v5.decodeWalletCall(c.data));
+    const inner = outer.map((c) => v6.decodeWalletCall(c.data));
     const first = inner[0];
     if (first?.kind !== 'executeAsAgent' || first.calls.length !== 1) return;
     const nativeCalls: { to: Address; value: bigint; data: Hex }[] = [];

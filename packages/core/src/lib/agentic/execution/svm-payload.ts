@@ -101,7 +101,8 @@ export function validateAgwSvmPayload(
   );
   if (rule < 0) fail('ProgramNotAllowed');
   const fixed = terms.programs[rule].maxAccounts;
-  if (fixed && fixed !== v.accounts.length) fail('SvmAccountCountMismatch');
+  if (fixed !== 255 && fixed !== v.accounts.length)
+    fail('SvmAccountCountMismatch');
   const pins = terms.pins.filter((p) => p.ruleIndex === rule);
   for (const p of pins) {
     if (p.accountIndex >= v.accounts.length) fail('SvmAccountCountBelowPin');

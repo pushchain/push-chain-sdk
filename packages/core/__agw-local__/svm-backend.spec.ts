@@ -1,4 +1,4 @@
-/** Internal SVM lifecycle/execution on actual v5 contracts; no Solana/TSS simulation. */
+/** Internal SVM lifecycle/execution on actual v6 contracts; no Solana/TSS simulation. */
 import { PublicKey } from '@solana/web3.js';
 import {
   encodeFunctionData,
@@ -29,7 +29,7 @@ import {
   registerIdl,
   clearRegistry,
 } from '../src/lib/orchestrator/svm-idl/registry';
-import { v5 } from '../src/lib/agentic/contracts/v5';
+import { v6 } from '../src/lib/agentic/contracts/v6';
 import { wrapSendError } from '../src/lib/agentic/management/common';
 import { startHarness, type Harness } from './harness';
 
@@ -41,6 +41,7 @@ const GATEWAY = key('22'),
 const SPL = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
   TOKEN2022 = 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
 const TOKEN = parseAbi([
+  'function allowance(address,address) view returns(uint256)',
   'function mint(address,uint256)',
   'function approve(address,uint256) returns (bool)',
   'function setSourceTokenAddress(string)',
@@ -60,7 +61,7 @@ const metadata: SvmMetadataProvider = {
   }),
 };
 
-describe('internal prepared SVM backend on v5', () => {
+describe('internal prepared SVM backend on v6', () => {
   let h: Harness, owner: PushChain, tokens: Address[];
   beforeAll(async () => {
     h = await startHarness(18554);
@@ -173,9 +174,9 @@ describe('internal prepared SVM backend on v5', () => {
     });
     for (const token of tokens) {
       await h.write(0, token, TOKEN, 'mint', [wallet, BigInt(100)]);
-      await h.write(0, wallet, v5.abis.wallet, 'execute', [
+      await h.write(0, wallet, v6.abis.wallet, 'execute', [
         key('00'),
-        v5.packSingle({
+        v6.packSingle({
           target: token,
           value: BigInt(0),
           data: encodeFunctionData({
@@ -241,11 +242,11 @@ describe('internal prepared SVM backend on v5', () => {
     ).rejects.toMatchObject({ code: 'NOT_OWNER_OR_AGENT' });
     expect(execute).not.toHaveBeenCalled();
   });
-  it('requires separate allowance and never writes an approval on the agent path', async () => {
+  it('automatically approves and clears the gateway on the agent path', async () => {
     const s = await setup();
-    await h.write(0, s.wallet, v5.abis.wallet, 'execute', [
+    await h.write(0, s.wallet, v6.abis.wallet, 'execute', [
       key('00'),
-      v5.packSingle({
+      v6.packSingle({
         target: tokens[2],
         value: BigInt(0),
         data: encodeFunctionData({
@@ -256,10 +257,22 @@ describe('internal prepared SVM backend on v5', () => {
       }),
     ]);
     const execute = jest.spyOn(rt(s.agent), 'execute');
-    await expect(
-      sendSvmAgentWire(rt(s.agent), h.generation, s.request(), metadata)
-    ).rejects.toMatchObject({ code: 'GATEWAY_ALLOWANCE_INSUFFICIENT' });
-    expect(execute).not.toHaveBeenCalled();
+    const sent = await sendSvmAgentWire(
+      rt(s.agent),
+      h.generation,
+      s.request(),
+      metadata
+    );
+    expect((await sent.tx.wait()).status).toBe(1);
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(
+      await h.publicClient.readContract({
+        address: tokens[2],
+        abi: TOKEN,
+        functionName: 'allowance',
+        args: [s.wallet, h.addresses.gateway],
+      })
+    ).toBe(BigInt(0));
   });
   it('atomically replaces and resets every asset, recording five checkpoints', async () => {
     const s = await setup();
@@ -268,7 +281,7 @@ describe('internal prepared SVM backend on v5', () => {
     ).tx.wait();
     const before = await h.publicClient.readContract({
       address: s.wallet,
-      abi: v5.abis.wallet,
+      abi: v6.abis.wallet,
       functionName: 'checkpointCount',
     });
     const next = await replaceSvmWire(
@@ -287,7 +300,7 @@ describe('internal prepared SVM backend on v5', () => {
     expect(
       await h.publicClient.readContract({
         address: s.wallet,
-        abi: v5.abis.wallet,
+        abi: v6.abis.wallet,
         functionName: 'checkpointCount',
       })
     ).toBe(before + BigInt(5));
@@ -311,7 +324,7 @@ describe('internal prepared SVM backend on v5', () => {
     ).tx.wait();
     const before = await h.publicClient.readContract({
       address: s.wallet,
-      abi: v5.abis.wallet,
+      abi: v6.abis.wallet,
       functionName: 'checkpointCount',
     });
     const error = await rt(owner)
@@ -324,7 +337,7 @@ describe('internal prepared SVM backend on v5', () => {
     expect(
       await h.publicClient.readContract({
         address: s.wallet,
-        abi: v5.abis.wallet,
+        abi: v6.abis.wallet,
         functionName: 'checkpointCount',
       })
     ).toBe(before);
@@ -394,7 +407,7 @@ describe('internal prepared SVM backend on v5', () => {
       rt(owner).execute = execute;
     }
   });
-  it.each(['allowance', 'balance', 'revocation'])(
+  it.each(['balance', 'revocation'])(
     'on-chain %s change after preflight refuses submission without metering',
     async (kind) => {
       const s = await setup(),
@@ -412,9 +425,9 @@ describe('internal prepared SVM backend on v5', () => {
             await owner.agentic.wallet(s.wallet).rules.delete([s.id])
           ).wait();
         else
-          await h.write(0, s.wallet, v5.abis.wallet, 'execute', [
+          await h.write(0, s.wallet, v6.abis.wallet, 'execute', [
             key('00'),
-            v5.packSingle({
+            v6.packSingle({
               target: tokens[2],
               value: BigInt(0),
               data: encodeFunctionData({
@@ -434,7 +447,7 @@ describe('internal prepared SVM backend on v5', () => {
           ]);
         ticks = await h.publicClient.readContract({
           address: s.wallet,
-          abi: v5.abis.wallet,
+          abi: v6.abis.wallet,
           functionName: 'checkpointCount',
         });
         return original(params, options);
@@ -459,7 +472,7 @@ describe('internal prepared SVM backend on v5', () => {
         }
         const stored = await h.publicClient.readContract({
           address: h.addresses.rulesPolicy,
-          abi: v5.abis.policy,
+          abi: v6.abis.policy,
           functionName: 'getSvmConfig',
           args: [before.configId, s.wallet],
         });
@@ -477,7 +490,7 @@ describe('internal prepared SVM backend on v5', () => {
         expect(
           await h.publicClient.readContract({
             address: s.wallet,
-            abi: v5.abis.wallet,
+            abi: v6.abis.wallet,
             functionName: 'checkpointCount',
           })
         ).toBe(ticks);
@@ -537,7 +550,7 @@ describe('internal prepared SVM backend on v5', () => {
       expect(
         await h.publicClient.readContract({
           address: s.wallet,
-          abi: v5.abis.wallet,
+          abi: v6.abis.wallet,
           functionName: 'grantNonce',
         })
       ).toBe(BigInt(2));

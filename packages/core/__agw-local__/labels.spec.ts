@@ -1,11 +1,11 @@
 /** Real v5 wallet/factory label state; no bridge or destination simulation. */
 import { decodeEventLog, type Address } from 'viem';
 import { PushChain } from '../src';
-import { v5 } from '../src/lib/agentic/contracts/v5';
+import { v6 } from '../src/lib/agentic/contracts/v6';
 import { AGENTIC_ERROR_CODE } from '../src/lib/agentic/errors';
 import { startHarness, type Harness } from './harness';
 
-describe('v5 label SDK against real contracts', () => {
+describe('v6 label SDK against real contracts', () => {
   let h: Harness;
   let owner: PushChain;
   beforeAll(async () => {
@@ -18,7 +18,7 @@ describe('v5 label SDK against real contracts', () => {
   const count = (address: Address) =>
     h.publicClient.readContract({
       address,
-      abi: v5.abis.wallet,
+      abi: v6.abis.wallet,
       functionName: 'checkpointCount',
     });
 
@@ -50,7 +50,7 @@ describe('v5 label SDK against real contracts', () => {
       if (log.address.toLowerCase() !== made.wallet.toLowerCase()) return [];
       try {
         const ev = decodeEventLog({
-          abi: v5.abis.wallet,
+          abi: v6.abis.wallet,
           data: log.data,
           topics: log.topics,
         });
@@ -78,7 +78,7 @@ describe('v5 label SDK against real contracts', () => {
   it('direct contract rename changes no checkpoint; subsequent SDK reads show it', async () => {
     const made = await owner.agentic.create('before', { rules: [] });
     const before = await count(made.wallet);
-    await h.write(0, made.wallet, v5.abis.wallet, 'setLabel', ['direct']);
+    await h.write(0, made.wallet, v6.abis.wallet, 'setLabel', ['direct']);
     expect(await count(made.wallet)).toBe(before);
     expect((await owner.agentic.wallet(made.wallet).info()).label).toBe(
       'direct'
@@ -102,7 +102,7 @@ describe('v5 label SDK against real contracts', () => {
       await expect(
         h.publicClient.simulateContract({
           address: made.wallet,
-          abi: v5.abis.wallet,
+          abi: v6.abis.wallet,
           functionName: 'setLabel',
           args: [invalid],
           account: h.wallets[0].account!.address,
@@ -127,7 +127,7 @@ describe('v5 label SDK against real contracts', () => {
     await expect(
       h.publicClient.simulateContract({
         address: made.wallet,
-        abi: v5.abis.wallet,
+        abi: v6.abis.wallet,
         functionName: 'setLabel',
         args: ['attack'],
         account: h.wallets[1].account!.address,

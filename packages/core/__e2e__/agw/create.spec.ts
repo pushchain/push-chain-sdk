@@ -3,8 +3,8 @@
  * verified AGW deployment manifest (see _manifest.ts); beforeAll throws when
  * it is missing so a selected run cannot pass vacuously.
  */
-import { getAddress, type Address } from 'viem';
-import { v5 } from '../../src/lib/agentic/contracts/v5';
+import { decodeFunctionData, getAddress, type Address, type Hex } from 'viem';
+import { v6 } from '../../src/lib/agentic/contracts/v6';
 import {
   AGW_E2E_ENABLED,
   inSeconds,
@@ -24,7 +24,7 @@ d('agw create', () => {
     expect(created.wallet).toBe(before.address);
     expect(created.index).toBe(before.index);
     expect(created.rulesIds).toEqual([]);
-    const factoryAbi = v5.abis.factory;
+    const factoryAbi = v6.abis.factory;
     const [ownerOf, indexOf, balance] = await Promise.all([
       f.push.readContract({
         address: f.manifest.addresses.factory,
@@ -74,6 +74,14 @@ d('agw create', () => {
       ],
     });
     expect(created.rulesIds).toHaveLength(1);
+    const raw = await f.push.getTransaction({ hash: created.tx.hash as Hex });
+    expect(getAddress(raw.to as Address)).toBe(
+      getAddress(f.manifest.addresses.factory)
+    );
+    const call = decodeFunctionData({ abi: v6.abis.factory, data: raw.input });
+    expect(call.functionName).toBe('createWalletWithSig');
+    expect(call.args[3]).toHaveLength(1);
+    expect(created.tx.transactionHashes ?? [created.tx.hash]).toHaveLength(1);
     const { rules } = await f.owner.agentic.wallet(created.wallet).rules.list();
     expect(rules.map((r) => r.rulesId)).toEqual(created.rulesIds);
     expect(rules[0].agent).toBe(getAddress(f.agentAddress));

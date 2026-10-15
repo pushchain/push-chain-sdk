@@ -13,7 +13,7 @@ import {
 } from 'viem';
 import { CHAIN, PushChain, AgenticRevertError, type Rule } from '../src';
 import type { AgenticRuntime } from '../src/lib/agentic/runtime';
-import { v5 } from '../src/lib/agentic/contracts/v5';
+import { v6 } from '../src/lib/agentic/contracts/v6';
 import { clearRegistry } from '../src/lib/orchestrator/svm-idl/registry';
 import { startHarness, type Harness } from './harness';
 const program = new PublicKey(Buffer.alloc(32, 51)).toBase58();
@@ -40,7 +40,7 @@ const TOKEN = parseAbi([
 const CORE = parseAbi(['function setGasToken(string,address)']);
 const rt = (c: PushChain) =>
   (c as unknown as { agenticRuntime: AgenticRuntime }).agenticRuntime;
-describe('public Solana rules on actual v5', () => {
+describe('public Solana rules on actual v6', () => {
   let h: Harness, owner: PushChain, token: Address;
   beforeAll(async () => {
     h = await startHarness(18561);
@@ -136,9 +136,9 @@ describe('public Solana rules on actual v5', () => {
       }),
     });
     await h.write(0, token, TOKEN, 'mint', [made.wallet, BigInt(20)]);
-    await h.write(0, made.wallet, v5.abis.wallet, 'execute', [
+    await h.write(0, made.wallet, v6.abis.wallet, 'execute', [
       `0x${'00'.repeat(32)}`,
-      v5.packSingle({
+      v6.packSingle({
         target: token,
         value: BigInt(0),
         data: encodeFunctionData({
@@ -232,9 +232,9 @@ describe('public Solana rules on actual v5', () => {
       }),
     });
     await h.write(0, token, TOKEN, 'mint', [made.wallet, BigInt(10)]);
-    await h.write(0, made.wallet, v5.abis.wallet, 'execute', [
+    await h.write(0, made.wallet, v6.abis.wallet, 'execute', [
       `0x${'00'.repeat(32)}`,
-      v5.packSingle({
+      v6.packSingle({
         target: token,
         value: BigInt(0),
         data: encodeFunctionData({
@@ -401,9 +401,9 @@ describe('public Solana rules on actual v5', () => {
       }),
     });
     await h.write(0, spl, TOKEN, 'mint', [made.wallet, BigInt(10)]);
-    await h.write(0, made.wallet, v5.abis.wallet, 'execute', [
+    await h.write(0, made.wallet, v6.abis.wallet, 'execute', [
       `0x${'00'.repeat(32)}`,
-      v5.packSingle({
+      v6.packSingle({
         target: spl,
         value: BigInt(0),
         data: encodeFunctionData({

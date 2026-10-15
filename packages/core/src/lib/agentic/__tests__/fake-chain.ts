@@ -18,7 +18,7 @@ import {
   type TransactionReceipt,
 } from 'viem';
 import { PUSH_NETWORK } from '../../constants/enums';
-import { v5 } from '../contracts/v5';
+import { v6 } from '../contracts/v6';
 import type { ChainReader } from '../contracts/reader';
 import { actionId, configId, deriveWallet } from '../codec/ids';
 import {
@@ -26,7 +26,7 @@ import {
   resetAgenticGenerations,
   type AgenticGeneration,
 } from '../deployments';
-import type { NativeConfigRead } from '../contracts/v5';
+import type { NativeConfigRead } from '../contracts/v6';
 
 export const ADDR = {
   factory: getAddress('0x00000000000000000000000000000000000fac70'),
@@ -113,7 +113,7 @@ export class FakeChain implements ChainReader {
     this.extraLogs.push(
       log(
         ADDR.factory,
-        v5.events.walletDeployed,
+        v6.events.walletDeployed,
         { owner, index, wallet: address },
         { label },
         BigInt(10)
@@ -253,7 +253,7 @@ export class FakeChain implements ChainReader {
             maxTotal: BigInt(0),
           },
           amountSpent: BigInt(0),
-          maxCalls: 0,
+          maxCalls: 0xffffffff,
           callsUsed: 0,
           pins: [],
           ...n,
@@ -279,6 +279,7 @@ export class FakeChain implements ChainReader {
               selector: '0xd09de08a',
               beneficiaryOffset: 0,
               hasBeneficiary: false,
+              pins: [],
               maxValue: BigInt(0),
             },
           ],
@@ -386,7 +387,7 @@ export function checkpointLog(
 ): Log {
   return log(
     wallet,
-    v5.events.checkpointed,
+    v6.events.checkpointed,
     { seq: BigInt(seq) },
     { kind, ref: `0x${'11'.repeat(32)}`, blockNumber: block },
     block,
@@ -400,8 +401,8 @@ export function registerFakeGeneration(
 ): AgenticGeneration {
   resetAgenticGenerations();
   return registerAgenticGeneration({
-    id: 'v5',
-    sourceCommit: '2e61e133e641b4e0e1ddbdc9306b0903b60e4dbb',
+    id: 'v6',
+    sourceCommit: 'ffd567d3e49b2d27c6f50ad36093274dbac3090f',
     network,
     advertised: false,
     addresses: {

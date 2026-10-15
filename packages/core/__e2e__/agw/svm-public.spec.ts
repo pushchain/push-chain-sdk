@@ -20,7 +20,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { CHAIN, PUSH_NETWORK } from '../../src/lib/constants/enums';
 import { CHAIN_INFO, getPushViemChain } from '../../src/lib/constants/chain';
 import counterIdl from '../../src/lib/orchestrator/svm-idl/__fixtures__/test_counter.idl.json';
-import { v5 } from '../../src/lib/agentic/contracts/v5';
+import { v6 } from '../../src/lib/agentic/contracts/v6';
 import { setupAgw, evmClient, inSeconds, type AgwFixture } from './_fixture';
 import { loadAgwManifest, verifyAgwManifest } from './_manifest';
 import {
@@ -148,22 +148,14 @@ d('agw public svm', () => {
         }),
       })
     ).wait();
-    const owner = await evmClient(
-      ownerKey,
-      CHAIN.PUSH_TESTNET_DONUT,
-      manifest.network,
-      wallet
-    );
-    await (
-      await owner.universal.sendTransaction({
-        to: token,
-        data: encodeFunctionData({
-          abi: erc20Abi,
-          functionName: 'approve',
-          args: [manifest.addresses.gateway, amount * BigInt(2)],
-        }),
+    expect(
+      await f.push.readContract({
+        address: token,
+        abi: erc20Abi,
+        functionName: 'allowance',
+        args: [wallet, manifest.addresses.gateway],
       })
-    ).wait();
+    ).toBe(BigInt(0));
     agent = await f.agent(wallet);
     f.evidence('public-svm-setup', {
       wallet,
@@ -264,12 +256,12 @@ d('agw public svm', () => {
         f.push.getBalance({ address: wallet }),
         f.push.readContract({
           address: wallet,
-          abi: v5.abis.wallet,
+          abi: v6.abis.wallet,
           functionName: 'checkpointCount',
         }),
         f.push.readContract({
           address: f.manifest.addresses.rulesPolicy,
-          abi: v5.abis.policy,
+          abi: v6.abis.policy,
           functionName: 'getSvmConfig',
           args: [config, wallet],
         }),
@@ -403,34 +395,14 @@ d('agw public svm', () => {
     expect(await f.push.getTransactionCount({ address: f.agentAddress })).toBe(
       agentNonce
     );
-    // Both funded sends have consumed the bounded allowance. Funding only the
-    // token lets this case isolate the separate allowance guard.
-    await (
-      await f.owner.universal.sendTransaction({
-        to: token,
-        data: encodeFunctionData({
-          abi: erc20Abi,
-          functionName: 'transfer',
-          args: [wallet, BigInt(1)],
-        }),
+    // The owner path no longer requires a standing gateway allowance in v6.
+    expect(
+      await f.push.readContract({
+        address: token,
+        abi: erc20Abi,
+        functionName: 'allowance',
+        args: [wallet, f.manifest.addresses.gateway],
       })
-    ).wait();
-    const sender = await evmClient(
-      process.env['PUSH_PRIVATE_KEY'] as Hex,
-      CHAIN.PUSH_TESTNET_DONUT,
-      f.manifest.network,
-      wallet
-    );
-    const nonce = await f.push.getTransactionCount({ address: f.ownerAddress });
-    await expect(
-      sender.universal.sendTransaction({
-        to: { chain: SVM_WIRE_CHAIN, address: recipient.toBase58() },
-        value: BigInt(1),
-        gasLimit: BigInt(0),
-      })
-    ).rejects.toMatchObject({ code: 'GATEWAY_ALLOWANCE_INSUFFICIENT' });
-    expect(await f.push.getTransactionCount({ address: f.ownerAddress })).toBe(
-      nonce
-    );
+    ).toBe(BigInt(0));
   });
 });

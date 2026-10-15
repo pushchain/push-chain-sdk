@@ -1,3 +1,4 @@
+import { validatePins } from './pins';
 import { getAddress, isAddress, type Address } from 'viem';
 import { AgenticCapability, requireCapability } from '../capabilities';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
@@ -7,7 +8,7 @@ import { argumentOffset, rawOffset } from './abi-layout';
 import { parseSelector } from './selectors';
 import { AGENTIC_DEFAULTS, UINT256_MAX, withDefault } from './defaults';
 import { buildSession, encodeEnvelope } from './session';
-import { SEND_OUTBOUND_SELECTOR } from '../contracts/v5';
+import { SEND_OUTBOUND_SELECTOR } from '../contracts/v6';
 import {
   encodeUniversalTerms,
   type AssetCapWire,
@@ -53,7 +54,8 @@ export function validateUniversalRuleShape(
     rule.allowedCalls.length > MAX_ALLOWED_CALLS
   )
     throw invalid(`allowedCalls must contain 1..${MAX_ALLOWED_CALLS} entries`);
-  const seen = new Set<string>();
+  const seen = new Map<string, boolean>();
+  let pinCount = 0;
   rule.allowedCalls.forEach((call, i) => {
     if (!isAddress(call.target, { strict: false }))
       throw invalid(`allowedCalls[${i}].target is not an EVM address`);
@@ -79,10 +81,24 @@ export function validateUniversalRuleShape(
       call.maxValue ?? AGENTIC_DEFAULTS.universal.allowedCallMaxValue.value,
       `allowedCalls[${i}].maxValue`
     );
+    try {
+      validatePins(call.pins ?? []);
+    } catch (error) {
+      throw invalid((error as Error).message);
+    }
+    pinCount += call.pins?.length ?? 0;
+    if (pinCount > 32)
+      throw invalid('at most 32 pins across all allowed calls');
     const key = `${call.target.toLowerCase()}:${parsed.selector}`;
-    if (seen.has(key))
-      throw invalid(`allowedCalls[${i}] duplicates an earlier target/selector`);
-    seen.add(key);
+    const restricted =
+      !!call.pins?.length ||
+      call.beneficiary !== undefined ||
+      call.beneficiaryOffset !== undefined;
+    if (seen.has(key) && (!restricted || !seen.get(key)))
+      throw invalid(
+        'an unpinned alternative would bypass restrictions for this target/selector'
+      );
+    seen.set(key, restricted);
   });
   const tokens = new Set<string>();
   rule.assets.forEach((a, i) => {
@@ -137,6 +153,7 @@ export function encodeUniversalRule(
     assets: resolved.assets,
     maxGasPerCall: rule.maxGasPerCall,
     allowedCalls: rule.allowedCalls.map((call) => ({
+      pins: call.pins ?? [],
       target: getAddress(call.target),
       selector: parseSelector(call.selector).selector,
       hasBeneficiary:
@@ -200,6 +217,7 @@ export function universalTermsToRule(
       maxTotal: a.maxTotal,
     })),
     allowedCalls: terms.allowedCalls.map((c) => ({
+      pins: [...c.pins],
       target: c.target,
       selector: c.selector,
       maxValue: c.maxValue,

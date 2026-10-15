@@ -4,7 +4,7 @@ import type { AgenticRuntime } from '../src/lib/agentic/runtime';
  * below is computed BY THE PINNED CONTRACTS (pure engine/factory views, or
  * state read back after a real grant), never by the SDK under test.
  *
- *   AGW_WRITE_VECTORS=1 → (re)write src/lib/agentic/__fixtures__/v5-vectors.json
+ *   AGW_WRITE_VECTORS=1 → (re)write src/lib/agentic/__fixtures__/v6-vectors.json
  *   otherwise           → assert the committed file still matches the contracts
  */
 import { execSync } from 'node:child_process';
@@ -31,7 +31,7 @@ const FIXTURE = join(
   'lib',
   'agentic',
   '__fixtures__',
-  'v5-vectors.json'
+  'v6-vectors.json'
 );
 const bigintJson = (v: unknown) =>
   JSON.stringify(
@@ -40,7 +40,7 @@ const bigintJson = (v: unknown) =>
     2
   );
 
-describe('contract-generated AGW vectors (v5)', () => {
+describe('contract-generated AGW vectors (v6)', () => {
   let h: Harness;
   beforeAll(async () => {
     h = await startHarness(18548);
@@ -171,7 +171,7 @@ describe('contract-generated AGW vectors (v5)', () => {
       initialized: boolean;
       target: Address;
       selector: Hex;
-      pins: readonly { offset: number; expected: Hex }[];
+      pins: readonly { offset: number; op: number; value: Hex }[];
       amount: { offset: number };
     };
     const native = {
@@ -186,7 +186,8 @@ describe('contract-generated AGW vectors (v5)', () => {
       storedSelector: stored.selector,
       storedPins: stored.pins.map((p) => ({
         offset: Number(p.offset),
-        expected: p.expected,
+        op: p.op,
+        value: p.value,
       })),
       storedAmountOffset: Number(stored.amount.offset),
       encodedSession: encodeSession(session),

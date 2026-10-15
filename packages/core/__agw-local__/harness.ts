@@ -220,6 +220,7 @@ async function deployHarness(
   );
   const clients = new Set<PushChain>();
 
+  let svmLibrary: Address | undefined;
   const deploy = async (
     walletIndex: number,
     name: string,
@@ -227,6 +228,14 @@ async function deployHarness(
     args: readonly unknown[] = []
   ) => {
     const art = artifact(dir, file, name);
+    if (name === 'UniversalRulesPolicy') {
+      if (!svmLibrary)
+        svmLibrary = await deploy(0, 'SvmRulebook', 'SvmRulebook.sol');
+      art.bytecode = art.bytecode.replace(
+        /__\$[0-9a-fA-F]{34}\$__/g,
+        svmLibrary.slice(2)
+      ) as Hex;
+    }
     const hash = await wallets[walletIndex].deployContract({
       abi: art.abi,
       bytecode: art.bytecode,
@@ -353,8 +362,8 @@ async function deployHarness(
 
   resetAgenticGenerations();
   const generation = registerAgenticGeneration({
-    id: 'v5',
-    sourceCommit: '2e61e133e641b4e0e1ddbdc9306b0903b60e4dbb',
+    id: 'v6',
+    sourceCommit: 'ffd567d3e49b2d27c6f50ad36093274dbac3090f',
     network: PUSH_NETWORK.LOCALNET,
     advertised: false,
     addresses: {

@@ -18,7 +18,7 @@ import {
   AGW_FACTORY_ABI,
   SMART_SESSION_ABI,
   UNIVERSAL_RULES_POLICY_ABI,
-} from './abi/v5';
+} from './abi/v6';
 import type { SessionWire } from '../codec/session';
 import type { CheckpointKind } from '../agentic.types';
 import type { NativeTermsWire } from '../codec/native';
@@ -26,7 +26,7 @@ import type { UniversalTermsWire } from '../codec/universal-terms';
 import type { SvmTermsWire } from '../codec/svm-terms';
 
 /**
- * Contract adapter for the reviewed v5 ABI generation. All version-
+ * Contract adapter for the reviewed v6 ABI generation. All version-
  * sensitive encoding, decoding and view names live here; callers never touch
  * a raw ABI. A future generation gets its own adapter implementing the same
  * interface.
@@ -104,8 +104,8 @@ const EXECUTION_TUPLE = [
   },
 ] as const;
 
-export const v5 = {
-  id: 'v5',
+export const v6 = {
+  id: 'v6',
   abis: {
     wallet: AGW_ABI,
     factory: AGW_FACTORY_ABI,
@@ -178,6 +178,39 @@ export const v5 = {
       ],
     });
   },
+  encodeCreateWalletAt(
+    owner: Address,
+    index: bigint,
+    wallet: Address,
+    label: string,
+    rules: readonly SessionWire[]
+  ): Hex {
+    const zero32 = `0x${'00'.repeat(32)}` as Hex;
+    const zeroAddress = '0x0000000000000000000000000000000000000000' as Address;
+    return encodeFunctionData({
+      abi: AGW_FACTORY_ABI,
+      functionName: 'createWalletWithSig',
+      args: [
+        {
+          owner,
+          wallet,
+          executor: zeroAddress,
+          index,
+          sessionHash: zero32,
+          mode: zero32,
+          execCalldataHash: zero32,
+          nonceKey: BigInt(0),
+          nonceSeq: BigInt(0),
+          grantNonce: BigInt(0),
+          deadline: 0,
+          signerChainId: BigInt(0),
+        },
+        '0x',
+        label,
+        rules as never,
+      ],
+    });
+  },
   encodeGrantRules(session: SessionWire): Hex {
     return encodeFunctionData({
       abi: AGW_ABI,
@@ -219,7 +252,7 @@ export const v5 = {
       return encodeFunctionData({
         abi: AGW_ABI,
         functionName: 'execute',
-        args: [MODE_SINGLE, v5.packSingle(calls[0])],
+        args: [MODE_SINGLE, v6.packSingle(calls[0])],
       });
     }
     const batch = encodeAbiParameters(EXECUTION_TUPLE, [
@@ -239,7 +272,7 @@ export const v5 = {
     return encodeFunctionData({
       abi: AGW_ABI,
       functionName: 'executeAsAgent',
-      args: [rulesId, MODE_SINGLE, v5.packSingle(call)],
+      args: [rulesId, MODE_SINGLE, v6.packSingle(call)],
     });
   },
   encodeAssertSpentNative(
@@ -312,7 +345,7 @@ export const v5 = {
     return k;
   },
   parseWalletDeployed(logs: readonly Log[], factory: Address) {
-    return decodeMatching(logs, factory, v5.events.walletDeployed).map(
+    return decodeMatching(logs, factory, v6.events.walletDeployed).map(
       (args) => ({
         owner: getAddress(args['owner'] as Address),
         index: BigInt(args['index'] as bigint),
@@ -322,14 +355,14 @@ export const v5 = {
     );
   },
   parseRulesGranted(logs: readonly Log[], wallet: Address) {
-    return decodeMatching(logs, wallet, v5.events.rulesGranted).map((args) => ({
+    return decodeMatching(logs, wallet, v6.events.rulesGranted).map((args) => ({
       rulesId: args['rulesId'] as Hex,
       mode: Number(args['mode']),
       chainNamespace: args['chainNamespace'] as string,
     }));
   },
   parseRulesRevoked(logs: readonly Log[], wallet: Address) {
-    return decodeMatching(logs, wallet, v5.events.rulesRevoked).map((args) => ({
+    return decodeMatching(logs, wallet, v6.events.rulesRevoked).map((args) => ({
       rulesId: args['rulesId'] as Hex,
     }));
   },
@@ -339,12 +372,12 @@ export const v5 = {
         (l) =>
           sameAddress(l.address, wallet) &&
           l.topics[0]?.toLowerCase() ===
-            toEventSelector(v5.events.checkpointed).toLowerCase()
+            toEventSelector(v6.events.checkpointed).toLowerCase()
       )
       .flatMap((log) => {
         try {
           const ev = decodeEventLog({
-            abi: [v5.events.checkpointed],
+            abi: [v6.events.checkpointed],
             ...log,
             strict: true,
           });
@@ -355,7 +388,7 @@ export const v5 = {
       })
       .map(({ log, args }) => ({
         seq: Number(args['seq']),
-        kind: v5.decodeCheckpointKind(Number(args['kind'])),
+        kind: v6.decodeCheckpointKind(Number(args['kind'])),
         ref: args['ref'] as Hex,
         blockNumber: BigInt(log.blockNumber ?? BigInt(0)),
         txHash: log.transactionHash as Hex,
@@ -419,4 +452,4 @@ function decodeMatching(
   return out;
 }
 
-export type AgwContracts = typeof v5;
+export type AgwContracts = typeof v6;

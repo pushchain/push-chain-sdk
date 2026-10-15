@@ -1,6 +1,6 @@
 # Agentic wallets on Push Chain
 
-This branch implements the SDK-only October 12 feedback against the deployed Donut v5 contracts. Contract-dependent changes remain explicit below.
+This branch implements the SDK-only October 12 feedback against the deployed Donut v6 contracts. The runtime targets v6 only; existing v5 wallets are not silently adapted.
 
 ## Connect
 
@@ -83,7 +83,7 @@ async function manage(owner: PushChain, address: Address, id: Hex) {
 
 `create` and `rules.add` reject a duplicate agent/chain pair with `DUPLICATE_RULE`. Put several permitted calls in the same rule. Existing overlapping grants can still cause `AMBIGUOUS_RULE` when sending; the owner must resolve the overlap. The contract validates every actual agent call.
 
-On deployed v5, native rules allow at most **eight** calls, eight equality pins and one maximum pin per call. Public native lifetime budgets, `maxCalls`, `amount`, single-call shorthand and `actions[]` are retired. Native counters still accumulate for reporting and atomic update assertions.
+On deployed v6, native rules allow at most **eight** calls, eight equality/maximum pins per call. Public native lifetime budgets, `maxCalls`, `amount`, single-call shorthand and `actions[]` are retired. Native value and call counters accumulate for reporting and atomic updates. A v6 MAX pin only bounds an individual call and does not increment amountSpent; that counter belongs to the separate internal amount meter.
 
 ## Pins and zero defaults
 
@@ -112,7 +112,7 @@ function evmRule(agent: Address, target: Address): Rule {
 }
 ```
 
-The deployed policy supports one `WALLET` equality pin per EVM destination call. General destination equality/maximum pins need the new contract deployment and currently fail with `CAPABILITY_UNAVAILABLE` before signing.
+The deployed v6 policy supports up to eight EQ/MAX pins per EVM destination call and 32 across the rule. Multiple entries for the same target/function are alternatives; every constraint in one entry must pass. The SDK rejects a bare alternative beside a pinned one because it would bypass the pins.
 
 When the caller omits destination `gasLimit`, a fresh EVM CEA gets a 2,000,000 gas default to cover first-use deployment. An existing CEA uses the normal quote default. An explicit caller value is preserved. The rule's gas/value caps still apply.
 
@@ -153,15 +153,17 @@ Connect with `PushChain.initialize(signer, { agenticWallet: address })` to send 
 
 Updates assert existing spend, delete the old rule and grant its replacement atomically. Native updates assert each action separately: a rule with N native actions records N+4 checkpoints on current v5. Agent execution records no owner checkpoint. Direct `setLabel` records none.
 
-## Deployment-dependent behavior
+## V6 deployment and creation
 
-The October 12 contract feedback is not deployed. Until it is verified:
+The runtime uses factory `0xFBBEB6a365178fAaA81A9789a5f64b300c37e5bc` and URP `0xBA32e7A1500cb34311a31127bcD40CA52C8CFd36`, from source `ffd567d`. URP still reports 3.1.0; verified deployment wiring and the v6 ABI identify the supported generation.
 
-- Outbound sends on both doors require a separately owner-set gateway allowance; the SDK never silently creates or restores one. Insufficient allowance fails before signing.
-- Creation uses the existing index-bound deploy/grant flow. If a signer cannot execute it atomically, `CREATE_PARTIAL` preserves committed receipts and recovery details. Do not blindly retry creation.
-- General EVM destination pins and the new atomic factory `createWallet` are unavailable.
+`create` uses one index-bound `createWalletWithSig` call from the owner's Push identity, with the contract's owner-caller empty-signature path. The wallet and up to eight initial rules are committed atomically. A concurrent slot change returns INDEX_RACE; a receipt-read failure retains the submitted hash for recovery. CREATE_PARTIAL is removed. No sequential creation fallback exists.
 
-`rules.delete` is the public name; on-chain `revokeRules` names/events remain unchanged. Unsupported capabilities use `CAPABILITY_UNAVAILABLE`. On-chain errors retain revert details through `AgenticRevertError`/`PushChainExecutionError`.
+For outbound sends on either door, the wallet approves the gateway inside the transaction after policy authorization, executes the outbound, and clears remaining allowance. No separate approval or SDK allowance check is needed; GATEWAY_ALLOWANCE_INSUFFICIENT is removed. Approval/cleanup uses the contract's best-effort token calls. To stop an agent, delete its rules; clearing the gateway allowance does not disable an otherwise valid rule.
+
+The wire encoder uses uint32 maximum for unlimited native calls and 255 for unspecified Solana account count. Neither uses the retired zero sentinel. The envelope remains version 1. Existing v5 wallets and addresses do not become v6 wallets.
+
+`rules.delete` is the public name; on-chain `revokeRules` names/events remain unchanged. Revert errors retain decoded details and cause. Core transaction response fields used by other SDK routes are not globally removed.
 
 ## Preset discovery and templates (section 7)
 
@@ -185,7 +187,7 @@ function filledPreset(agent: Address) {
 
 With catalog entries, `get` groups calls into one rule per chain. With agent and expiry supplied, its return type is `Rule[]`; otherwise it is `PresetRuleTemplate[]`, requiring those fields before `create`. Assets must name their chain unless a single chain filter is supplied. Missing `maxPerCall` or `maxTotal` defaults to zero (user decision, October 12), so missing caps do not grant token movement.
 
-Reviewed EVM catalog spenders generate approvals pinned to that spender and bounded by the asset's per-call cap. Native assets need no approval. Conflicting spenders for the same token are rejected until the policy representation is reviewed; the framework never replaces them with an unrestricted approval. General EVM approval pins still require the pending contract upgrade, and normal `create/add` validation enforces that boundary. Presets do not sign, fetch app ABIs or modify wallets.
+Reviewed EVM catalog spenders generate approvals pinned to that spender and bounded by the asset's per-call cap. Native assets need no approval. Distinct spenders for the same token become separate fully pinned alternatives under v6; unrestricted alternatives are rejected. Presets do not sign, fetch app ABIs or modify wallets.
 
 The remaining catalog work includes selecting verified apps/functions/chains, struct-field indexing and checking approval combinations against the delivered policy. App ABIs remain with the UI.
 

@@ -1,6 +1,6 @@
 /**
  * AGW deployment manifest for live E2E — READ-ONLY. Loaded from the JSON file
- * optionally named by AGW_DEPLOYMENT_MANIFEST, otherwise the built-in Donut v5
+ * optionally named by AGW_DEPLOYMENT_MANIFEST, otherwise the built-in Donut v6
  * manifest. Code/wiring/version are verified before tests or preflight funding.
  *
  * Manifest shape:
@@ -18,6 +18,7 @@
 import { readFileSync } from 'node:fs';
 import {
   getAddress,
+  getAbiItem,
   isAddress,
   type Address,
   type PublicClient,
@@ -25,21 +26,21 @@ import {
 } from 'viem';
 import { PUSH_NETWORK } from '../../src/lib/constants/enums';
 import { AgenticCapability } from '../../src/lib/agentic/capabilities';
-import { V5_CAPABILITIES } from '../../src/lib/agentic/deployments';
-import { v5 } from '../../src/lib/agentic/contracts/v5';
+import { V6_CAPABILITIES } from '../../src/lib/agentic/deployments';
+import { v6 } from '../../src/lib/agentic/contracts/v6';
 import {
-  DONUT_V5_ADDRESSES,
-  DONUT_V5_START_BLOCK,
-  V5_SOURCE_COMMIT,
-} from '../../src/lib/agentic/contracts/donut-v5';
+  DONUT_V6_ADDRESSES,
+  DONUT_V6_START_BLOCK,
+  V6_SOURCE_COMMIT,
+} from '../../src/lib/agentic/contracts/donut-v6';
 
 export const AGW_PREREQ_HINT =
   'AGW live E2E needs checked v5 wiring, signer keys and testnet funding. ' +
-  'The default is the checked Donut v5 manifest; custom manifests must match the v5 source.';
+  'The default is the checked Donut v6 manifest; custom manifests must match the v5 source.';
 
 export interface AgwManifest {
   network: PUSH_NETWORK;
-  generation: 'v5';
+  generation: 'v6';
   sourceCommit: string;
   startBlock: bigint;
   accountId: string;
@@ -67,12 +68,12 @@ export function loadAgwManifest(
   if (!path)
     return {
       network: PUSH_NETWORK.TESTNET_DONUT,
-      generation: 'v5',
-      sourceCommit: V5_SOURCE_COMMIT,
-      startBlock: DONUT_V5_START_BLOCK,
+      generation: 'v6',
+      sourceCommit: V6_SOURCE_COMMIT,
+      startBlock: DONUT_V6_START_BLOCK,
       accountId: 'push.agw.1.0.0',
-      addresses: DONUT_V5_ADDRESSES,
-      capabilities: V5_CAPABILITIES,
+      addresses: DONUT_V6_ADDRESSES,
+      capabilities: V6_CAPABILITIES,
     };
   let raw: Record<string, unknown>;
   try {
@@ -85,14 +86,14 @@ export function loadAgwManifest(
   const network = raw['network'] as PUSH_NETWORK;
   if (!Object.values(PUSH_NETWORK).includes(network))
     throw new AgwPrerequisiteError(`unknown network ${String(network)}`);
-  if (raw['generation'] !== v5.id) {
+  if (raw['generation'] !== v6.id) {
     throw new AgwPrerequisiteError(
       `generation ${String(raw['generation'])} has no SDK adapter`
     );
   }
-  if (raw['sourceCommit'] !== V5_SOURCE_COMMIT) {
+  if (raw['sourceCommit'] !== V6_SOURCE_COMMIT) {
     throw new AgwPrerequisiteError(
-      'sourceCommit must match the supported v5 source pin'
+      'sourceCommit must match the supported v6 source pin'
     );
   }
   const a = (raw['addresses'] ?? {}) as Record<string, string>;
@@ -111,15 +112,15 @@ export function loadAgwManifest(
   const caps = Array.isArray(raw['capabilities'])
     ? new Set(
         (raw['capabilities'] as string[]).map((c) => {
-          if (!V5_CAPABILITIES.has(c as AgenticCapability))
+          if (!V6_CAPABILITIES.has(c as AgenticCapability))
             throw new AgwPrerequisiteError(`unknown capability ${c}`);
           return c as AgenticCapability;
         })
       )
-    : V5_CAPABILITIES;
+    : V6_CAPABILITIES;
   return {
     network,
-    generation: 'v5',
+    generation: 'v6',
     sourceCommit: raw['sourceCommit'],
     startBlock: BigInt(String(raw['startBlock'] ?? '0')),
     accountId: String(raw['accountId'] ?? 'push.agw.1.0.0'),
@@ -154,7 +155,7 @@ export async function verifyAgwManifest(
   const impl = getAddress(
     (await read(
       m.addresses.factory,
-      v5.abis.factory,
+      v6.abis.factory,
       'walletImplementation'
     )) as string
   );
@@ -164,17 +165,21 @@ export async function verifyAgwManifest(
     );
   }
   const implementationCode = await client.getCode({ address: impl });
-  for (const signature of [
-    'label()',
-    'setLabel(string)',
-    'initializeAccount(string)',
-  ]) {
+  for (const signature of ['label()', 'setLabel(string)']) {
     if (!implementationCode?.includes(toFunctionSelector(signature).slice(2))) {
       throw new AgwPrerequisiteError(
-        `implementation is missing the v5 ${signature} selector`
+        `implementation is missing the v6 ${signature} selector`
       );
     }
   }
+  const initialize = getAbiItem({
+    abi: v6.abis.wallet,
+    name: 'initializeAccount',
+  });
+  if (!implementationCode?.includes(toFunctionSelector(initialize).slice(2)))
+    throw new AgwPrerequisiteError(
+      'wallet implementation lacks the v6 initial-rules initializer'
+    );
   const wiring: [string, Address][] = [
     ['SESSION_ENGINE', m.addresses.sessionEngine],
     ['RULES_POLICY', m.addresses.rulesPolicy],
@@ -182,7 +187,7 @@ export async function verifyAgwManifest(
     ['UNIVERSAL_GATEWAY_PC', m.addresses.gateway],
   ];
   for (const [fn, expected] of wiring) {
-    const got = getAddress((await read(impl, v5.abis.wallet, fn)) as string);
+    const got = getAddress((await read(impl, v6.abis.wallet, fn)) as string);
     if (got !== expected)
       throw new AgwPrerequisiteError(
         `implementation ${fn} is ${got}, manifest says ${expected}`
@@ -190,14 +195,14 @@ export async function verifyAgwManifest(
   }
   const policyVersion = await read(
     m.addresses.rulesPolicy,
-    v5.abis.policy,
+    v6.abis.policy,
     'version'
   );
   if (policyVersion !== '3.1.0')
     throw new AgwPrerequisiteError(
       `unsupported URP version ${String(policyVersion)}`
     );
-  const accountId = (await read(impl, v5.abis.wallet, 'accountId')) as string;
+  const accountId = (await read(impl, v6.abis.wallet, 'accountId')) as string;
   if (accountId !== m.accountId)
     throw new AgwPrerequisiteError(`implementation accountId is ${accountId}`);
 }

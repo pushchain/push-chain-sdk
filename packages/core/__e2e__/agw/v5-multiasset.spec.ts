@@ -19,7 +19,7 @@ import { getCEAAddress } from '../../src/lib/orchestrator/cea-utils';
 import { configId } from '../../src/lib/agentic/codec/ids';
 import { CHAIN } from '../../src/lib/constants/enums';
 import { MOVEABLE_TOKEN_CONSTANTS } from '../../src/lib/constants/tokens';
-import { v5 } from '../../src/lib/agentic/contracts/v5';
+import { v6 } from '../../src/lib/agentic/contracts/v6';
 import { EVM_CHAIN_FIXTURES } from '@e2e/shared/chain-fixtures';
 import { verifyExternalTransaction } from '@e2e/shared/external-tx-verifier';
 import {
@@ -83,7 +83,7 @@ d('agw v5 multi-asset', () => {
     });
     const count = await f.push.readContract({
       address: created.wallet,
-      abi: v5.abis.wallet,
+      abi: v6.abis.wallet,
       functionName: 'checkpointCount',
     });
     const replacement = await w.rules.update({
@@ -92,7 +92,7 @@ d('agw v5 multi-asset', () => {
     expect(
       await f.push.readContract({
         address: created.wallet,
-        abi: v5.abis.wallet,
+        abi: v6.abis.wallet,
         functionName: 'checkpointCount',
       })
     ).toBe(count + BigInt(5));
@@ -138,14 +138,14 @@ d('agw v5 multi-asset', () => {
     await verifyExternalTransaction(receipt.externalTxHash as string, chain);
     const [action] = await f.push.readContract({
       address: f.manifest.addresses.sessionEngine,
-      abi: v5.abis.engine,
+      abi: v6.abis.engine,
       functionName: 'getEnabledActions',
       args: [created.wallet, created.rulesIds[0]],
     });
     const { configId } = await import('../../src/lib/agentic/codec/ids');
     const cfg = await f.push.readContract({
       address: f.manifest.addresses.rulesPolicy,
-      abi: v5.abis.policy,
+      abi: v6.abis.policy,
       functionName: 'getConfig',
       args: [
         configId(created.wallet, created.rulesIds[0], action),
@@ -230,7 +230,7 @@ d('agw v5 multi-asset', () => {
     const agent = await f.agent(made.wallet);
     const [action] = await f.push.readContract({
       address: f.manifest.addresses.sessionEngine,
-      abi: v5.abis.engine,
+      abi: v6.abis.engine,
       functionName: 'getEnabledActions',
       args: [made.wallet, made.rulesIds[0]],
     });
@@ -239,7 +239,7 @@ d('agw v5 multi-asset', () => {
       (
         await f.push.readContract({
           address: f.manifest.addresses.rulesPolicy,
-          abi: v5.abis.policy,
+          abi: v6.abis.policy,
           functionName: 'getConfig',
           args: [key, made.wallet],
         })
@@ -321,7 +321,7 @@ d('agw v5 multi-asset', () => {
           functionName: 'allowance',
           args: [made.wallet, f.manifest.addresses.gateway],
         })
-      ).toBe(BigInt(1));
+      ).toBe(BigInt(0));
       const expected = i === 0 ? [amounts[0], BigInt(0)] : amounts;
       expect(await spent()).toEqual(expected);
       const nonce = await f.push.getTransactionCount({

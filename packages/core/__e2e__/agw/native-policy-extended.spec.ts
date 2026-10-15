@@ -132,7 +132,7 @@ d('agw extended native policy', () => {
     expect(await s.tokenBalance()).toBe(BigInt(40));
     expect(await s.counters()).toMatchObject({
       valueSpent: BigInt(0),
-      amountSpent: BigInt(10),
+      amountSpent: BigInt(0),
       callsUsed: 1,
     });
     expect(
@@ -158,15 +158,15 @@ d('agw extended native policy', () => {
   });
   it('3. per-call amount cap refuses cap plus one', async () => {
     const s = await fixture();
-    await refused(s, () => s.send(BigInt(11)), 'NativeAmountExceedsCap');
+    await refused(s, () => s.send(BigInt(11)), 'ArgPinAboveMax');
   });
   it('4. repeated per-call amounts accumulate spend without a removed lifetime cap', async () => {
     const s = await fixture(BigInt(50), 10);
     await (await s.send(BigInt(10))).wait();
     await (await s.send(BigInt(5))).wait();
-    expect((await s.counters()).amountSpent).toBe(BigInt(15));
+    expect((await s.counters()).amountSpent).toBe(BigInt(0));
     await (await s.send(BigInt(1))).wait();
-    expect((await s.counters()).amountSpent).toBe(BigInt(16));
+    expect((await s.counters()).amountSpent).toBe(BigInt(0));
   });
   it('5. repeated calls have no removed maxCalls limit', async () => {
     const s = await fixture();
@@ -178,7 +178,7 @@ d('agw extended native policy', () => {
   });
   it('6. explicit zero MAX pin forbids positive amount but permits a metered zero call', async () => {
     const s = await fixture(BigInt(50), 10, BigInt(0));
-    await refused(s, () => s.send(BigInt(1)), 'NativeAmountExceedsCap');
+    await refused(s, () => s.send(BigInt(1)), 'ArgPinAboveMax');
     await (await s.send(BigInt(0))).wait();
     expect(await s.counters()).toMatchObject({
       amountSpent: BigInt(0),
@@ -234,7 +234,7 @@ d('agw extended native policy', () => {
     expect((await sent.wait()).status).toBe(1);
     expect(await s.counters()).toMatchObject({
       valueSpent: BigInt(0),
-      amountSpent: BigInt(1),
+      amountSpent: BigInt(0),
     });
     f.evidence('zero-pc-defaults', { wallet: s.wallet, txHash: sent.hash });
   });

@@ -14,8 +14,8 @@ import {
   AGW_ABI,
   AGW_FACTORY_ABI,
   UNIVERSAL_RULES_POLICY_ABI,
-} from '../contracts/abi/v5';
-import { v5 } from '../contracts/v5';
+} from '../contracts/abi/v6';
+import { v6 } from '../contracts/v6';
 import { deriveWallet, rulesId as computeRulesId } from '../codec/ids';
 import { AGENTIC_ERROR_CODE } from '../errors';
 import { createWallet } from '../management/create';
@@ -41,13 +41,13 @@ const rule = (agent = ADDR.agent): NativeRule => ({
 const granted = (wallet: `0x${string}`, id: Hex, block = BigInt(101)) =>
   log(
     wallet,
-    v5.events.rulesGranted,
+    v6.events.rulesGranted,
     { rulesId: id, chainHash: `0x${'00'.repeat(32)}` },
     { mode: 1, chainNamespace: PUSH_NS },
     block
   );
 const revoked = (wallet: `0x${string}`, id: Hex) =>
-  log(wallet, v5.events.rulesRevoked, { rulesId: id }, {}, BigInt(101));
+  log(wallet, v6.events.rulesRevoked, { rulesId: id }, {}, BigInt(101));
 
 function withLogs(logs: Log[], over = {}) {
   const r = fakeResponse(over);
@@ -82,7 +82,7 @@ describe('agentic.create', () => {
         withLogs([
           log(
             ADDR.factory,
-            v5.events.walletDeployed,
+            v6.events.walletDeployed,
             { owner: ADDR.owner, index: BigInt(0), wallet: nextWallet },
             { label: 'ops' },
             BigInt(101)
@@ -98,15 +98,14 @@ describe('agentic.create', () => {
       progressHook: perCall,
     });
     expect(res).toMatchObject({ wallet: nextWallet, index: 0, rulesIds: ids });
-    const calls = (execute.mock.calls[0][0] as { data: MultiCall[] }).data;
-    expect(calls.map((c) => c.to)).toEqual([
-      ADDR.factory,
-      nextWallet,
-      nextWallet,
-    ]);
-    expect(
-      decodeFunctionData({ abi: AGW_ABI, data: calls[1].data }).functionName
-    ).toBe('grantRules');
+    const sent = execute.mock.calls[0][0] as { to: string; data: Hex };
+    expect(sent.to).toBe(ADDR.factory);
+    const decoded = decodeFunctionData({
+      abi: AGW_FACTORY_ABI,
+      data: sent.data,
+    });
+    expect(decoded.functionName).toBe('createWalletWithSig');
+    expect(decoded.args[3]).toHaveLength(2);
     expect(rt.events.map((e) => e.id)).toEqual([
       PROGRESS_HOOK.AGENTIC_TX_101,
       PROGRESS_HOOK.AGENTIC_TX_102,
@@ -127,7 +126,7 @@ describe('agentic.create', () => {
         return withLogs([
           log(
             ADDR.factory,
-            v5.events.walletDeployed,
+            v6.events.walletDeployed,
             { owner: ADDR.owner, index: BigInt(0), wallet: nextWallet },
             { label: '' },
             BigInt(101)
@@ -170,7 +169,7 @@ describe('agentic.create', () => {
     expect(rt.executeMock).not.toHaveBeenCalled();
   });
 
-  it('a different wallet in the receipt is an INDEX_RACE with full details', async () => {
+  it('a different wallet in the receipt is RECEIPT_MISMATCH, not a safe-to-retry race', async () => {
     const fake = new FakeChain();
     const elsewhere = deriveWallet({
       factory: ADDR.factory,
@@ -184,7 +183,7 @@ describe('agentic.create', () => {
         withLogs([
           log(
             ADDR.factory,
-            v5.events.walletDeployed,
+            v6.events.walletDeployed,
             { owner: ADDR.owner, index: BigInt(1), wallet: elsewhere },
             { label: '' },
             BigInt(101)
@@ -192,7 +191,7 @@ describe('agentic.create', () => {
         ])) as never,
     });
     await expect(createWallet(rt, '', { rules: [] })).rejects.toMatchObject({
-      code: AGENTIC_ERROR_CODE.INDEX_RACE,
+      code: AGENTIC_ERROR_CODE.RECEIPT_MISMATCH,
     });
   });
 
@@ -204,7 +203,7 @@ describe('agentic.create', () => {
         withLogs([
           log(
             ADDR.factory,
-            v5.events.walletDeployed,
+            v6.events.walletDeployed,
             { owner: ADDR.owner, index: BigInt(0), wallet: nextWallet },
             { label: '' },
             BigInt(101)
@@ -223,83 +222,18 @@ describe('agentic.create', () => {
   const receipt = (logs: Log[], status: 'success' | 'reverted' = 'success') =>
     ({ status, logs } as unknown as TransactionReceipt);
 
-  it('a sequential failure after deployment is CREATE_PARTIAL; what committed comes from this call’s receipts', async () => {
-    const fake = new FakeChain();
-    const h1 = `0x${'01'.repeat(32)}` as Hex;
-    const h2 = `0x${'02'.repeat(32)}` as Hex;
-    fake.receipts.set(
-      h1,
-      receipt([
-        log(
-          ADDR.factory,
-          v5.events.walletDeployed,
-          { owner: ADDR.owner, index: BigInt(0), wallet: nextWallet },
-          { label: 'ops' },
-          BigInt(101)
-        ),
-      ])
-    );
-    fake.receipts.set(h2, receipt([granted(nextWallet, ids[0])]));
-    const rt = mockRuntime(fake, {
-      signer: ADDR.owner,
-      execute: (async () => {
-        throw new PushChainBatchExecutionError('grant 2 reverted', [h1, h2]);
-      }) as never,
-    });
-    const err = await createWallet(rt, 'ops', {
-      rules: [rule(), rule(ADDR.other)],
-    }).catch((e) => e);
-    expect(err.code).toBe(AGENTIC_ERROR_CODE.CREATE_PARTIAL);
-    expect(err.details).toMatchObject({
-      wallet: nextWallet,
-      walletDeployed: true,
-      grantedRulesIds: [ids[0]],
-      confirmedHashes: [h1, h2],
-    });
-    expect(err.hint).toMatch(/rules\.add/);
-    expect(rt.events.at(-1)?.id).toBe(PROGRESS_HOOK.AGENTIC_TX_199_02);
-  });
-
-  it('a pending hash keeps an unconfirmed deployment unknown', async () => {
+  it('creation never uses the batch transport or a sequential fallback', async () => {
     const fake = new FakeChain();
     const rt = mockRuntime(fake, {
       signer: ADDR.owner,
-      execute: (async () => {
-        throw new PushChainBatchExecutionError(
-          'timed out',
-          [],
-          `0x${'03'.repeat(32)}`
-        );
-      }) as never,
+      execute: async () => {
+        throw new Error('simulation refused');
+      },
     });
-    const err = await createWallet(rt, 'ops', { rules: [rule()] }).catch(
-      (e) => e
-    );
-    expect(err.details).toMatchObject({
-      walletDeployed: 'unknown',
-      pendingHash: `0x${'03'.repeat(32)}`,
-    });
-    expect(err.hint).toMatch(/Do not retry/);
-  });
-
-  it('failed recovery reads report unknown state, never "not deployed"', async () => {
-    const fake = new FakeChain();
-    const rt = mockRuntime(fake, {
-      signer: ADDR.owner,
-      execute: (async () => {
-        fake.addWallet(ADDR.owner, 'committed');
-        throw new PushChainBatchExecutionError('grant failed', [
-          `0x${'11'.repeat(32)}`,
-        ]);
-      }) as never,
-    });
-    const err = await createWallet(rt, 'review', { rules: [rule()] }).catch(
-      (e) => e
-    );
-    expect(err.code).toBe('CREATE_PARTIAL');
-    expect(err.details.walletDeployed).toBe('unknown');
-    expect(err.details.recoveryError).toBeTruthy();
-    expect(err.hint).toMatch(/Do not retry/);
+    await expect(
+      createWallet(rt, 'atomic', { rules: [rule()] })
+    ).rejects.toThrow('simulation refused');
+    expect(rt.atomicMock).not.toHaveBeenCalled();
   });
 
   it('a receipt that cannot be read after submission keeps the hash and reports unknown state', async () => {
@@ -315,10 +249,9 @@ describe('agentic.create', () => {
       }) as never,
     });
     const err = await createWallet(rt, 'x', { rules: [] }).catch((e) => e);
-    expect(err.code).toBe(AGENTIC_ERROR_CODE.CREATE_PARTIAL);
+    expect(err.code).toBe(AGENTIC_ERROR_CODE.RECEIPT_UNAVAILABLE);
     expect(err.details).toMatchObject({
-      walletDeployed: 'unknown',
-      submitted: { txHash: `0x${'44'.repeat(32)}` },
+      txHash: `0x${'44'.repeat(32)}`,
     });
   });
 
@@ -331,12 +264,12 @@ describe('agentic.create', () => {
     });
     const rt = mockRuntime(fake, {
       signer: ADDR.owner,
-      execute: (async (p: { data: MultiCall[] }) => {
+      execute: (async (p: { data: Hex }) => {
         const deploy = decodeFunctionData({
           abi: AGW_FACTORY_ABI,
-          data: p.data[0].data,
+          data: p.data,
         });
-        expect(deploy.functionName).toBe('deployWalletWithSig');
+        expect(deploy.functionName).toBe('createWalletWithSig');
         expect(
           (deploy.args[0] as { index: bigint; wallet: string }).index
         ).toBe(BigInt(0));
@@ -353,31 +286,7 @@ describe('agentic.create', () => {
       (e) => e
     );
     expect(err.code).toBe(AGENTIC_ERROR_CODE.INDEX_RACE);
-    expect(err.details).toMatchObject({ committed: false });
-  });
-
-  it('a generic send error is still identified as a race when the fresh slot label proves another create won', async () => {
-    const fake = new FakeChain();
-    const rt = mockRuntime(fake, {
-      signer: ADDR.owner,
-      execute: (async () => {
-        const winner = fake.addWallet(ADDR.owner, 'competing-create');
-        winner.label = 'this-create'; // mutable view cannot erase the deploy evidence
-        throw new Error('opaque sender failure');
-      }) as never,
-    });
-    const err = await createWallet(rt, 'this-create', {
-      rules: [rule()],
-    }).catch((e) => e);
-    expect(err).toMatchObject({
-      code: AGENTIC_ERROR_CODE.INDEX_RACE,
-      details: {
-        wallet: nextWallet,
-        index: 0,
-        committed: false,
-        competingLabel: 'competing-create',
-      },
-    });
+    expect(err.details).toMatchObject({ walletDeployed: false });
   });
 
   it('a later rename alone does not establish a competing creation', async () => {
@@ -471,7 +380,7 @@ describe('rules.add / rules.delete', () => {
     ).toEqual(ids);
     const sent = exec.mock.calls[0][0] as { to: string; data: Hex };
     expect(Array.isArray(sent.data)).toBe(false);
-    const outer = v5.decodeWalletCall(sent.data) as {
+    const outer = v6.decodeWalletCall(sent.data) as {
       kind: string;
       calls: { target: string; data: Hex }[];
     };
@@ -512,7 +421,7 @@ describe('rules.add / rules.delete', () => {
     await revokeRules(rt, gen(), w.address, [ruleId(1), ruleId(2)]);
     const sent = exec.mock.calls[0][0] as { to: string; data: Hex };
     expect(sent.to).toBe(w.address);
-    const decoded = v5.decodeWalletCall(sent.data) as {
+    const decoded = v6.decodeWalletCall(sent.data) as {
       kind: string;
       calls: { target: string; data: Hex }[];
     };
@@ -566,7 +475,7 @@ describe('rules.update — one owner batch: assert → revoke → grant', () => 
     expect(exec).toHaveBeenCalledTimes(1);
     const sent = exec.mock.calls[0][0] as { to: string; data: Hex };
     expect(Array.isArray(sent.data)).toBe(false); // never a sequential multi-tx batch
-    const outer = v5.decodeWalletCall(sent.data) as {
+    const outer = v6.decodeWalletCall(sent.data) as {
       kind: string;
       mode: Hex;
       calls: { target: string; data: Hex }[];
@@ -632,7 +541,7 @@ describe('rules.update — one owner batch: assert → revoke → grant', () => 
       rules: [{ rulesId: ruleId(1), rule: rule() }],
     });
     const data = (exec.mock.calls[0][0] as { data: Hex }).data;
-    const outer = v5.decodeWalletCall(data) as { calls: { data: Hex }[] };
+    const outer = v6.decodeWalletCall(data) as { calls: { data: Hex }[] };
     const assertion = decodeFunctionData({
       abi: UNIVERSAL_RULES_POLICY_ABI,
       data: outer.calls[0].data,

@@ -1,3 +1,4 @@
+import { ARG_PIN_COMPONENTS, type ArgPinWire } from './pins';
 import {
   decodeAbiParameters,
   encodeAbiParameters,
@@ -11,6 +12,7 @@ export interface AssetCapWire {
   maxTotal: bigint;
 }
 export interface AllowedCallWire {
+  pins: readonly ArgPinWire[];
   target: Address;
   selector: Hex;
   beneficiaryOffset: number;
@@ -48,6 +50,7 @@ export const UNIVERSAL_TERMS_PARAM = {
         { name: 'beneficiaryOffset', type: 'uint16' },
         { name: 'hasBeneficiary', type: 'bool' },
         { name: 'maxValue', type: 'uint256' },
+        { name: 'pins', type: 'tuple[]', components: ARG_PIN_COMPONENTS },
       ],
     },
   ],
@@ -56,5 +59,8 @@ export function encodeUniversalTerms(terms: UniversalTermsWire): Hex {
   return encodeAbiParameters([UNIVERSAL_TERMS_PARAM], [terms]);
 }
 export function decodeUniversalTerms(body: Hex): UniversalTermsWire {
-  return decodeAbiParameters([UNIVERSAL_TERMS_PARAM], body)[0];
+  return decodeAbiParameters(
+    [UNIVERSAL_TERMS_PARAM],
+    body
+  )[0] as UniversalTermsWire;
 }

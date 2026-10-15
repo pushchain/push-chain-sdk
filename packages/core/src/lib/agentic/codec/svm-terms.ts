@@ -1,4 +1,4 @@
-/** Internal v5 SVM wire representation; not a proposed public Rule API. */
+/** Internal v6 SVM wire representation; not a proposed public Rule API. */
 import {
   decodeAbiParameters,
   encodeAbiParameters,
@@ -192,7 +192,11 @@ export function validateSvmTerms(t: SvmTermsWire, nowSeconds: number): void {
     if (typeof r.dataless !== 'boolean')
       throw svmInvalid('dataless must be boolean');
     integer(r.discriminatorLen, 8, 'discriminatorLen');
-    integer(r.maxAccounts, SVM_LIMITS.accounts, 'maxAccounts');
+    if (r.maxAccounts !== 255) {
+      integer(r.maxAccounts, SVM_LIMITS.accounts, 'maxAccounts');
+      if (r.maxAccounts === 0)
+        throw svmInvalid('maxAccounts must be 1..64 or 255');
+    }
     if (r.dataless !== (r.discriminatorLen === 0))
       throw svmInvalid('dataless and discriminator length disagree');
     if (isForbiddenSvmProgram(r.program, t))
@@ -227,7 +231,7 @@ export function validateSvmTerms(t: SvmTermsWire, nowSeconds: number): void {
     integer(p.accountIndex, SVM_LIMITS.accounts - 1, 'accountIndex');
     exactHex(p.expected, 32, 'pin expected');
     const count = t.programs[p.ruleIndex].maxAccounts;
-    if (count && p.accountIndex >= count)
+    if (count !== 255 && p.accountIndex >= count)
       throw svmInvalid('pin outside fixed account count');
     const key = `${p.ruleIndex}:${p.accountIndex}`;
     if (positions.has(key)) throw svmInvalid('duplicate account pin');

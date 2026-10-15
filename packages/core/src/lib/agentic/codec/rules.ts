@@ -22,7 +22,7 @@ import {
 import { buildSession, encodeEnvelope, type SessionWire } from './session';
 import { encodeUniversalRule, type ResolvedUniversalRule } from './universal';
 import { encodeSvmTerms, type SvmTermsWire } from './svm-terms';
-import { SEND_OUTBOUND_SELECTOR } from '../contracts/v5';
+import { SEND_OUTBOUND_SELECTOR } from '../contracts/v6';
 import type { UniversalTermsWire } from './universal-terms';
 
 export function isSolanaRule(rule: InternalRule): rule is SolanaRule {
@@ -81,7 +81,7 @@ export interface PreparedRule {
   svmTerms?: SvmTermsWire;
 }
 
-/** Validate before signing. V5 permits several grants for the same agent/chain. */
+/** Validate before signing. V6 permits several grants for the same agent/chain. */
 export function prepareRules(
   rules: readonly InternalRule[],
   ctx: RuleEncodeContext & {

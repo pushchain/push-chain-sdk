@@ -2,7 +2,7 @@
 import { encodeFunctionData, getAddress, type Address, type Hex } from 'viem';
 import { UNIVERSAL_GATEWAY_PC } from '../../constants/abi';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
-import type { Call, SvmConfigRead } from '../contracts/v5';
+import type { Call, SvmConfigRead } from '../contracts/v6';
 import { UINT256_MAX } from '../codec/defaults';
 import { UINT64_MAX } from '../codec/svm-terms';
 import { validateAgwSvmPayload } from './svm-payload';

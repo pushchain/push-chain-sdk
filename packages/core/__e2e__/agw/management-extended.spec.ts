@@ -1,7 +1,7 @@
 import { PushChain } from '../../src';
 import { getAddress, type Address } from 'viem';
 import type { AgenticRuntime } from '../../src/lib/agentic/runtime';
-import { v5 } from '../../src/lib/agentic/contracts/v5';
+import { v6 } from '../../src/lib/agentic/contracts/v6';
 import { setupAgw, inSeconds, type AgwFixture } from './_fixture';
 import { readNativeCounters } from '../shared/agw-state';
 const d = process.env['AGW_E2E'] === '1' ? describe : describe.skip;
@@ -31,7 +31,7 @@ d('agw extended management', () => {
   const count = (wallet: Address) =>
     f.push.readContract({
       address: wallet,
-      abi: v5.abis.wallet,
+      abi: v6.abis.wallet,
       functionName: 'checkpointCount',
     });
   it('1. prefunding a derived address survives deployment and info/list keep owner index and label', async () => {
@@ -166,7 +166,7 @@ d('agw extended management', () => {
     const before = await count(made.wallet),
       grantNonce = await f.push.readContract({
         address: made.wallet,
-        abi: v5.abis.wallet,
+        abi: v6.abis.wallet,
         functionName: 'grantNonce',
       });
     rt.execute = async (params, opts) => {
@@ -200,7 +200,7 @@ d('agw extended management', () => {
     expect(
       await f.push.readContract({
         address: made.wallet,
-        abi: v5.abis.wallet,
+        abi: v6.abis.wallet,
         functionName: 'grantNonce',
       })
     ).toBe(grantNonce);
@@ -234,7 +234,7 @@ d('agw extended management', () => {
         | undefined,
       injected = false;
     rt.execute = async (params, opts) => {
-      if (!injected && Array.isArray(params.data)) {
+      if (!injected && params.to === f.manifest.addresses.factory) {
         injected = true;
         competing = await f.owner.agentic.create('e2e-race-winner', {
           rules: [],
