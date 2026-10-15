@@ -86,6 +86,10 @@ it('scopes money-market approvals to their actual underlying token', () => {
   });
 });
 it.each([
+  'eip155:1',
+  'eip155:8453',
+  'eip155:42161',
+  'eip155:56',
   'eip155:11155111',
   'eip155:84532',
   'eip155:421614',
@@ -225,7 +229,7 @@ it('keeps chains without supplied assets discoverable and regenerates complete p
   const { rules } = agenticPresets.get('DEXES', {
     assets: input.assets!.map((a) => ({ ...a, chainNamespace: chain })),
   });
-  expect(rules).toHaveLength(4);
+  expect(rules).toHaveLength(8);
   expect(
     rules.find((r) => r.chainNamespace === chain)?.allowedCalls
   ).toHaveLength(6);
@@ -245,5 +249,52 @@ it('keeps chains without supplied assets discoverable and regenerates complete p
   expect(ready.allowedCalls).toHaveLength(6);
   expect(
     ready.allowedCalls.every((c) => !c.label?.includes('select two tokens'))
+  ).toBe(true);
+});
+
+it.each(['eip155:1', 'eip155:8453', 'eip155:42161', 'eip155:56'] as const)(
+  'mainnet %s templates preserve one rule per chain, selectors and wallet pins',
+  (chainNamespace) => {
+    for (const category of ['DEXES', 'LENDING'] as const) {
+      const { rules } = agenticPresets.get(category, { chainNamespace });
+      expect(rules).toHaveLength(1);
+      expect(rules[0].chainNamespace).toBe(chainNamespace);
+      expect(rules[0].allowedCalls.length).toBeLessThanOrEqual(32);
+      expect(rules[0].allowedCalls.every((c) => c.selector.includes('('))).toBe(
+        true
+      );
+      expect(
+        rules[0].allowedCalls.some((c) =>
+          c.pins?.some((p) => p.expected === AGENTIC.WALLET)
+        )
+      ).toBe(true);
+      expect(rules[0]).not.toHaveProperty('agent');
+    }
+  }
+);
+
+it('mainnet Lido templates pin withdrawal ownership and keep ETH staking disabled until explicitly capped', () => {
+  const stETH = getAddress('0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84');
+  const { rules } = agenticPresets.get('STAKING', {
+    chainNamespace: 'eip155:1',
+    assets: [{ token: stETH, maxPerCall: BigInt(5), maxTotal: BigInt(10) }],
+  });
+  expect(rules).toHaveLength(1);
+  const calls = rules[0].allowedCalls;
+  expect(calls.find((c) => c.selector === 'submit(address)')?.maxValue).toBe(
+    BigInt(0)
+  );
+  const request = calls.find(
+    (c) => c.selector === 'requestWithdrawals(uint256[],address)'
+  )!;
+  expect(request.pins).toEqual([{ arg: 1, expected: AGENTIC.WALLET }]);
+  expect(evmPinOffset(request.selector, 1)).toBe(36);
+  expect(
+    calls.filter((c) => c.selector === 'approve(address,uint256)')
+  ).toHaveLength(3);
+  expect(
+    calls
+      .filter((c) => c.selector === 'approve(address,uint256)')
+      .every((c) => c.target === stETH && c.pins?.[1].max === BigInt(5))
   ).toBe(true);
 });

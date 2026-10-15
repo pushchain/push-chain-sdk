@@ -45,7 +45,7 @@ function catalog(): PresetDefinition[] {
     },
   ];
 }
-it('ships only verified testnet catalog entries and keeps prediction empty', () => {
+it('ships verified mainnet and testnet templates and keeps prediction empty', () => {
   expect(Object.values(AGENTIC.PRESETS.CATEGORY)).toEqual([
     'DEXES',
     'LENDING',
@@ -54,9 +54,9 @@ it('ships only verified testnet catalog entries and keeps prediction empty', () 
   ]);
   const entries = agenticPresets.list().presets;
   expect(entries.map((p) => [p.constant, p.chains.length])).toEqual([
-    ['DEXES', 4],
-    ['LENDING', 4],
-    ['STAKING', 1],
+    ['DEXES', 8],
+    ['LENDING', 8],
+    ['STAKING', 2],
     ['PREDICTION', 0],
   ]);
   expect(
@@ -64,6 +64,10 @@ it('ships only verified testnet catalog entries and keeps prediction empty', () 
       .flatMap((p) => p.chains)
       .every((c) =>
         [
+          'eip155:1',
+          'eip155:8453',
+          'eip155:42161',
+          'eip155:56',
           'eip155:11155111',
           'eip155:84532',
           'eip155:421614',
@@ -72,9 +76,9 @@ it('ships only verified testnet catalog entries and keeps prediction empty', () 
       )
   ).toBe(true);
   expect(agenticPresets.get('PREDICTION')).toEqual({ rules: [] });
-  expect(agenticPresets.get('DEXES').rules).toHaveLength(4);
+  expect(agenticPresets.get('DEXES').rules).toHaveLength(8);
   expect(() =>
-    agenticPresets.get('LENDING', { chainNamespace: 'eip155:1' })
+    agenticPresets.get('LENDING', { chainNamespace: 'eip155:999999' })
   ).toThrow(/no approved entry/);
 });
 it('groups all apps on a chain into one editable template and omits unspecified fields', () => {
@@ -203,7 +207,7 @@ it('rejects unknown presets, unsupported list types and unsupported chain filter
   const api = buildPresetApi(catalog());
   expect(() => api.get('UNKNOWN' as never)).toThrow(/unknown preset/);
   expect(() => api.list({ type: 'APP' } as never)).toThrow(/only CATEGORY/);
-  expect(() => api.get('DEXES', { chainNamespace: 'eip155:1' })).toThrow(
+  expect(() => api.get('DEXES', { chainNamespace: 'eip155:999999' })).toThrow(
     /no approved entry/
   );
 });

@@ -167,11 +167,11 @@ The wire encoder uses uint32 maximum for unlimited native calls and 255 for unsp
 
 ## Preset discovery and templates (section 7)
 
-`PushChain.utils.agentic` contains `presets.list/get`. The categories are `AGENTIC.PRESETS.CATEGORY.DEXES`, `LENDING`, `STAKING` and `PREDICTION`. The catalog ships testnet templates only:
+`PushChain.utils.agentic` contains `presets.list/get`. The categories are `AGENTIC.PRESETS.CATEGORY.DEXES`, `LENDING`, `STAKING` and `PREDICTION`. The catalog includes mainnet and testnet templates. Discovery is network-independent: pass `chainNamespace` to select the intended chain. A mainnet template does not imply that the connected Push network supports execution to it:
 
-- DEXES: Uniswap V3 on Sepolia, Base Sepolia and Arbitrum Sepolia; PancakeSwap V3 on BSC testnet.
-- LENDING: Aave on the three Ethereum testnets above, Moonwell on Base Sepolia and Venus on BSC testnet.
-- STAKING: EigenLayer deposits on Sepolia; withdrawals are not included.
+- DEXES: Uniswap V3 on Ethereum, Base and Arbitrum (mainnet and their Sepolia testnets); PancakeSwap V3 on BNB mainnet and BSC testnet.
+- LENDING: Aave on Ethereum, Base, Arbitrum and BNB mainnets, plus Sepolia/Base Sepolia/Arbitrum Sepolia; Moonwell on Base mainnet/testnet and Venus on BNB mainnet/testnet.
+- STAKING: EigenLayer deposits on Ethereum mainnet and Sepolia (EigenLayer withdrawals excluded); Lido stake, wrap/unwrap and withdrawal requests/claims on Ethereum mainnet. Lido ETH staking defaults to `maxValue: 0`; explicitly set a value cap before use.
 - PREDICTION: no entries yet. Hide categories with empty `chains` lists.
 
 ```ts
@@ -207,8 +207,15 @@ With two ERC20 tokens, `get` expands ordered pairs into exact-input and exact-ou
 
 Reviewed EVM spenders generate approvals pinned to that spender and bounded by the asset's per-call cap. Money-market approvals are restricted to the market's underlying token. Distinct spenders become separate pinned alternatives under v6. These destination approvals are ordinary ERC20 allowances; the wallet's automatic Push-side gateway approval is separate.
 
-Templates describe permissions, not available liquidity or guaranteed execution. Verify destination token balances, supported reserves and source PRC20 routes before use: protocol testnet mock tokens may differ from MOVEABLE tokens. Presets do not sign, fetch app ABIs or modify wallets. No mainnet templates, dynamic-path swaps, Solana protocol templates or unconfirmed deployments ship in this catalog. Local policy tests do not execute the destination protocols.
+Templates describe permissions, not available liquidity or guaranteed execution. Verify destination token balances, supported reserves and source PRC20 routes before use: protocol testnet mock tokens may differ from MOVEABLE tokens. Presets do not sign, fetch app ABIs or modify wallets. Dynamic-path swaps, Solana protocol templates and unconfirmed deployments are excluded. Mainnet addresses were checked read-only; no mainnet transactions were executed. Other mainnet protocols in the proposal remain excluded until their deployment and permission constraints are verified. Local policy tests do not execute the destination protocols.
 
 ## Validation
 
 Run `node packages/core/scripts/check-agw-docs.js` to typecheck these examples. Unit tests use the normal core Jest configuration. `jest.agw-local.config.ts` uses pinned real AGW contracts and a stub gateway. Live E2Es are opt-in under `__e2e__/agw`; preflight verifies the deployment and funding limits. Local tests do not prove destination delivery, and historical live results do not count as validation of a changed public API.
+
+
+### Live preset acceptance
+
+The opt-in `agw-presets` E2E group exercises real Donut-to-Sepolia protocol calls. From `packages/core`, run `npm run e2e:preflight -- --group agw-presets --dry-run`, then `npm run e2e:ci -- --group agw-presets`. It uses the existing E2E credentials in memory. Each scenario funds a fresh wallet with at most 65 PC plus a fresh agent's configured gas allocation; the Uniswap case also uses 0.000002 pETH. No mainnet transaction is part of this group.
+
+Uniswap uses destination WETH/Circle USDC; Aave uses its faucet LINK. Their generated preset calls and pins are retained, but bridge `assets` are set to `[]` because these destination tokens are not a supported SDK PRC20 pair. The owner funds the CEA separately. These tests establish swaps and lending against actual protocols, not the ability to bridge arbitrary assets. Missing liquidity, exhausted reserve caps or an unavailable faucet fail as prerequisites rather than silently skipping. Results are specific to Sepolia and do not certify the other catalog chains.
