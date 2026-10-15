@@ -165,10 +165,6 @@ export function buildPresetApi(
         const calls = chain.allowedCalls.map(copyCall);
         if (chain.swapRouters?.length) {
           const tokens = assets.get(chain.chainNamespace) ?? [];
-          if (tokens.length < 2)
-            throw invalid(
-              'DEX presets require at least two explicit ERC20 assets per selected chain; select one chain or supply assets for every chain'
-            );
           if (
             tokens.some(
               (a) =>
@@ -179,6 +175,34 @@ export function buildPresetApi(
             throw invalid(
               'DEX token pins require explicit ERC20 addresses; use wrapped-native tokens instead of the native marker'
             );
+          // Keep discovery useful before a swap pair is selected. These review
+          // calls cannot spend input tokens: the amount maximum is explicitly zero.
+          // Re-run get with both tokens to generate the executable pair pins.
+          if (tokens.length < 2)
+            for (const router of chain.swapRouters)
+              for (const exactInput of [true, false])
+                calls.push({
+                  target: router.address,
+                  selector: `${
+                    exactInput ? 'exactInputSingle' : 'exactOutputSingle'
+                  }((address,address,uint24,address,uint256,uint256,uint160))`,
+                  pins: [
+                    ...(tokens.length
+                      ? [
+                          {
+                            arg: [0, 0],
+                            expected: getAddress(tokenAddress(tokens[0].token)),
+                          },
+                        ]
+                      : []),
+                    { arg: [0, 3], expected: 'agentic:wallet' },
+                    { arg: [0, exactInput ? 4 : 5], max: BigInt(0) },
+                  ],
+                  app: router.app,
+                  label: `${
+                    exactInput ? 'Swap exact input' : 'Swap exact output'
+                  } (select two tokens to enable)`,
+                });
           for (const router of chain.swapRouters)
             for (const input of tokens)
               for (const output of tokens) {

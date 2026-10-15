@@ -1,10 +1,4 @@
-import {
-  encodeFunctionData,
-  parseAbi,
-  getAddress,
-  type Address,
-  type Hex,
-} from 'viem';
+import { encodeFunctionData, parseAbi, getAddress, type Address } from 'viem';
 import { agenticPresets } from '../presets';
 import { AGENTIC } from '../constants';
 import { evmPinOffset, normalizePublicRule, publicRules } from '../public-rule';
@@ -45,10 +39,7 @@ it('expands both token directions and exact-input/output with wallet and amount 
     rules[0].allowedCalls.reduce((n, c) => n + (c.pins?.length ?? 0), 0)
   ).toBe(20);
 });
-it('rejects native-token markers, omitted tokens and oversized pin expansion', () => {
-  expect(() => agenticPresets.get('DEXES', { ...input, assets: [] })).toThrow(
-    /two explicit/
-  );
+it('rejects native-token markers and oversized pin expansion', () => {
   expect(() =>
     agenticPresets.get('DEXES', {
       ...input,
@@ -195,4 +186,64 @@ it('mutating a returned tuple path cannot change a later preset', () => {
   expect(
     agenticPresets.get('DEXES', input).rules[0].allowedCalls[0].pins![0].arg
   ).toEqual([0, 0]);
+});
+
+it('returns one zero-input-cap review template per chain without options', () => {
+  const { rules } = agenticPresets.get('DEXES');
+  expect(rules.map((r) => r.chainNamespace)).toEqual(
+    agenticPresets.list().presets.find((p) => p.constant === 'DEXES')!.chains
+  );
+  for (const rule of rules) {
+    expect(rule).not.toHaveProperty('agent');
+    expect(rule).not.toHaveProperty('validUntil');
+    expect(rule).not.toHaveProperty('assets');
+    expect(rule.allowedCalls).toHaveLength(2);
+    rule.allowedCalls.forEach((call, i) => {
+      expect(call.pins).toEqual([
+        { arg: [0, 3], expected: AGENTIC.WALLET },
+        { arg: [0, i === 0 ? 4 : 5], max: BigInt(0) },
+      ]);
+      expect(call.label).toContain('select two tokens');
+    });
+  }
+});
+it('keeps single-token swaps disabled and generates approvals only for the supplied asset', () => {
+  const rule = agenticPresets.get('DEXES', {
+    ...input,
+    assets: [input.assets![0]],
+  }).rules[0];
+  expect(rule.assets).toEqual([input.assets![0]]);
+  expect(rule.allowedCalls).toHaveLength(3);
+  for (const call of rule.allowedCalls.slice(0, 2)) {
+    expect(call.pins).toContainEqual({ arg: [0, 0], expected: tokenA });
+    expect(call.pins?.at(-1)?.max).toBe(BigInt(0));
+  }
+  expect(rule.allowedCalls[2].selector).toBe('approve(address,uint256)');
+  expect(rule.allowedCalls[2].target).toBe(tokenA);
+});
+it('keeps chains without supplied assets discoverable and regenerates complete pairs without disabled alternatives', () => {
+  const { rules } = agenticPresets.get('DEXES', {
+    assets: input.assets!.map((a) => ({ ...a, chainNamespace: chain })),
+  });
+  expect(rules).toHaveLength(4);
+  expect(
+    rules.find((r) => r.chainNamespace === chain)?.allowedCalls
+  ).toHaveLength(6);
+  for (const r of rules.filter((r) => r.chainNamespace !== chain)) {
+    expect(r.assets).toEqual([]);
+    expect(r.allowedCalls).toHaveLength(2);
+    expect(r.allowedCalls.every((c) => c.pins?.at(-1)?.max === BigInt(0))).toBe(
+      true
+    );
+  }
+  const preview = agenticPresets.get('DEXES', {
+    chainNamespace: chain,
+    assets: [],
+  }).rules[0];
+  const ready = agenticPresets.get('DEXES', input).rules[0];
+  expect(preview.allowedCalls).toHaveLength(2);
+  expect(ready.allowedCalls).toHaveLength(6);
+  expect(
+    ready.allowedCalls.every((c) => !c.label?.includes('select two tokens'))
+  ).toBe(true);
 });

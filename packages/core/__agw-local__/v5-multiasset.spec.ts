@@ -296,6 +296,43 @@ describe('v6 multi-asset SDK management and execution', () => {
     });
   });
 
+  it.each(['exactInputSingle', 'exactOutputSingle'] as const)(
+    'a review-only DEX %s call cannot spend tokens even after asset budgets are filled',
+    async (functionName) => {
+      const preview = agenticPresets.get('DEXES', { chainNamespace: CHAIN_NS })
+        .rules[0];
+      const { agent } = await setup({
+        ...preview,
+        agent: h.wallets[1].account!.address,
+        validUntil: Math.floor(Date.now() / 1000) + 3600,
+        maxGasPerCall: BigInt(10) ** BigInt(16),
+        assets: [{ token: a, maxPerCall: BigInt(5), maxTotal: BigInt(20) }],
+      });
+      const router = preview.allowedCalls[0].target as Address;
+      const abi = parseAbi([
+        `function ${functionName}((address,address,uint24,address,uint256,uint256,uint160))`,
+      ]);
+      await expect(
+        agent.universal.sendTransaction({
+          to: { address: router, chain: CHAIN_NS },
+          data: [
+            {
+              to: router,
+              value: BigInt(0),
+              data: encodeFunctionData({
+                abi,
+                functionName,
+                args: [[a, b, 3000, CEA, BigInt(1), BigInt(1), BigInt(0)]],
+              }),
+            },
+          ],
+        })
+      ).rejects.toMatchObject({
+        decodedError: { name: 'PolicyCheckReverted(ArgPinAboveMax)' },
+      });
+    }
+  );
+
   it('a fixture preset produces rules accepted by public create and enforced by real contracts', async () => {
     const presets = buildPresetApi([
       {

@@ -6,7 +6,7 @@ import type { PresetCategory } from './types';
 export interface PresetChainDefinition {
   chainNamespace: ForeignChainNamespace;
   allowedCalls: readonly RuleCall[];
-  /** Static single-hop routers; calls are expanded only for the supplied token pairs. */
+  /** Static single-hop routers; incomplete pairs return zero-input-cap review calls. */
   swapRouters?: readonly { address: Address; app: string }[];
   /** Exact spenders that need an approval for each non-native supplied asset. */
   approvals?: readonly { spender: Address; app: string; token?: Address }[];
