@@ -174,6 +174,17 @@
       "pulled_at": "2026-10-07T10:27:18.466408+00:00",
       "archive": "notion/exports/20261007T102718466408Z/export-4.zip",
       "export_entry": "Private & Shared/agentic_wallet_flow ( updated ) 3d1188aea7f4801f9cb3fbd9318ec536.md"
+    },
+    {
+      "title": "AGW Presets proposal and rules",
+      "page_id": "3f8188aea7f48020a9f0d10ea5325467",
+      "notion_url": "https://app.notion.com/p/pushprotocol/AGW-Presets-proposal-and-rules-3f8188aea7f48020a9f0d10ea5325467",
+      "local_file": "notion/agw-presets-proposal-and-rules.md",
+      "pulled_on": "2026-10-15",
+      "observed_last_edited_date": "2026-10-13",
+      "authority": "Preset proposal; testnet-only scope confirmed by user",
+      "sha256": "bdbf56ceaad6a46cc7f71286e2094cd698b671a7e1fa77acac121a3587e4a4f4",
+      "archive": "research/preset-catalog-2026-10-15/notion-export.zip"
     }
   ],
   "last_refresh_at": "2026-10-07T10:27:18.466408+00:00",
