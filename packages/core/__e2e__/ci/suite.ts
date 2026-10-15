@@ -38,6 +38,7 @@ export const GROUPS = [
   'agw-svm-wire',
   'agw-svm-replay',
   'agw-presets',
+  'agw-presets-expanded',
 ] as const;
 
 export type Group = (typeof GROUPS)[number];
@@ -983,6 +984,46 @@ export const SCENARIOS: Scenario[] = [
     file: F.agwLifecycle,
     grep: 'agw lifecycle 4\\. revoke',
     needs: { masterPC: '0.5' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-preset-eigen-sepolia',
+    group: 'agw-presets-expanded',
+    file: '__e2e__/agw/presets-expanded-live.spec.ts',
+    grep: 'agw presets expanded 1',
+    needs: { masterPC: '110', masterPETH: '0.000001' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-preset-dex-base',
+    group: 'agw-presets-expanded',
+    file: '__e2e__/agw/presets-expanded-live.spec.ts',
+    grep: 'agw presets expanded 2',
+    needs: { masterPC: '110' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-preset-dex-aave-arbitrum',
+    group: 'agw-presets-expanded',
+    file: '__e2e__/agw/presets-expanded-live.spec.ts',
+    grep: 'agw presets expanded 3',
+    needs: { masterPC: '110' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-preset-dex-venus-bnb',
+    group: 'agw-presets-expanded',
+    file: '__e2e__/agw/presets-expanded-live.spec.ts',
+    grep: 'agw presets expanded 4',
+    needs: { masterPC: '110' },
+    env: { AGW_E2E: '1' },
+  },
+  {
+    id: 'agw-preset-base-aave-moonwell',
+    group: 'agw-presets-expanded',
+    file: '__e2e__/agw/presets-expanded-live.spec.ts',
+    grep: 'agw presets expanded 5',
+    needs: { masterPC: '110' },
     env: { AGW_E2E: '1' },
   },
   {
