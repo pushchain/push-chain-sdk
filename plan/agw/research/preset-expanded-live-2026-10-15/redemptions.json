@@ -1,0 +1,47 @@
+[
+  {
+    "chain": "eip155:97",
+    "rpc": "https://bsc-testnet-rpc.publicnode.com",
+    "wallet": "0xce76840d3ee4579217D5F2de1d3767b7EAe54605",
+    "cea": "0x3c0a4e2f349059D5d1309d0f57871b1b9a4E1192",
+    "expectedShares": "16740010",
+    "stage": "venus-redeem-completed",
+    "market": "0xb7526572FFE56AB9D7489838Bf2E18e3323b441A",
+    "underlying": "0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c",
+    "tx": "0xc7ab68b6f72171c83a2ec5cce9c3a0df66a53be60e3f46e9a2d4a6c49f25c4e0",
+    "block": "136855138",
+    "redeemAmount": "3360",
+    "redeemedShares": "16740010",
+    "remainingShares": "0"
+  },
+  {
+    "chain": "eip155:84532",
+    "rpc": "https://base-sepolia-rpc.publicnode.com",
+    "wallet": "0xF3445c8d5557Fab0519dA9c75eaB2B995F42B32f",
+    "cea": "0xe37A1890878CEF71210Be37fae802e234E55eD44",
+    "expectedShares": "49999832",
+    "stage": "lending-withdraw-completed",
+    "market": "0x876852425331a113d8E432eFFB3aC5BEf38f033a",
+    "underlying": "0x4616975f7E6045FD9737e95bC527e9e14c727BD2",
+    "tx": "0x1bc2a2e5849d3e61c7e7927360c6f7936d0399a8c27cc2f988f6f4e54256366e",
+    "block": "48131861",
+    "redeemAmount": "9999",
+    "redeemedShares": "49999832",
+    "remainingShares": "0"
+  },
+  {
+    "chain": "eip155:84532",
+    "rpc": "https://base-sepolia-rpc.publicnode.com",
+    "wallet": "0xF3445c8d5557Fab0519dA9c75eaB2B995F42B32f",
+    "cea": "0xe37A1890878CEF71210Be37fae802e234E55eD44",
+    "expectedShares": "2945",
+    "stage": "lending-withdraw-completed",
+    "market": "0x2F39a349A79492a70E152760ce7123A1933eCf28",
+    "underlying": "0x663A6F02d547dFd639BF689FED298712f2FB69Fb",
+    "tx": "0x1bc2a2e5849d3e61c7e7927360c6f7936d0399a8c27cc2f988f6f4e54256366e",
+    "block": "48131861",
+    "redeemAmount": "999943876358",
+    "redeemedShares": "2945",
+    "remainingShares": "0"
+  }
+]

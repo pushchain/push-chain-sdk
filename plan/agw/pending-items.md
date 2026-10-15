@@ -5,7 +5,7 @@ October 15, 2026. The newly downloaded SDK sections 6/7 supersede the earlier `a
 | Item | Owner / dependency | Completion condition |
 | --- | --- | --- |
 | Native 1..32 calls in spec versus deployed maximum 8 | Product/contracts | Align spec or deploy increased ceiling; SDK enforces 8 now |
-| Additional preset protocols / chains | SDK + protocol prerequisites | Verified subset is implemented on mainnet/testnet; expand excluded rows only after deployment/function/permission checks; live acceptance is per protocol/chain |
+| Additional preset protocols / chains | SDK + protocol prerequisites | Every shipped testnet protocol/chain combination now has a positive live flow. Remaining coverage is borrow/repay, other markets/methods and mainnet; expand excluded protocol rows only after deployment/function/permission checks |
 | Exact authored ABI reconstruction on reads | Spec metadata, optional | Static tuple/fixed-array paths now work. Raw selector + word positions roundtrip losslessly; recovering original names/types requires metadata not stored by contracts |
 | Native historical lifetime limits | Spec/migration | Define a lossless public representation if these old grants must be editable; never drop their restrictions silently |
 | Revert credit | Push-core executor | Executor invokes creditRevert; verify restored spend independently |

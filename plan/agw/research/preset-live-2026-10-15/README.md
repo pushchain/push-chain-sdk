@@ -37,4 +37,4 @@ Root validation: full unit suite 2,096 passed / 12 skipped; build, library/spec 
 
 ## Remaining coverage
 
-Real trades/deposits on Base, Arbitrum and BNB and EigenLayer staking are not established by these Sepolia results. Mainnet templates have official-source and read-only code checks only. Unsupported/unverified proposal entries are documented in the mainnet catalog review. No external protocol address was deployed or changed by this work.
+These original Sepolia results do not establish other-chain coverage. A subsequent [expanded run](../preset-expanded-live-2026-10-15/README.md) now establishes Base/Arbitrum Uniswap, BNB PancakeSwap/Venus, Base/Arbitrum Aave, Base Moonwell and Sepolia EigenLayer flows. Mainnet templates have official-source and read-only code checks only. Unsupported/unverified proposal entries are documented in the mainnet catalog review. No external protocol address was deployed or changed by this work.

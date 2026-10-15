@@ -1,0 +1,9 @@
+{
+  "block": "11917418",
+  "strategy": "0x424246eF71b01ee33aA33aC590fd9a0855F5eFbc",
+  "manager": "0x2E3D6c0744b10eb0A4e6F679F71554a39Ec47a5D",
+  "underlying": "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9",
+  "whitelisted": true,
+  "paused": "0",
+  "wrap": "ok"
+}

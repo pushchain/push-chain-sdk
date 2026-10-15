@@ -24,3 +24,8 @@ Enumerable DEXES/LENDING/STAKING/PREDICTION constants; list/get only; one rule p
 ## Validation
 
 Latest full unit run: 2,096 passed, 12 skipped, zero failures. Focused preset tests: 44 passed. The zero-cap review flow passed 16 local real-v6 contract tests. Test selection includes two separate opt-in agw-presets scenarios (Uniswap and Aave), and leaves the default all group unchanged. Uniswap and Aave LINK live scenarios passed in separate runs; Aave USDC hit its protocol supply cap before the LINK correction. [Live results and transaction evidence](research/preset-live-2026-10-15/README.md).
+
+
+## Expanded live acceptance (October 15)
+
+Five additional scenarios now pass across focused runs: EigenLayer Sepolia; Base Uniswap; Arbitrum Uniswap/Aave; BNB PancakeSwap/Venus; Base Aave/Moonwell. Combined with the earlier Sepolia runs, every shipped testnet protocol/chain combination has at least one positive live flow. The runs found and fixed destination-aware native ETH PRC20 resolution. Borrow/repay, every market and mainnet execution are not claimed. [Evidence and exact limits](research/preset-expanded-live-2026-10-15/README.md).

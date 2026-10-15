@@ -1,5 +1,7 @@
 # AGW SDK implementation status
 
+**October 15 — expanded preset live acceptance:** Five additional scenarios passed across focused runs, covering every shipped testnet protocol/chain combination together with the earlier two Sepolia scenarios. Found and fixed AGW explicit ETH token resolution on Base/Arbitrum; no public signature changed. **2,101 unit tests**, **16 local contract tests**, build/typechecks/package checks pass. [Evidence, initial failures and scope limits](research/preset-expanded-live-2026-10-15/README.md).
+
 **October 15 — presets:** Verified mainnet/testnet templates, static tuple paths and the approved zero-cap review/regenerate flow are implemented. Full unit suite: **2,096 passed**, 12 skipped. Preset-focused tests: **44 passed**; review-flow local contract suite: **16 passed**. [Current scope and remaining work](section7-presets.md). Dated entries below are historical where they differ. **Two real Donut→Sepolia protocol scenarios passed** (Uniswap swap and Aave LINK supply/withdraw, separate runs). Mainnet templates are read-only verified. Live app coverage is tracked in [preset acceptance](research/preset-live-2026-10-15/README.md).
 
 **October 14 — v6 integration complete locally:** source `ffd567d`; v6-only deployment/ABIs, atomic indexed creation, automatic outbound approvals, native/EVM EQ/MAX pins, new unlimited sentinels and linked Solana error decoding are integrated.
