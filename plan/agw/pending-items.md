@@ -4,6 +4,8 @@ October 15, 2026. The newly downloaded SDK sections 6/7 supersede the earlier `a
 
 | Item | Owner / dependency | Completion condition |
 | --- | --- | --- |
+| New preset-limit live acceptance | SDK / network processing | Updated local policy tests pass; funded Aave/BNB/Base setup waits timed out. Re-run affected scenarios without counting earlier unrestricted catalog results |
+| Destination aggregate spend semantics | Product/contracts | Confirm whether limits must aggregate a batch or destination lifetime activity; current pins are per allowed call and maxTotal is Push-outbound only |
 | Native 1..32 calls in spec versus deployed maximum 8 | Product/contracts | Align spec or deploy increased ceiling; SDK enforces 8 now |
 | Additional preset protocols / chains | SDK + protocol prerequisites | Every shipped testnet protocol/chain combination now has a positive live flow. Remaining coverage is borrow/repay, other markets/methods and mainnet; expand excluded protocol rows only after deployment/function/permission checks |
 | Exact authored ABI reconstruction on reads | Spec metadata, optional | Static tuple/fixed-array paths now work. Raw selector + word positions roundtrip losslessly; recovering original names/types requires metadata not stored by contracts |

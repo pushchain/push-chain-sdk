@@ -1,0 +1,6 @@
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/agentic/__tests__/preset-operation-limits.spec.ts
+  158:19  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+✖ 1 problem (0 errors, 1 warning)
+
