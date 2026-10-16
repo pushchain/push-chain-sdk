@@ -75,7 +75,10 @@ it('ships verified mainnet and testnet templates and keeps prediction empty', ()
         ].includes(c)
       )
   ).toBe(true);
-  expect(agenticPresets.get('PREDICTION')).toEqual({ rules: [] });
+  expect(agenticPresets.get('PREDICTION')).toEqual({
+    rules: [],
+    readiness: { ready: false, chains: [] },
+  });
   expect(agenticPresets.get('DEXES').rules).toHaveLength(8);
   expect(() =>
     agenticPresets.get('LENDING', { chainNamespace: 'eip155:999999' })

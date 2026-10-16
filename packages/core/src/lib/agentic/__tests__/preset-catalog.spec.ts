@@ -79,7 +79,7 @@ it('scopes money-market approvals to their actual underlying token', () => {
   const approvals = r.allowedCalls.filter(
     (c) => c.selector === 'approve(address,uint256)'
   );
-  expect(approvals).toHaveLength(2); // Aave and mUSDbC, never the mWETH market.
+  expect(approvals).toHaveLength(1); // Only mUSDbC: this mock token is not an Aave reserve.
   expect(approvals.flatMap((c) => c.pins ?? [])).not.toContainEqual({
     arg: 0,
     expected: getAddress('0x2F39a349A79492a70E152760ce7123A1933eCf28'),
@@ -273,28 +273,37 @@ it.each(['eip155:1', 'eip155:8453', 'eip155:42161', 'eip155:56'] as const)(
   }
 );
 
-it('mainnet Lido templates pin withdrawal ownership and keep ETH staking disabled until explicitly capped', () => {
+it('mainnet Lido uses the selected token units and excludes unbounded withdrawal/claim methods', () => {
   const stETH = getAddress('0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84');
-  const { rules } = agenticPresets.get('STAKING', {
+  const { rules, readiness } = agenticPresets.get('STAKING', {
     chainNamespace: 'eip155:1',
     assets: [{ token: stETH, maxPerCall: BigInt(5), maxTotal: BigInt(10) }],
   });
-  expect(rules).toHaveLength(1);
   const calls = rules[0].allowedCalls;
-  expect(calls.find((c) => c.selector === 'submit(address)')?.maxValue).toBe(
-    BigInt(0)
+  expect(
+    calls.find((c) => c.selector === 'wrap(uint256)')?.pins
+  ).toContainEqual({ arg: 0, max: BigInt(5) });
+  expect(calls.some((c) => c.selector === 'submit(address)')).toBe(false);
+  expect(
+    calls.some(
+      (c) =>
+        c.selector.startsWith('requestWithdrawals') ||
+        c.selector.startsWith('claimWithdraw')
+    )
+  ).toBe(false);
+  expect(readiness.chains[0].excludedCalls).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        selector: 'requestWithdrawals(uint256[],address)',
+        reason: 'DYNAMIC_AMOUNT',
+      }),
+      expect.objectContaining({
+        selector: 'claimWithdrawal(uint256)',
+        reason: 'POSITION_AMOUNT',
+      }),
+    ])
   );
-  const request = calls.find(
-    (c) => c.selector === 'requestWithdrawals(uint256[],address)'
-  )!;
-  expect(request.pins).toEqual([{ arg: 1, expected: AGENTIC.WALLET }]);
-  expect(evmPinOffset(request.selector, 1)).toBe(36);
   expect(
     calls.filter((c) => c.selector === 'approve(address,uint256)')
-  ).toHaveLength(3);
-  expect(
-    calls
-      .filter((c) => c.selector === 'approve(address,uint256)')
-      .every((c) => c.target === stETH && c.pins?.[1].max === BigInt(5))
-  ).toBe(true);
+  ).toHaveLength(2);
 });

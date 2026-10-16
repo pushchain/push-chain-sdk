@@ -9,9 +9,12 @@ import type {
   AgenticPresets,
   PresetOptions,
   PresetRuleTemplate,
+  PresetChainReadiness,
+  PresetConfigurationIssue,
 } from './types';
 import { parseSelector } from '../codec/selectors';
 import { PRESET_CATALOG, type PresetDefinition } from './catalog';
+import { applyOperationLimits, assetAddress } from './operation-limits';
 
 const MAX_UINT256 = (BigInt(1) << BigInt(256)) - BigInt(1);
 const invalid = (message: string) =>
@@ -59,8 +62,23 @@ export function buildPresetApi(
     ...p,
     chains: p.chains.map((c) => ({
       ...c,
-      allowedCalls: c.allowedCalls.map(copyCall),
-      approvals: c.approvals?.map((a) => ({ ...a })),
+      allowedCalls: c.allowedCalls.map((call) => ({
+        ...copyCall(call),
+        ...(call.budget
+          ? {
+              budget: {
+                ...call.budget,
+                ...(call.budget.kind === 'token-argument' && call.budget.tokens
+                  ? { tokens: [...call.budget.tokens] }
+                  : {}),
+              },
+            }
+          : {}),
+      })),
+      approvals: c.approvals?.map((a) => ({
+        ...a,
+        ...(a.tokens ? { tokens: [...a.tokens] } : {}),
+      })),
       swapRouters: c.swapRouters?.map((r) => ({ ...r })),
     })),
   }));
@@ -161,8 +179,17 @@ export function buildPresetApi(
         });
         assets.set(chain, group);
       }
+      const readiness: PresetChainReadiness[] = [];
       const rules: PresetRuleTemplate[] = chains.map((chain) => {
-        const calls = chain.allowedCalls.map(copyCall);
+        const selectedAssets = assets.get(chain.chainNamespace) ?? [];
+        const limits = applyOperationLimits(
+          chain.allowedCalls.map((c) => ({
+            ...copyCall(c),
+            ...(c.budget ? { budget: c.budget } : {}),
+          })),
+          selectedAssets
+        );
+        const calls = limits.calls;
         if (chain.swapRouters?.length) {
           const tokens = assets.get(chain.chainNamespace) ?? [];
           if (
@@ -236,6 +263,23 @@ export function buildPresetApi(
                   });
               }
         }
+        if (chain.swapRouters?.length) {
+          const swaps = calls.filter((c) => c.selector.startsWith('exact'));
+          for (const c of swaps) {
+            const positive = c.pins?.some(
+              (p) => 'max' in p && p.max !== undefined && p.max > BigInt(0)
+            );
+            if (positive) limits.enabled = true;
+            else
+              limits.disabledCalls.push({
+                target: c.target,
+                selector: c.selector,
+                app: c.app,
+                reason:
+                  selectedAssets.length < 2 ? 'TOKEN_REQUIRED' : 'ZERO_CAP',
+              });
+          }
+        }
         const approvals = new Set<string>();
         for (const asset of assets.get(chain.chainNamespace) ?? []) {
           const token = tokenAddress(asset.token);
@@ -254,6 +298,11 @@ export function buildPresetApi(
             if (
               approval.token &&
               getAddress(token) !== getAddress(approval.token)
+            )
+              continue;
+            if (
+              approval.tokens &&
+              !approval.tokens.some((t) => getAddress(t) === getAddress(token))
             )
               continue;
             const spender = getAddress(approval.spender);
@@ -307,6 +356,54 @@ export function buildPresetApi(
             );
           pairs.set(pair, !!call.pins?.length);
         }
+        const issues: PresetConfigurationIssue[] = [];
+        if (!options.agent)
+          issues.push({
+            code: 'AGENT_REQUIRED',
+            message: 'Choose the agent Push address.',
+          });
+        if (!options.validUntil)
+          issues.push({
+            code: 'EXPIRY_REQUIRED',
+            message: 'Choose an expiry.',
+          });
+        if (
+          (options.maxGasPerCall ?? chain.maxGasPerCall ?? BigInt(0)) ===
+          BigInt(0)
+        )
+          issues.push({
+            code: 'GAS_BUDGET_REQUIRED',
+            message: 'Set a positive PC gas budget per outbound.',
+          });
+        if (!selectedAssets.length)
+          issues.push({
+            code: 'ASSETS_REQUIRED',
+            message:
+              'Choose tokens and their limits, then regenerate this preset.',
+          });
+        if (chain.swapRouters?.length && selectedAssets.length < 2)
+          issues.push({
+            code: 'TOKEN_PAIR_REQUIRED',
+            message: 'Choose both swap tokens, then regenerate this preset.',
+          });
+        if (!limits.enabled)
+          issues.push({
+            code: 'NO_ENABLED_OPERATION',
+            message: 'No asset operation has a positive per-call limit.',
+          });
+        readiness.push({
+          chainNamespace: chain.chainNamespace,
+          ready: issues.length === 0,
+          issues,
+          disabledCalls: limits.disabledCalls,
+          excludedCalls: limits.excludedCalls,
+          knownTokens: limits.knownTokens,
+          zeroBridgeLimits: selectedAssets
+            .filter(
+              (a) => a.maxPerCall === BigInt(0) || a.maxTotal === BigInt(0)
+            )
+            .map(assetAddress),
+        });
         return {
           chainNamespace: chain.chainNamespace,
           allowedCalls: calls,
@@ -329,7 +426,13 @@ export function buildPresetApi(
             : {}),
         };
       });
-      return { rules };
+      return {
+        rules,
+        readiness: {
+          ready: readiness.length > 0 && readiness.every((c) => c.ready),
+          chains: readiness,
+        },
+      };
     },
   };
   // The overload narrows templates only when both required fields were supplied and validated.

@@ -36,5 +36,9 @@ export type {
   PresetOptions,
   ReadyPresetOptions,
   PresetRuleTemplate,
+  PresetResult,
+  PresetChainReadiness,
+  PresetConfigurationIssue,
+  PresetCallIssue,
   AgenticPresets,
 } from './presets/types';

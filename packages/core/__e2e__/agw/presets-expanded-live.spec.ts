@@ -46,7 +46,8 @@ const AAVE = parseAbi([
 ]);
 const MARKET = parseAbi([
   'function mint(uint256) returns(uint256)',
-  'function redeem(uint256) returns(uint256)',
+  'function redeemUnderlying(uint256) returns(uint256)',
+  'function exchangeRateStored() view returns(uint256)',
   'function balanceOf(address) view returns(uint256)',
 ]);
 const read = (chain: Destination) =>
@@ -193,6 +194,22 @@ function assertRedemption(
   expect(event?.args.redeemAmount).toBe(received);
 }
 
+async function underlyingRedemption(
+  chain: Destination,
+  market: Address,
+  shares: bigint,
+  cap: bigint
+) {
+  const rate = await read(chain).readContract({
+    address: market,
+    abi: MARKET,
+    functionName: 'exchangeRateStored',
+  });
+  const amount = (shares * rate) / BigInt(10) ** BigInt(18);
+  const bounded = amount < cap ? amount : cap;
+  expect(bounded).toBeGreaterThan(ZERO);
+  return bounded;
+}
 async function wrap(
   f: AgwFixture,
   w: Awaited<ReturnType<typeof walletFor>>,
@@ -293,6 +310,29 @@ d('agw presets expanded', () => {
       functionName: 'stakerDepositShares',
       args: [w.cea, strategy],
     });
+    for (const [inputToken, amount, error] of [
+      [token, SMALL + BigInt(1), 'ArgPinAboveMax'],
+      [strategy, SMALL, 'ArgPinMismatch'],
+    ] as const) {
+      await expect(
+        w.agent.universal.sendTransaction({
+          to: { address: manager, chain },
+          gasLimit: BigInt(2_000_000),
+          data: [
+            call(
+              manager,
+              encodeFunctionData({
+                abi,
+                functionName: 'depositIntoStrategy',
+                args: [strategy, inputToken, amount],
+              })
+            ),
+          ],
+        })
+      ).rejects.toMatchObject({
+        decodedError: { name: `PolicyCheckReverted(${error})` },
+      });
+    }
     await send(
       f,
       w,
@@ -532,6 +572,12 @@ d('agw presets expanded', () => {
       const shares = await balance(chain, venus, w.cea);
       expect(shares).toBeGreaterThan(ZERO);
       expect(await balance(chain, output, w.cea)).toBe(before);
+      const redeemAmount = await underlyingRedemption(
+        chain,
+        venus,
+        shares,
+        received
+      );
       const redemption = await send(
         f,
         w,
@@ -542,16 +588,24 @@ d('agw presets expanded', () => {
             venus,
             encodeFunctionData({
               abi: MARKET,
-              functionName: 'redeem',
-              args: [shares],
+              functionName: 'redeemUnderlying',
+              args: [redeemAmount],
             })
           ),
         ],
         'venus-redeem'
       );
       const redeemed = (await balance(chain, output, w.cea)) - before;
-      expect(await balance(chain, venus, w.cea)).toBe(ZERO);
-      assertRedemption(redemption, venus, w.cea, shares, redeemed);
+      const remainingShares = await balance(chain, venus, w.cea);
+      expect(remainingShares).toBeLessThan(shares);
+      expect(redeemed).toBe(redeemAmount);
+      assertRedemption(
+        redemption,
+        venus,
+        w.cea,
+        shares - remainingShares,
+        redeemed
+      );
       expect(redeemed).toBeGreaterThanOrEqual(
         (received * BigInt(99)) / BigInt(100)
       );
@@ -562,6 +616,7 @@ d('agw presets expanded', () => {
         deposited: received,
         redeemed,
         shares,
+        remainingShares,
         asset: output,
       });
     }
@@ -678,6 +733,18 @@ d('agw presets expanded', () => {
     expect(await balance(chain, link, w.cea)).toBe(ZERO);
     expect(await balance(chain, usdbc, w.cea)).toBe(ZERO);
     expect(await balance(chain, weth, w.cea)).toBe(ZERO);
+    const redeemUSDBC = await underlyingRedemption(
+      chain,
+      mUSDBC,
+      sharesUSDBC,
+      amountUSDBC
+    );
+    const redeemWETH = await underlyingRedemption(
+      chain,
+      mWETH,
+      sharesWETH,
+      SMALL
+    );
     const redemption = await send(
       f,
       w,
@@ -696,16 +763,16 @@ d('agw presets expanded', () => {
           mUSDBC,
           encodeFunctionData({
             abi: MARKET,
-            functionName: 'redeem',
-            args: [sharesUSDBC],
+            functionName: 'redeemUnderlying',
+            args: [redeemUSDBC],
           })
         ),
         call(
           mWETH,
           encodeFunctionData({
             abi: MARKET,
-            functionName: 'redeem',
-            args: [sharesWETH],
+            functionName: 'redeemUnderlying',
+            args: [redeemWETH],
           })
         ),
       ],
@@ -718,20 +785,24 @@ d('agw presets expanded', () => {
     expect(await balance(chain, weth, w.cea)).toBeGreaterThanOrEqual(
       (SMALL * BigInt(99)) / BigInt(100)
     );
-    expect(await balance(chain, mUSDBC, w.cea)).toBe(ZERO);
-    expect(await balance(chain, mWETH, w.cea)).toBe(ZERO);
+    const remainingUSDBC = await balance(chain, mUSDBC, w.cea),
+      remainingWETH = await balance(chain, mWETH, w.cea);
+    expect(remainingUSDBC).toBeLessThan(sharesUSDBC);
+    expect(remainingWETH).toBeLessThan(sharesWETH);
+    expect(await balance(chain, usdbc, w.cea)).toBe(redeemUSDBC);
+    expect(await balance(chain, weth, w.cea)).toBe(redeemWETH);
     assertRedemption(
       redemption,
       mUSDBC,
       w.cea,
-      sharesUSDBC,
+      sharesUSDBC - remainingUSDBC,
       await balance(chain, usdbc, w.cea)
     );
     assertRedemption(
       redemption,
       mWETH,
       w.cea,
-      sharesWETH,
+      sharesWETH - remainingWETH,
       await balance(chain, weth, w.cea)
     );
     f.evidence('preset-expanded-base-lending', {

@@ -1,4 +1,5 @@
 import { agenticPresets } from '../src/lib/agentic/presets';
+import * as accountLookup from '../src/lib/universal/account/account';
 import { buildPresetApi } from '../src/lib/agentic/presets';
 import { publicRules } from '../src/lib/agentic/public-rule';
 /** Actual v6 AGW/URP/engine. Token/core/gateway and destination lookup are local fixtures; no bridge/TSS proof. */
@@ -39,7 +40,13 @@ const internal = (c: PushChain) =>
 
 describe('v6 multi-asset SDK management and execution', () => {
   let h: Harness, owner: PushChain, a: Address, b: Address;
+  let originLookup: jest.SpyInstance;
   beforeAll(async () => {
+    // This harness deploys no UEA factory; its receivers are local contracts.
+    // Keep actual AGW/RPC execution while isolating response-origin metadata.
+    originLookup = jest
+      .spyOn(accountLookup, 'convertExecutorToOrigin')
+      .mockResolvedValue({ account: null, exists: false });
     h = await startHarness(18551);
     owner = await h.client(0);
     a = await h.deploy(0, 'HarnessPRC20', 'HarnessFixtures.sol', [CHAIN_NS, 6]);
@@ -54,7 +61,11 @@ describe('v6 multi-asset SDK management and execution', () => {
     configure(internal(owner));
   });
   afterAll(async () => {
-    await h?.stop();
+    try {
+      await h?.stop();
+    } finally {
+      originLookup?.mockRestore();
+    }
   });
   function configure(rt: AgenticRuntime) {
     // Fixture source token addresses equal fixture PRC20s; production uses the token registry.
@@ -330,6 +341,116 @@ describe('v6 multi-asset SDK management and execution', () => {
       ).rejects.toMatchObject({
         decodedError: { name: 'PolicyCheckReverted(ArgPinAboveMax)' },
       });
+    }
+  );
+
+  it.each(['LENDING', 'STAKING'] as const)(
+    'regenerated %s presets enforce new token/amount pins through atomic rules.update',
+    async (category) => {
+      const firstToken = getAddress(
+        '0xf8Fb3713D459D7C1018BD0A49D19b4C44290EBE5'
+      );
+      const nextToken = getAddress(
+        '0x29f2D40B0605204364af54EC677bD022dA425d03'
+      );
+      const opts = {
+        chainNamespace: CHAIN_NS,
+        agent: h.wallets[1].account!.address,
+        validUntil: Math.floor(Date.now() / 1000) + 3600,
+        maxGasPerCall: BigInt(10) ** BigInt(16),
+      };
+      const preview = agenticPresets.get(category, opts);
+      expect(preview.readiness.ready).toBe(false);
+      const { wallet, id, agent } = await setup({
+        ...preview.rules[0],
+        assets: [],
+      });
+      const target = preview.rules[0].allowedCalls[0].target as Address;
+      const abi = parseAbi([
+        'function supply(address,uint256,address,uint16)',
+        'function depositIntoStrategy(address,address,uint256)',
+      ]);
+      const send = (token: Address, amount: bigint, count = 1) =>
+        agent.universal.sendTransaction({
+          to: { address: target, chain: CHAIN_NS },
+          data: Array.from({ length: count }, () => ({
+            to: target,
+            value: BigInt(0),
+            data:
+              category === 'LENDING'
+                ? encodeFunctionData({
+                    abi,
+                    functionName: 'supply',
+                    args: [token, amount, CEA, 0],
+                  })
+                : encodeFunctionData({
+                    abi,
+                    functionName: 'depositIntoStrategy',
+                    args: [DEST, token, amount],
+                  }),
+          })),
+        });
+      await expect(send(firstToken, BigInt(1))).rejects.toMatchObject({
+        decodedError: { name: 'PolicyCheckReverted(ArgPinAboveMax)' },
+      });
+      const w = owner.agentic.wallet(wallet);
+      const first = agenticPresets.get(category, {
+        ...opts,
+        assets: [
+          { token: firstToken, maxPerCall: BigInt(5), maxTotal: BigInt(10) },
+        ],
+      });
+      expect(first.readiness.ready).toBe(true);
+      const before = await h.publicClient.readContract({
+        address: wallet,
+        abi: h.generation.contracts.abis.wallet,
+        functionName: 'checkpointCount',
+      });
+      const added = await w.rules.update({
+        rules: [{ rulesId: id, rule: { ...first.rules[0], assets: [] } }],
+      });
+      expect(
+        await h.publicClient.readContract({
+          address: wallet,
+          abi: h.generation.contracts.abis.wallet,
+          functionName: 'checkpointCount',
+        })
+      ).toBe(before + BigInt(5));
+      await waitPush(send(firstToken, BigInt(5)));
+      // Per-call MAX permits two calls of 5 in one outbound; it is not a batch-total cap.
+      await waitPush(send(firstToken, BigInt(5), 2));
+      await expect(send(firstToken, BigInt(6))).rejects.toMatchObject({
+        decodedError: { name: 'PolicyCheckReverted(ArgPinAboveMax)' },
+      });
+      await expect(send(nextToken, BigInt(1))).rejects.toMatchObject({
+        decodedError: { name: 'PolicyCheckReverted(ArgPinMismatch)' },
+      });
+      const changed = agenticPresets.get(category, {
+        ...opts,
+        assets: [
+          { token: nextToken, maxPerCall: BigInt(2), maxTotal: BigInt(10) },
+        ],
+      });
+      const replaced = await w.rules.update({
+        rules: [
+          {
+            rulesId: added.rules[0].rulesId,
+            rule: { ...changed.rules[0], assets: [] },
+          },
+        ],
+      });
+      expect(replaced.rules[0].rulesId).not.toBe(added.rules[0].rulesId);
+      await expect(send(firstToken, BigInt(1))).rejects.toMatchObject({
+        decodedError: { name: 'PolicyCheckReverted(ArgPinMismatch)' },
+      });
+      await expect(send(nextToken, BigInt(3))).rejects.toMatchObject({
+        decodedError: { name: 'PolicyCheckReverted(ArgPinAboveMax)' },
+      });
+      await waitPush(send(nextToken, BigInt(2)));
+      // Calls using destination-held capital do not consume the Push bridge counter.
+      expect(
+        (await stored(wallet, replaced.rules[0].rulesId)).assets[0].spent
+      ).toBe(BigInt(0));
     }
   );
 
