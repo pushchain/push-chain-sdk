@@ -64,6 +64,7 @@ import {
   deriveAtaPubkey,
 } from '../../src/lib/orchestrator/internals/svm-rent';
 import { scenariosFor, aggregateNeeds, type Asset } from './suite';
+import { loadAgwManifest, verifyAgwManifest } from '../agw/_manifest';
 
 // ---------------------------------------------------------------------------
 // tunables
@@ -285,6 +286,10 @@ function renderTable(rows: Row[]): void {
 (async () => {
   const scenarios = scenariosFor(group);
   const raw = aggregateNeeds(scenarios);
+  if (group === 'agw-svm-replay') {
+    console.log('Recorded SVM replay is read-only: no keys, signing or funding needed.');
+    return;
+  }
 
   /** Summed need for an asset, with headroom and reserve, as a decimal string. */
   const target = (a: Asset): number => {
@@ -326,6 +331,26 @@ function renderTable(rows: Row[]): void {
     chain: pushChainDef,
     transport: fallback(pushRpcs.map((u) => http(u))),
   }) as PublicClient;
+
+  // -- AGW gate ------------------------------------------------------------
+  // Every AGW group needs a verified compatible AGW deployment.
+  // Check it read-only BEFORE any balance work so nothing is ever funded for
+  // a run that cannot exercise a real deployment.
+  if (scenarios.some((s) => s.group.startsWith('agw'))) {
+    try {
+      await verifyAgwManifest(push, loadAgwManifest());
+      console.log('AGW deployment manifest verified on-chain.');
+    } catch (err) {
+      console.error(`\n${(err as Error).message}`);
+      console.error('No transactions were sent.');
+      process.exit(1);
+    }
+  }
+  if (scenarios.some((s) => s.group === 'agw-svm-wire' || s.file === '__e2e__/agw/svm-public.spec.ts')) {
+    const { inspectSvmWirePrograms, svmWireConnection } = await import('../shared/agw-svm-preflight');
+    await inspectSvmWirePrograms(svmWireConnection(solRpc));
+    console.log('Solana wire fixture verified read-only before funding.');
+  }
   const pushWallet = createWalletClient({
     account: pushAcc,
     chain: pushChainDef,
@@ -390,18 +415,19 @@ function renderTable(rows: Row[]): void {
       return BigInt(r?.value.amount ?? '0');
     });
 
-  const [dUsdtSep, dPeth, dUsdtEth, dPsol, dUsdtSol] = await Promise.all([
+  const [dUsdtSep, dPeth, dUsdtEth, dPsol, dUsdtSol, dUsdcEth] = await Promise.all([
     decimalsOf(usdtSepolia, sep),
     decimalsOf(s.pETH, push),
     decimalsOf(s.USDT_ETH, push),
     decimalsOf(s.pSOL, push),
     decimalsOf(s.USDT_SOL, push),
+    decimalsOf(s.USDC_ETH, push),
   ]);
   const dPc20 = pc20Push ? await decimalsOf(pc20Push, push) : 18;
 
   const [
     sepEth, sepUsdt,
-    mPC, mPeth, mUsdtEth, mPsol, mUsdtSol, mPc20,
+    mPC, mPeth, mUsdtEth, mPsol, mUsdtSol, mUsdcEth, mPc20,
     uPC, uPeth, uUsdtEth, uPsol, uUsdtSol, uPc20,
     solBal, solUsdt, ceaSol, ceaUsdt,
   ] = await Promise.all([
@@ -413,6 +439,7 @@ function renderTable(rows: Row[]): void {
     erc20(s.USDT_ETH, pushAcc.address, push),
     erc20(s.pSOL, pushAcc.address, push),
     erc20(s.USDT_SOL, pushAcc.address, push),
+    erc20(s.USDC_ETH, pushAcc.address, push),
     pc20Push ? erc20(pc20Push, pushAcc.address, push) : Promise.resolve(BigInt(0)),
 
     retry(() => push.getBalance({ address: uea })),
@@ -458,8 +485,9 @@ function renderTable(rows: Row[]): void {
     { scope: 'Push master (Donut)', asset: 'PC', need: units(target('masterPC'), 18) + deficit('ueaPC'), have: mPC, decimals: 18, tier: 'master' },
     { scope: 'Push master (Donut)', asset: 'pETH', need: units(target('masterPETH'), dPeth) + deficit('ueaPETH'), have: mPeth, decimals: dPeth, tier: 'master' },
     { scope: 'Push master (Donut)', asset: 'pUSDT.eth', need: deficit('ueaUsdtEth'), have: mUsdtEth, decimals: dUsdtEth, tier: 'master' },
-    { scope: 'Push master (Donut)', asset: 'pSOL', need: deficit('ueaPSOL'), have: mPsol, decimals: dPsol, tier: 'master' },
-    { scope: 'Push master (Donut)', asset: 'pUSDT.sol', need: deficit('ueaUsdtSol'), have: mUsdtSol, decimals: dUsdtSol, tier: 'master' },
+    { scope: 'Push master (Donut)', asset: 'pSOL', need: units(target('masterPSOL'), dPsol) + deficit('ueaPSOL'), have: mPsol, decimals: dPsol, tier: 'master' },
+    { scope: 'Push master (Donut)', asset: 'pUSDT.sol', need: units(target('masterUsdtSol'), dUsdtSol) + deficit('ueaUsdtSol'), have: mUsdtSol, decimals: dUsdtSol, tier: 'master' },
+    { scope: 'Push master (Donut)', asset: 'pUSDC.eth', need: units(target('masterUsdcEth'), dUsdcEth), have: mUsdcEth, decimals: dUsdcEth, tier: 'master' },
     { scope: 'Push master (Donut)', asset: 'PC20', need: deficit('ueaPC20'), have: mPc20, decimals: dPc20, tier: 'master' },
     { scope: 'Solana master (Devnet)', asset: 'SOL', need: units(target('solanaSOL'), 9) + deficit('ceaSvmSOL'), have: solBal, decimals: 9, tier: 'master' },
     { scope: 'Solana master (Devnet)', asset: 'USDT', need: units(target('solanaUsdt'), 6) + deficit('ceaSvmUsdt'), have: solUsdt, decimals: 6, tier: 'master' },

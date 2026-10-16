@@ -1,3 +1,27 @@
+@pushchain/core@6.0.27-alpha.2 (2026-10-16)
+
+- feat: add bounded preset operations and configuration readiness
+
+---
+
+@pushchain/core@6.0.27-alpha.1 (2026-10-15)
+
+- fix: resolve AGW tokens by destination and expand live coverage
+- feat: add mainnet AGW presets and live protocol coverage
+- fix: return safe AGW preset review templates
+- feat: add verified testnet AGW preset templates
+- feat: migrate AGW SDK to deployed v6 contracts
+
+---
+
+@pushchain/core@6.0.27-alpha.0 (2026-10-12)
+
+- feat: align AGW rules and presets with October SDK feedback
+- feat: add AGW v5 wallet and rules SDK
+- test: mirror the restructured Universal Read docs playgrounds
+
+---
+
 @pushchain/core@6.0.26 (2026-09-23)
 
 - docs: changelog for read-state docs parity

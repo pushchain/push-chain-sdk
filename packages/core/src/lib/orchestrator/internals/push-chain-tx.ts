@@ -30,7 +30,7 @@ import type {
 import type { OrchestratorContext } from './context';
 import { fireProgressHook, printLog } from './context';
 import { decodeRevert, formatDecodedRevertForUser } from './error-decoder';
-import { PushChainExecutionError, PushChainBatchExecutionError } from './errors';
+import { PushChainExecutionError, PushChainBatchExecutionError, AtomicBatchUnavailableError } from './errors';
 import { normalizePublicErrorMessage } from '../../formatters';
 
 // ============================================================================
@@ -115,7 +115,8 @@ export async function sendPushTx(
   ctx: OrchestratorContext,
   execute: ExecuteParams,
   eventBuffer: ProgressEvent[],
-  transformFn: TransformToResponseFn
+  transformFn: TransformToResponseFn,
+  requireAtomicBatch = false
 ): Promise<UniversalTxResponse> {
   if (Array.isArray(execute.data)) {
     const calls = execute.data as MultiCall[];
@@ -138,6 +139,15 @@ export async function sendPushTx(
     const executor = getBatchExecutorAddress(
       ctx.universalSigner.account.chain
     );
+    if (requireAtomicBatch) {
+      if (!executor || !ctx.universalSigner.signAuthorization) {
+        throw new AtomicBatchUnavailableError('This operation requires a sender-preserving atomic batch; the signer/network does not support EIP-7702.');
+      }
+      const code = await ctx.pushClient.publicClient.getCode({ address: executor });
+      if (!code || code === '0x') {
+        throw new AtomicBatchUnavailableError(`Atomic batch executor ${executor} is not deployed on the connected network.`);
+      }
+    }
     if (executor && ctx.universalSigner.signAuthorization) {
       try {
         printLog(
@@ -161,6 +171,9 @@ export async function sendPushTx(
         // to sequential execution cannot double-execute. Any other error
         // (e.g. a real revert) must surface.
         if (!(err instanceof EIP7702NotSupportedError)) throw err;
+        if (requireAtomicBatch) {
+          throw new AtomicBatchUnavailableError('The signer could not authorize EIP-7702; no sequential transactions were sent.', err);
+        }
         printLog(
           ctx,
           `sendPushTx — wallet cannot sign EIP-7702 authorization; falling back to sequential execution`

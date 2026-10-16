@@ -47,7 +47,32 @@ import {
   type ReadTrackOptions,
   type ReadExecuteOptions,
 } from '../read-state/read-params';
-import { assertRequestEntrypoint, executeReads as executePreparedReads } from '../read-state/read-executor';
+import { assertRequestEntrypoint, executeReads as executePreparedReads, type ReadExecutorDeps } from '../read-state/read-executor';
+import { AgenticNamespaceImpl } from '../agentic/agentic';
+import { resolveAgenticContext, type AgenticExecutionContext } from '../agentic/context';
+import { agenticSend } from '../agentic/execution/send';
+import { notAllowedInAgenticMode } from '../agentic/execution/guards';
+import { adaptTrackedResponse } from '../agentic/response';
+import { createAgenticRuntime, type AgenticRuntime } from '../agentic/runtime';
+import type { AgenticNamespace } from '../agentic/agentic.types';
+
+/** Options accepted by `PushChain.initialize` / `reinitialize`. */
+export interface PushChainInitializeOptions {
+  network: PUSH_NETWORK;
+  rpcUrls?: Partial<Record<CHAIN, string[]>>;
+  blockExplorers?: Partial<Record<CHAIN, string[]>>;
+  printTraces?: boolean;
+  progressHook?: (progress: ProgressEvent) => void;
+  /**
+   * Act as this agentic wallet (AGW). The signer decides the door: the owner
+   * sends through `execute`, an agent named in an enabled rule through
+   * `executeAsAgent`; anyone else fails with NOT_OWNER_OR_AGENT.
+   * `universal.account` becomes the wallet; `universal.origin`,
+   * `getAccountStatus()` and gas stay the signer's. Not inherited by
+   * `reinitialize` — pass it again to keep acting as the wallet.
+   */
+  agenticWallet?: `0x${string}`;
+}
 
 /**
  * @class PushChain
@@ -259,6 +284,16 @@ export class PushChain {
   };
 
   /**
+   * Agentic wallet management (AGW): derive, create, list and per-wallet
+   * handles. Ownership is the connected signer's Push identity.
+   */
+  agentic: AgenticNamespace;
+
+  /** @internal AGW execution context when initialized with `agenticWallet`. */
+  private agenticContext?: AgenticExecutionContext;
+  private readonly agenticRuntime: AgenticRuntime;
+
+  /**
    * Account status including UEA deployment state and version info.
    * Initially unloaded — call getAccountStatus() to populate.
    */
@@ -293,12 +328,36 @@ export class PushChain {
     // Default — overwritten in createInstance() with the background fetch
     this.accountStatusReady = Promise.resolve();
 
+    this.agenticRuntime = createAgenticRuntime(orchestrator, isReadMode);
+    this.agentic = new AgenticNamespaceImpl(this.agenticRuntime);
+
+    // eslint-disable-next-line @typescript-eslint/no-this-alias -- getters below need the instance
+    const self = this;
+    // In agenticWallet mode, request transactions execute through the wallet
+    // and the wallet pays the request value, so its balance gates the read.
+    const readDeps = (): ReadExecutorDeps => {
+      const actx = self.agenticContext;
+      if (!actx) return orchestrator;
+      return {
+        execute: (params, options) => agenticSend(self.agenticRuntime, actx, params, options),
+        trackRead: orchestrator.trackRead.bind(orchestrator) as Orchestrator['trackRead'],
+        revalidateRead: orchestrator.revalidateRead.bind(orchestrator),
+        getProgressHook: orchestrator.getProgressHook.bind(orchestrator),
+        getReadBalance: () => self.agenticRuntime.reader.getBalance({ address: actx.wallet }),
+      };
+    };
+    // Unspent read budget returns to whoever paid it: the wallet in agentic mode.
+    const withReadRefund = <T extends { refundTo?: `0x${string}` }>(options: T): T =>
+      self.agenticContext && options.refundTo === undefined
+        ? { ...options, refundTo: self.agenticContext.wallet }
+        : options;
+
     this.universal = {
       get origin() {
         return orchestrator.getUOA();
       },
       get account() {
-        return orchestrator.computeUEAOffchain();
+        return self.agenticContext?.wallet ?? orchestrator.computeUEAOffchain();
       },
       sendTransaction: (...args) => {
         if (this.isReadMode) {
@@ -306,12 +365,16 @@ export class PushChain {
             'Read only mode cannot call sendTransaction function'
           );
         }
+        if (this.agenticContext) {
+          return agenticSend(this.agenticRuntime, this.agenticContext, ...args);
+        }
         return orchestrator.execute.bind(orchestrator)(...args);
       },
       prepareTransaction: (
         params: UniversalExecuteParams,
         options?: TransactionExecutionOptions
       ) => {
+        if (this.agenticContext) throw notAllowedInAgenticMode('prepareTransaction');
         return orchestrator.prepareTransaction.bind(orchestrator)(
           params,
           options
@@ -326,40 +389,44 @@ export class PushChain {
             'Read only mode cannot call executeTransactions function'
           );
         }
+        if (this.agenticContext) throw notAllowedInAgenticMode('executeTransactions');
         return orchestrator.createCascadedBuilder(txs, options).send();
       },
-      trackTransaction: (txHash: string, options?: import('../orchestrator/orchestrator.types').TrackTransactionOptions) => {
-        return orchestrator.trackTransaction.bind(orchestrator)(txHash, options);
+      trackTransaction: async (txHash: string, options?: import('../orchestrator/orchestrator.types').TrackTransactionOptions) => {
+        const tracked = await orchestrator.trackTransaction.bind(orchestrator)(txHash, options);
+        return adaptTrackedResponse(this.agenticRuntime, tracked);
       },
       migrateCEA: (chain: CHAIN) => {
         if (this.isReadMode) {
           throw new Error('Read only mode cannot call migrateCEA function');
         }
+        if (this.agenticContext) throw notAllowedInAgenticMode('migrateCEA');
         return orchestrator.migrateCEA.bind(orchestrator)(chain);
       },
       rescueFunds: (params: RescueFundsParams) => {
         if (this.isReadMode) {
           throw new Error('Read only mode cannot call rescueFunds function');
         }
+        if (this.agenticContext) throw notAllowedInAgenticMode('rescueFunds');
         return orchestrator.rescueFunds.bind(orchestrator)(params);
       },
       // Only read()/executeReads() send transactions; prepare/simulate/track remain read-only.
       read: async <const O extends ReadOptions>(subject: string, options: O) => {
-        const params = await resolveReadSpecParams(subject, options, orchestrator.getNetwork(), orchestrator.getRpcUrls());
+        const params = await resolveReadSpecParams(subject, withReadRefund(options), orchestrator.getNetwork(), orchestrator.getRpcUrls());
         assertRequestEntrypoint(params.callback, 'read');
         if (this.isReadMode) throw new Error('Read only mode cannot call read function');
         const prepared = await orchestrator.prepareRead(params, options.progressHook);
-        const { reads: [response] } = await executePreparedReads(orchestrator, [prepared] as const, options);
+        const { reads: [response] } = await executePreparedReads(readDeps(), [prepared] as const, options);
         return response as UniversalReadResponse<ReadValue<O>>;
       },
       prepareRead: async <const O extends ReadPrepareOptions>(subject: string, options: O & ValidateReadCall<O>) => {
-        const params = await resolveReadSpecParams(subject, options, orchestrator.getNetwork(), orchestrator.getRpcUrls());
+        const params = await resolveReadSpecParams(subject, withReadRefund(options), orchestrator.getNetwork(), orchestrator.getRpcUrls());
         return orchestrator.prepareRead(params) as Promise<PreparedRead<ReadValue<O>>>;
       },
       executeReads: (async (reads: readonly PreparedRead[], options?: ReadExecuteOptions) => {
         reads.forEach((r) => assertRequestEntrypoint(r.callback));
         if (this.isReadMode) throw new Error('Read only mode cannot call executeReads function');
-        return executePreparedReads(orchestrator, reads, options);
+        return executePreparedReads(readDeps(), reads, options);
       }) as PushChain['universal']['executeReads'],
       trackRead: ((ref: { txHash: Hex } | { requestId: Hex | bigint }, options?: ReadTrackOptions & { progressHook?: (e: ProgressEvent) => void }) => {
         const opts = { ...toLifecycleOptions(options), progressHook: options?.progressHook };
@@ -702,13 +769,7 @@ export class PushChain {
    */
   private static async createInstance(
     universalSigner: UniversalSigner | UniversalAccount,
-    options?: {
-      network: PUSH_NETWORK;
-      rpcUrls?: Partial<Record<CHAIN, string[]>>;
-      blockExplorers?: Partial<Record<CHAIN, string[]>>;
-      printTraces?: boolean;
-      progressHook?: (progress: ProgressEvent) => void;
-    }
+    options?: PushChainInitializeOptions
   ): Promise<PushChain> {
     const isReadOnly = PushChain.isUniversalAccount(universalSigner);
 
@@ -773,6 +834,16 @@ export class PushChain {
     // Let execute() await the background fetch instead of re-fetching
     orchestrator.accountStatusReadyPromise = instance.accountStatusReady;
 
+    // Agentic mode: validate the wallet, its generation and the signer's door
+    // before returning a client. A read-only client may hold the context (so
+    // universal.account shows the wallet) but every signing path stays closed.
+    if (options?.agenticWallet !== undefined) {
+      instance.agenticContext = await resolveAgenticContext(
+        instance.agenticRuntime,
+        options.agenticWallet
+      );
+    }
+
     return instance;
   }
 
@@ -790,13 +861,7 @@ export class PushChain {
    */
   static initialize = async (
     universalSigner: UniversalSigner | UniversalAccount,
-    options?: {
-      network: PUSH_NETWORK;
-      rpcUrls?: Partial<Record<CHAIN, string[]>>;
-      blockExplorers?: Partial<Record<CHAIN, string[]>>;
-      printTraces?: boolean;
-      progressHook?: (progress: ProgressEvent) => void;
-    }
+    options?: PushChainInitializeOptions
   ): Promise<PushChain> => {
     return PushChain.createInstance(universalSigner, options);
   };
@@ -815,27 +880,20 @@ export class PushChain {
    */
   reinitialize = async (
     universalSigner: UniversalSigner | UniversalAccount,
-    options?: {
-      network: PUSH_NETWORK;
-      rpcUrls?: Partial<Record<CHAIN, string[]>>;
-      blockExplorers?: Partial<Record<CHAIN, string[]>>;
-      printTraces?: boolean;
-      progressHook?: (progress: ProgressEvent) => void;
-    }
+    options?: PushChainInitializeOptions
   ): Promise<PushChain> => {
-    const mergedOptions = {
+    // agenticWallet is NOT inherited: an omitted value yields an ordinary
+    // client, and a supplied one reruns every wallet/role check.
+    const mergedOptions: PushChainInitializeOptions = {
       network: options?.network ?? this.orchestrator.getNetwork(),
       rpcUrls: options?.rpcUrls ?? this.orchestrator.getRpcUrls(),
       blockExplorers: options?.blockExplorers ?? this.blockExplorers,
       printTraces: options?.printTraces ?? this.orchestrator.getPrintTraces(),
       progressHook:
         options?.progressHook ?? this.orchestrator.getProgressHook(),
-    } as {
-      network: PUSH_NETWORK;
-      rpcUrls?: Partial<Record<CHAIN, string[]>>;
-      blockExplorers?: Partial<Record<CHAIN, string[]>>;
-      printTraces?: boolean;
-      progressHook?: (progress: ProgressEvent) => void;
+      ...(options?.agenticWallet !== undefined
+        ? { agenticWallet: options.agenticWallet }
+        : {}),
     };
     return PushChain.createInstance(universalSigner, mergedOptions);
   };

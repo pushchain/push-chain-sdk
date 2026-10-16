@@ -4223,7 +4223,38 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@pushchain/core@npm:^6.0.26, @pushchain/core@workspace:packages/core":
+"@pushchain/core@npm:^6.0.26":
+  version: 6.0.26
+  resolution: "@pushchain/core@npm:6.0.26"
+  dependencies:
+    "@bufbuild/protobuf": "npm:^2.0.0"
+    "@cosmjs/crypto": "npm:0.33.1"
+    "@cosmjs/encoding": "npm:0.33.1"
+    "@cosmjs/proto-signing": "npm:^0.33.1"
+    "@cosmjs/stargate": "npm:^0.33.1"
+    "@cosmjs/tendermint-rpc": "npm:0.33.1"
+    "@solana/web3.js": "npm:^1.68.0"
+    bs58: "npm:^4.0.0"
+    buffer: "npm:^6.0.3"
+    cosmjs-types: "npm:0.9.0"
+    tslib: "npm:^2.3.0"
+    viem: "npm:^2.27.2"
+  peerDependencies:
+    "@coral-xyz/anchor": ^0.31.0
+    ethers: ^6.0.0
+    tweetnacl: ^1.0.3
+  peerDependenciesMeta:
+    "@coral-xyz/anchor":
+      optional: true
+    ethers:
+      optional: true
+    tweetnacl:
+      optional: true
+  checksum: 10/dea82562aed21d42c7fa1d4a3bb6c852baa82cccc01e687de4b978b304fdf7f3709198dd4a51f0b2530f8677b202a82c6632b3a159e5ca3ea03efcd81cc4f360
+  languageName: node
+  linkType: hard
+
+"@pushchain/core@workspace:packages/core":
   version: 0.0.0-use.local
   resolution: "@pushchain/core@workspace:packages/core"
   dependencies:

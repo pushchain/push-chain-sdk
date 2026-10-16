@@ -71,7 +71,11 @@ export type {
 export { parseUEAVersion } from './orchestrator/orchestrator.types';
 
 // Route detection utilities
-export { TransactionRoute, detectRoute, isChainTarget } from './orchestrator/route-detector';
+export {
+  TransactionRoute,
+  detectRoute,
+  isChainTarget,
+} from './orchestrator/route-detector';
 
 // Outbound gas cap helpers
 export {
@@ -137,7 +141,17 @@ export type {
   ReadResponseTuple,
   BatchReadResponse,
 } from './read-state/read-state.types';
-export type { ReadOptions, ReadPrepareOptions, ReadQueryOptions, ReadCallbackOptions, ReadValue, ValidateReadCall, ReadWeb2Options, ReadTrackOptions, ReadExecuteOptions } from './read-state/read-params';
+export type {
+  ReadOptions,
+  ReadPrepareOptions,
+  ReadQueryOptions,
+  ReadCallbackOptions,
+  ReadValue,
+  ValidateReadCall,
+  ReadWeb2Options,
+  ReadTrackOptions,
+  ReadExecuteOptions,
+} from './read-state/read-params';
 export {
   UNIVERSAL_READ_STATUS,
   READ_STATUS,
@@ -175,4 +189,61 @@ export {
 export { UNIVERSAL_CALLBACK_EVM } from './constants/abi/universalCallback.evm';
 export { UNIVERSAL_READ_REGISTRY_EVM } from './constants/abi/universalReadRegistry.evm';
 
+// Structured execution errors (base class of AgenticRevertError)
+export {
+  PushChainExecutionError,
+  PushChainBatchExecutionError,
+} from './orchestrator/internals/errors';
+export type { DecodedErrorPayload } from './orchestrator/internals/errors';
+
+// Agentic wallet (AGW)
+export type { PushChainInitializeOptions } from './push-chain/push-chain';
+export {
+  AGENTIC_ERROR_CODE,
+  AgenticError,
+  AgenticRevertError,
+} from './agentic';
+export type {
+  AgenticAddress,
+  AgenticDoor,
+  AgenticErrorCode,
+  AgenticHex,
+  AgenticNamespace,
+  AgenticProgressHook,
+  AgenticTxMetadata,
+  AgenticWallet,
+  AllowedCall,
+  AssetCap,
+  Checkpoint,
+  CheckpointKind,
+  CreateOptions,
+  CreateResult,
+  ForeignChainNamespace,
+  DecodedSolanaRule,
+  Rule,
+  RuleInput,
+  Pin,
+  Spent,
+  WalletMarker,
+  ArgumentPath,
+  RulesRecord,
+  Selector,
+  WalletInfo,
+  WalletSummary,
+} from './agentic';
+
 export { PushChain };
+
+export type {
+  Preset,
+  PresetCategory,
+  PresetAsset,
+  PresetOptions,
+  ReadyPresetOptions,
+  PresetRuleTemplate,
+  PresetResult,
+  PresetChainReadiness,
+  PresetConfigurationIssue,
+  PresetCallIssue,
+  AgenticPresets,
+} from './agentic';
