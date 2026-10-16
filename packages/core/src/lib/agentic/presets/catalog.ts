@@ -1,15 +1,40 @@
 import { getAddress, type Address } from 'viem';
 import type { RuleCall, ForeignChainNamespace } from '../agentic.types';
 import type { PresetCategory } from './types';
+import { AAVE_RESERVES } from './aave-reserves';
+
+export type PresetBudget =
+  | {
+      kind: 'token-argument';
+      tokenArg: number;
+      amountArg: number;
+      tokens?: readonly Address[];
+    }
+  | { kind: 'fixed-token'; token: Address; amountArg: number }
+  | { kind: 'native-value' }
+  | { kind: 'setup' }
+  | {
+      kind: 'unsupported';
+      reason: 'SHARE_AMOUNT' | 'DYNAMIC_AMOUNT' | 'POSITION_AMOUNT';
+      alternative?: RuleCall['selector'];
+    };
+export interface PresetCallDefinition extends RuleCall {
+  budget?: PresetBudget;
+}
 
 /** Internal catalog: reviewed addresses and explicit calls only; never fetched at runtime. */
 export interface PresetChainDefinition {
   chainNamespace: ForeignChainNamespace;
-  allowedCalls: readonly RuleCall[];
+  allowedCalls: readonly PresetCallDefinition[];
   /** Static single-hop routers; incomplete pairs return zero-input-cap review calls. */
   swapRouters?: readonly { address: Address; app: string }[];
   /** Exact spenders that need an approval for each non-native supplied asset. */
-  approvals?: readonly { spender: Address; app: string; token?: Address }[];
+  approvals?: readonly {
+    spender: Address;
+    app: string;
+    token?: Address;
+    tokens?: readonly Address[];
+  }[];
   maxGasPerCall?: bigint;
 }
 export interface PresetDefinition {
@@ -23,7 +48,7 @@ export interface PresetDefinition {
  */
 const address = (value: string): Address => getAddress(value.toLowerCase());
 const wallet = 'agentic:wallet' as const;
-const aave = (pool: Address): RuleCall[] =>
+const aave = (pool: Address, chain: string): PresetCallDefinition[] =>
   [
     ['supply(address,uint256,address,uint16)', 2, 'Supply'],
     ['withdraw(address,uint256,address)', 2, 'Withdraw'],
@@ -35,8 +60,18 @@ const aave = (pool: Address): RuleCall[] =>
     pins: [{ arg: arg as number, expected: wallet }],
     app: 'Aave V3',
     label: label as string,
+    budget: {
+      kind: 'token-argument',
+      tokenArg: 0,
+      amountArg: 1,
+      tokens: AAVE_RESERVES[chain],
+    },
   }));
-const market = (target: Address, app: string): RuleCall[] =>
+const market = (
+  target: Address,
+  app: string,
+  token: Address
+): PresetCallDefinition[] =>
   [
     'mint(uint256)',
     'redeem(uint256)',
@@ -48,6 +83,14 @@ const market = (target: Address, app: string): RuleCall[] =>
     selector: selector as RuleCall['selector'],
     app,
     label: selector.split('(')[0],
+    budget:
+      selector === 'redeem(uint256)'
+        ? {
+            kind: 'unsupported',
+            reason: 'SHARE_AMOUNT',
+            alternative: 'redeemUnderlying(uint256)',
+          }
+        : { kind: 'fixed-token', token, amountArg: 0 },
   }));
 const sepoliaPool = address('0x6Ae43d3271ff6888e7Fc43Fd7321a503ff738951');
 const basePool = address('0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27');
@@ -97,7 +140,9 @@ const mainnetMarkets = (
       : '0xfD36E2c2a6789Db23113685031d7F16329158384';
   return {
     allowedCalls: [
-      ...entries.flatMap(([target, app]) => market(address(target), app)),
+      ...entries.flatMap(([target, app, token]) =>
+        market(address(target), app, address(token))
+      ),
       ...(entries.length
         ? [
             {
@@ -105,6 +150,7 @@ const mainnetMarkets = (
               selector: 'enterMarkets(address[])' as const,
               app: chain === 'eip155:8453' ? 'Moonwell' : 'Venus',
               label: 'Enter markets',
+              budget: { kind: 'setup' as const },
             },
           ]
         : []),
@@ -178,40 +224,69 @@ export const PRESET_CATALOG: readonly PresetDefinition[] = [
       ).map(([chainNamespace, pool]) => ({
         chainNamespace,
         allowedCalls: [
-          ...aave(address(pool)),
+          ...aave(address(pool), chainNamespace),
           ...mainnetMarkets(chainNamespace).allowedCalls,
         ],
         approvals: [
-          { spender: address(pool), app: 'Aave V3' },
+          {
+            spender: address(pool),
+            app: 'Aave V3',
+            tokens: AAVE_RESERVES[chainNamespace],
+          },
           ...(mainnetMarkets(chainNamespace).approvals ?? []),
         ],
       })),
 
       {
         chainNamespace: 'eip155:11155111',
-        allowedCalls: aave(sepoliaPool),
-        approvals: [{ spender: sepoliaPool, app: 'Aave V3' }],
+        allowedCalls: aave(sepoliaPool, 'eip155:11155111'),
+        approvals: [
+          {
+            spender: sepoliaPool,
+            app: 'Aave V3',
+            tokens: AAVE_RESERVES['eip155:11155111'],
+          },
+        ],
       },
       {
         chainNamespace: 'eip155:421614',
-        allowedCalls: aave(arbitrumPool),
-        approvals: [{ spender: arbitrumPool, app: 'Aave V3' }],
+        allowedCalls: aave(arbitrumPool, 'eip155:421614'),
+        approvals: [
+          {
+            spender: arbitrumPool,
+            app: 'Aave V3',
+            tokens: AAVE_RESERVES['eip155:421614'],
+          },
+        ],
       },
       {
         chainNamespace: 'eip155:84532',
         allowedCalls: [
-          ...aave(basePool),
-          ...market(moonUSDBC, 'Moonwell mUSDbC'),
-          ...market(moonWETH, 'Moonwell mWETH'),
+          ...aave(basePool, 'eip155:84532'),
+          ...market(
+            moonUSDBC,
+            'Moonwell mUSDbC',
+            address('0x4616975f7E6045FD9737e95bC527e9e14c727BD2')
+          ),
+          ...market(
+            moonWETH,
+            'Moonwell mWETH',
+            address('0x663A6F02d547dFd639BF689FED298712f2FB69Fb')
+          ),
           {
             target: address('0xC72ba45f2Ae134F21DAEb2b7B5fd5De0064Ee9bB'),
             selector: 'enterMarkets(address[])',
             app: 'Moonwell',
             label: 'Enter markets',
+            budget: { kind: 'setup' as const },
           },
         ],
         approvals: [
-          { spender: basePool, app: 'Aave V3' },
+          {
+            spender: basePool,
+            app: 'Aave V3',
+            tokens: AAVE_RESERVES['eip155:84532'],
+          },
           {
             spender: moonUSDBC,
             app: 'Moonwell mUSDbC',
@@ -227,13 +302,22 @@ export const PRESET_CATALOG: readonly PresetDefinition[] = [
       {
         chainNamespace: 'eip155:97',
         allowedCalls: [
-          ...market(venusUSDT, 'Venus vUSDT'),
-          ...market(venusUSDC, 'Venus vUSDC'),
+          ...market(
+            venusUSDT,
+            'Venus vUSDT',
+            address('0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c')
+          ),
+          ...market(
+            venusUSDC,
+            'Venus vUSDC',
+            address('0x16227D60f7a0e586C66B005219dfc887D13C9531')
+          ),
           {
             target: address('0x94d1820b2D1c7c7452A163983Dc888CEC546b77D'),
             selector: 'enterMarkets(address[])',
             app: 'Venus',
             label: 'Enter markets',
+            budget: { kind: 'setup' as const },
           },
         ],
         approvals: [
@@ -263,19 +347,22 @@ export const PRESET_CATALOG: readonly PresetDefinition[] = [
             selector: 'submit(address)',
             maxValue: BigInt(0),
             app: 'Lido',
-            label: 'Stake ETH (set an explicit value cap)',
+            label: 'Stake ETH',
+            budget: { kind: 'native-value' },
           },
           {
             target: wstETH,
             selector: 'wrap(uint256)',
             app: 'Lido wstETH',
             label: 'Wrap stETH',
+            budget: { kind: 'fixed-token', token: stETH, amountArg: 0 },
           },
           {
             target: wstETH,
             selector: 'unwrap(uint256)',
             app: 'Lido wstETH',
             label: 'Unwrap wstETH',
+            budget: { kind: 'fixed-token', token: wstETH, amountArg: 0 },
           },
           {
             target: lidoQueue,
@@ -283,18 +370,21 @@ export const PRESET_CATALOG: readonly PresetDefinition[] = [
             pins: [{ arg: 1, expected: wallet }],
             app: 'Lido withdrawal queue',
             label: 'Request withdrawal',
+            budget: { kind: 'unsupported', reason: 'DYNAMIC_AMOUNT' },
           },
           {
             target: lidoQueue,
             selector: 'claimWithdrawals(uint256[],uint256[])',
             app: 'Lido withdrawal queue',
             label: 'Claim finalized withdrawals',
+            budget: { kind: 'unsupported', reason: 'POSITION_AMOUNT' },
           },
           {
             target: lidoQueue,
             selector: 'claimWithdrawal(uint256)',
             app: 'Lido withdrawal queue',
             label: 'Claim finalized withdrawal',
+            budget: { kind: 'unsupported', reason: 'POSITION_AMOUNT' },
           },
 
           {
@@ -302,11 +392,11 @@ export const PRESET_CATALOG: readonly PresetDefinition[] = [
             selector: 'depositIntoStrategy(address,address,uint256)',
             app: 'EigenLayer',
             label: 'Deposit into strategy (withdrawals not included)',
+            budget: { kind: 'token-argument', tokenArg: 1, amountArg: 2 },
           },
         ],
         approvals: [
           { spender: wstETH, token: stETH, app: 'Lido wstETH' },
-          { spender: lidoQueue, token: stETH, app: 'Lido withdrawal queue' },
 
           {
             spender: address('0x858646372CC42E1A627fcE94aa7A7033e7CF075A'),
@@ -323,6 +413,7 @@ export const PRESET_CATALOG: readonly PresetDefinition[] = [
             selector: 'depositIntoStrategy(address,address,uint256)',
             app: 'EigenLayer',
             label: 'Deposit into strategy (withdrawals not included)',
+            budget: { kind: 'token-argument', tokenArg: 1, amountArg: 2 },
           },
         ],
         approvals: [{ spender: eigen, app: 'EigenLayer' }],

@@ -91,7 +91,7 @@ An equality pin fixes an argument; a maximum pin bounds it. For EVM signatures, 
 
 `PushChain.CONSTANTS.AGENTIC.WALLET` resolves to the AGW on Push, its CEA on an EVM destination, or its CEA/selected token ATA on Solana. Deployment addresses and encoding helpers are internal.
 
-Omitted `maxValue`, `assets[].maxTotal`, and `maxGasPerCall` default to **zero**, which permits no corresponding movement. Specify positive caps for sends that need value, tokens or destination gas. Native value is limited per call; there is no public native lifetime-total cap.
+Omitted `maxValue`, `assets[].maxTotal`, and `maxGasPerCall` default to **zero**. Asset totals meter tokens sent from Push; they do not meter trading or lending using capital already in the destination CEA. Specify positive caps for sends that need value, tokens or destination gas. Native value is limited per call; there is no public native lifetime-total cap.
 
 ## EVM destinations
 
@@ -171,7 +171,7 @@ The wire encoder uses uint32 maximum for unlimited native calls and 255 for unsp
 
 - DEXES: Uniswap V3 on Ethereum, Base and Arbitrum (mainnet and their Sepolia testnets); PancakeSwap V3 on BNB mainnet and BSC testnet.
 - LENDING: Aave on Ethereum, Base, Arbitrum and BNB mainnets, plus Sepolia/Base Sepolia/Arbitrum Sepolia; Moonwell on Base mainnet/testnet and Venus on BNB mainnet/testnet.
-- STAKING: EigenLayer deposits on Ethereum mainnet and Sepolia (EigenLayer withdrawals excluded); Lido stake, wrap/unwrap and withdrawal requests/claims on Ethereum mainnet. Lido ETH staking defaults to `maxValue: 0`; explicitly set a value cap before use.
+- STAKING: EigenLayer deposits on Ethereum mainnet and Sepolia; Lido stake and wrap/unwrap on Ethereum mainnet. Withdrawal requests with dynamic amounts, claims with position-derived amounts and EigenLayer withdrawals are excluded from these bounded presets. A selected native asset supplies the Lido `submit` value cap; omitted caps remain zero.
 - PREDICTION: no entries yet. Hide categories with empty `chains` lists.
 
 ```ts
@@ -195,11 +195,11 @@ function filledPreset(agent: Address, tokenIn: Address, tokenOut: Address) {
         { token: tokenOut, maxPerCall: BigInt(100), maxTotal: BigInt(1000) },
       ],
     },
-  ).rules;
+  );
 }
 ```
 
-The example caps are illustrative raw units; choose caps for the actual token decimals and gas requirements. `get` groups calls into one rule per chain. With agent and expiry supplied, its return type is `Rule[]`; otherwise it is `PresetRuleTemplate[]`, requiring those fields before `create`. Assets must name their chain unless a single chain filter is supplied. Omitted asset caps and `maxGasPerCall` default to zero.
+The example caps are illustrative raw units; choose caps for the actual token decimals and gas requirements. `get` groups calls into one rule per chain. The result is `{ rules, readiness }`. With agent and expiry supplied, `rules` is typed as `Rule[]`; otherwise it is `PresetRuleTemplate[]`. This type distinction alone does not establish readiness. Assets must name their chain unless a single chain filter is supplied. Omitted asset caps and `maxGasPerCall` default to zero.
 
 DEX discovery works without options, with an empty asset list, or with assets for only some chains. A chain with fewer than two tokens returns full-signature review calls with wallet-recipient pins and an explicit zero input-amount maximum. A single supplied token is also pinned as the input. These calls cannot spend swap input tokens, even if asset budgets are filled later. Call `get` again after selecting both tokens to replace the review calls with the complete token-pinned rules; merely assigning `rule.assets` is insufficient.
 
@@ -208,6 +208,59 @@ With two ERC20 tokens, `get` expands ordered pairs into exact-input and exact-ou
 Reviewed EVM spenders generate approvals pinned to that spender and bounded by the asset's per-call cap. Money-market approvals are restricted to the market's underlying token. Distinct spenders become separate pinned alternatives under v6. These destination approvals are ordinary ERC20 allowances; the wallet's automatic Push-side gateway approval is separate.
 
 Templates describe permissions, not available liquidity or guaranteed execution. Verify destination token balances, supported reserves and source PRC20 routes before use: protocol testnet mock tokens may differ from MOVEABLE tokens. Presets do not sign, fetch app ABIs or modify wallets. Dynamic-path swaps, Solana protocol templates and unconfirmed deployments are excluded. Mainnet addresses were checked read-only; no mainnet transactions were executed. Other mainnet protocols in the proposal remain excluded until their deployment and permission constraints are verified. Local policy tests do not execute the destination protocols.
+
+### Configure, inspect and regenerate
+
+`readiness.ready` means the returned chains have locally complete inputs and at least one enabled asset operation. It does not check PRC20 availability, deployments, balances, live reserve flags or liquidity. `readiness.chains` gives per-chain `issues`, `disabledCalls`, `excludedCalls`, catalog `knownTokens` and `zeroBridgeLimits`. These are additive result fields; `rules` remains accepted by the existing create/update methods.
+
+The UI should collect chain, agent, token selections, raw-unit limits, gas budget and expiry. Show zero-cap calls as disabled. Present excluded calls explicitly. There is no SDK-selected 0.1 PC gas budget or 30-day expiry. A zero bridge limit can be intentional when assets are already at the destination; it is reported separately from operation readiness.
+
+```ts
+async function createConfiguredDex(
+  client: PushChain, agent: Address, tokenIn: Address, tokenOut: Address,
+) {
+  const configured = filledPreset(agent, tokenIn, tokenOut);
+  if (!configured.readiness.ready) {
+    // Render these issues in the configuration screen; do not present it as ready.
+    return { issues: configured.readiness.chains };
+  }
+  return client.agentic.create('My DEX agent', { rules: configured.rules });
+}
+
+async function replaceConfiguredDex(
+  client: PushChain, wallet: Address, rulesId: Hex,
+  agent: Address, tokenIn: Address, tokenOut: Address,
+) {
+  // Re-run get after editing tokens or limits. Changing rule.assets alone
+  // does not regenerate allowedCalls, token pins or approvals.
+  const configured = filledPreset(agent, tokenIn, tokenOut);
+  if (!configured.readiness.ready) throw new Error('Complete the preset inputs');
+  return client.agentic.wallet(wallet).rules.update({
+    rules: [{ rulesId, rule: configured.rules[0] }],
+  });
+}
+```
+
+Save the preset category and editable inputs in the UI if subsequent edits should regenerate the preset. On-chain rules do not retain preset provenance or display metadata. A regenerated result is a replacement: do not append it to the old allowedCalls or keep the old token approvals. An update creates a new rulesId and resets counters, as documented above.
+
+### Amount units and enforcement scope
+
+| Preset operation | Generated restriction |
+| --- | --- |
+| DEX swap | Selected input/output token equality, wallet recipient, maximum input amount |
+| Aave supply/withdraw/borrow/repay | Listed reserve token equality, wallet beneficiary, amount maximum |
+| Moonwell/Venus mint/redeemUnderlying/borrow/repayBorrow | Maximum in the market's underlying-token units |
+| EigenLayer deposit | Selected token equality and deposit amount maximum |
+| Lido wrap/unwrap | stETH/wstETH input limits respectively; their units are not interchangeable |
+| Lido submit | Native-value cap from the selected native asset's maxPerCall |
+
+Aave reserve choices come from the reviewed official address book; fixed-token markets only enable for their actual underlying. Unknown assets do not receive an Aave approval or a positive Aave operation cap. A reserve listing is not a guarantee that its current supply cap, pause state or liquidity allows a transaction.
+
+Market `redeem(uint256)` takes shares: it is excluded and `redeemUnderlying(uint256)` is provided instead. Lido's dynamic withdrawal arrays and position-based claims are also excluded because an underlying amount cap cannot safely be converted into those arguments by this pure helper. Custom rules remain possible through the normal rule API.
+
+**A per-call limit applies to each allowed contract call, not the sum of several calls in one transaction. `maxTotal` is the cumulative Push-outbound amount, not lifetime turnover on the destination.** These statements also hold when a call's tokens are already in the CEA. Destination lifetime or batch-total accounting requires contract support. Bounded approvals do not supply such accounting.
+
+The contract allows at most 32 pins across a universal rule. Expansion fails explicitly if the selected assets/apps exceed that ceiling; no restrictions are silently dropped. Two Aave reserves fit its four-operation template; three do not. Blank/incomplete inputs return zero-cap review calls, and regeneration replaces them with the selected token-specific calls.
 
 ## Validation
 

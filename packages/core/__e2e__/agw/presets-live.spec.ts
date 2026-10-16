@@ -341,6 +341,25 @@ d('agw presets live', () => {
       functionName: 'supply',
       args: [mockLINK, amount, cea, 0],
     });
+    await expect(
+      agent.universal.sendTransaction({
+        to: { address: pool, chain: CHAIN.ETHEREUM_SEPOLIA },
+        gasLimit: BigInt(900_000),
+        data: [
+          {
+            to: pool,
+            value: BigInt(0),
+            data: encodeFunctionData({
+              abi,
+              functionName: 'supply',
+              args: [mockLINK, amount + BigInt(1), cea, 0],
+            }),
+          },
+        ],
+      })
+    ).rejects.toMatchObject({
+      decodedError: { name: 'PolicyCheckReverted(ArgPinAboveMax)' },
+    });
     const supply = await agent.universal.sendTransaction({
       to: { address: pool, chain: CHAIN.ETHEREUM_SEPOLIA },
       gasLimit: BigInt(900_000),
@@ -389,20 +408,57 @@ d('agw presets live', () => {
           e.args.amount === amount
       )
     ).toBe(true);
+    const half = amount / BigInt(2);
+    const regenerated = PushChain.utils.agentic.presets.get('LENDING', {
+      chainNamespace: CHAIN.ETHEREUM_SEPOLIA,
+      agent: f.agentAddress,
+      validUntil: inSeconds(3600),
+      maxGasPerCall: MAX_PC,
+      assets: [{ token: mockLINK, maxPerCall: half, maxTotal: amount }],
+    });
+    expect(regenerated.readiness.ready).toBe(true);
+    const changed = await f.owner.agentic
+      .wallet(wallet)
+      .rules.update({
+        rules: [
+          {
+            rulesId: rulesIds[0],
+            rule: { ...regenerated.rules[0], assets: [] },
+          },
+        ],
+      });
+    await expect(
+      agent.universal.sendTransaction({
+        to: { address: pool, chain: CHAIN.ETHEREUM_SEPOLIA },
+        gasLimit: BigInt(900_000),
+        data: [
+          {
+            to: pool,
+            value: BigInt(0),
+            data: encodeFunctionData({
+              abi,
+              functionName: 'withdraw',
+              args: [mockLINK, amount, cea],
+            }),
+          },
+        ],
+      })
+    ).rejects.toMatchObject({
+      decodedError: { name: 'PolicyCheckReverted(ArgPinAboveMax)' },
+    });
+    // The cap applies to each allowed call, not their aggregate in a batch.
     const withdraw = await agent.universal.sendTransaction({
       to: { address: pool, chain: CHAIN.ETHEREUM_SEPOLIA },
       gasLimit: BigInt(900_000),
-      data: [
-        {
-          to: pool,
-          value: BigInt(0),
-          data: encodeFunctionData({
-            abi,
-            functionName: 'withdraw',
-            args: [mockLINK, amount, cea],
-          }),
-        },
-      ],
+      data: [0, 1].map(() => ({
+        to: pool,
+        value: BigInt(0),
+        data: encodeFunctionData({
+          abi,
+          functionName: 'withdraw',
+          args: [mockLINK, half, cea],
+        }),
+      })),
     });
     f.evidence('preset-aave-stage', {
       stage: 'withdraw-submitted',
@@ -422,19 +478,31 @@ d('agw presets live', () => {
     });
     expect(withdrawalReceipt.status).toBe('success');
     expect(await balance()).toBe(amount);
-    expect(
-      parseEventLogs({
-        abi,
-        eventName: 'Withdraw',
-        logs: withdrawalReceipt.logs,
-      }).some(
-        (e) =>
-          e.address.toLowerCase() === pool.toLowerCase() &&
-          e.args.user.toLowerCase() === cea.toLowerCase() &&
-          e.args.to.toLowerCase() === cea.toLowerCase() &&
-          e.args.amount === amount
-      )
-    ).toBe(true);
+    const withdrawals = parseEventLogs({
+      abi,
+      eventName: 'Withdraw',
+      logs: withdrawalReceipt.logs,
+    }).filter(
+      (e) =>
+        e.address.toLowerCase() === pool.toLowerCase() &&
+        e.args.user.toLowerCase() === cea.toLowerCase() &&
+        e.args.to.toLowerCase() === cea.toLowerCase()
+    );
+    expect(withdrawals).toHaveLength(2);
+    expect(withdrawals.every((e) => e.args.amount === half)).toBe(true);
+    expect(withdrawals.reduce((sum, e) => sum + e.args.amount, BigInt(0))).toBe(
+      amount
+    );
+    f.evidence('preset-limits-regeneration-live', {
+      wallet,
+      cea,
+      oldRulesId: rulesIds[0],
+      newRulesId: changed.rules[0].rulesId,
+      oldCap: amount,
+      newCap: half,
+      rejectedAboveCap: true,
+      destinationTx: withdrawn.externalTxHash,
+    });
     f.evidence('preset-aave-live', {
       wallet,
       cea,
