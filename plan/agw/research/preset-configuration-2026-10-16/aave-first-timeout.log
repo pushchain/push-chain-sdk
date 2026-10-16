@@ -1,0 +1,50 @@
+FAIL core-e2e __e2e__/agw/presets-live.spec.ts (1849.518 s)
+  agw presets live
+    ✕ 2. Aave preset supplies and withdraws the wallet position (945264 ms)
+    ○ skipped 1. Uniswap preset swaps from the wallet CEA and rejects a different recipient
+
+  ● agw presets live › 2. Aave preset supplies and withdraws the wallet position
+
+    AgenticRevertError: Timed out while waiting for transaction with hash "0xe685f4205cbe59c3acd52a4b4588ae656b7e23127ca68d96ead0b70df2f00578" to be confirmed.
+
+      163 |       decodedError?: DecodedErrorPayload;
+      164 |     };
+    > 165 |     return new AgenticRevertError(e?.message ?? decoded?.name ?? 'AGW revert', {
+          |            ^
+      166 |       decodedError: decoded ?? e?.decodedError,
+      167 |       gatewayTxHash: e?.gatewayTxHash,
+      168 |       agenticCode: decoded?.name,
+
+      at wrapSendError (src/lib/agentic/management/common.ts:165:12)
+      at agenticSend (src/lib/agentic/execution/send.ts:340:34)
+      at async Object.<anonymous> (__e2e__/agw/presets-live.spec.ts:292:18)
+
+    Cause:
+    PushChainExecutionError: Timed out while waiting for transaction with hash "0xe685f4205cbe59c3acd52a4b4588ae656b7e23127ca68d96ead0b70df2f00578" to be confirmed.
+
+      186 |       ctx._routeTerminalEmitted = true;
+      187 |       if (!isUserDecline && !(err instanceof PushChainExecutionError)) {
+    > 188 |         throw new PushChainExecutionError(errMsg, { cause: err });
+          |               ^
+      189 |       }
+      190 |       throw err;
+      191 |     }
+
+      at executeStandardPayload (src/lib/orchestrator/internals/execute-standard.ts:188:15)
+      at async Orchestrator.executeWithPolicy (src/lib/orchestrator/orchestrator.ts:471:11)
+      at async agenticSend (src/lib/agentic/execution/send.ts:330:9)
+      at async Object.<anonymous> (__e2e__/agw/presets-live.spec.ts:292:18)
+
+    Cause:
+    WaitForTransactionReceiptTimeoutError: Timed out while waiting for transaction with hash "0xe685f4205cbe59c3acd52a4b4588ae656b7e23127ca68d96ead0b70df2f00578" to be confirmed.
+
+    Version: viem@2.27.2
+
+      at Timeout._onTimeout (../../node_modules/viem/actions/public/waitForTransactionReceipt.ts:160:22)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 1 skipped, 2 total
+Snapshots:   0 total
+Time:        1849.528 s
+Ran all test suites within paths "__e2e__/agw/presets-live.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

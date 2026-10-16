@@ -1,0 +1,128 @@
+{
+  "network": "push-donut-testnet",
+  "chainId": 42101,
+  "generation": "v5",
+  "explorer": "https://donut.push.network",
+  "commit": "git:2e61e133e641b4e0e1ddbdc9306b0903b60e4dbb",
+  "engineForkCommit": "7dc20e4",
+  "forge": "1.5.1-stable",
+  "deployer": "0xa89523351BE1e2De64937AA9AF61Ae06eAd199C7",
+  "deployScript": "script/DeployWalletAndFactory.s.sol",
+  "blocks": [
+    23989983,
+    23989987
+  ],
+  "deploymentGas": 6357076,
+  "deploymentCostPC": "0.0071517105",
+  "summary": "New AGW implementation (wallet label) and a new factory proxy + logic. The engine, URP (proxy, implementation, ProxyAdmin) and AgentValidator are reused from v4 unchanged: none stores a factory or wallet-implementation address, and their state is keyed per wallet.",
+  "contracts": {
+    "factoryProxy": {
+      "address": "0x8137F96A50EBF41d904e3678c84c391a0D1BCcc5",
+      "contract": "ERC1967Proxy (UUPS)",
+      "sizeBytes": 141,
+      "verified": true,
+      "explorer": "https://donut.push.network/address/0x8137F96A50EBF41d904e3678c84c391a0D1BCcc5",
+      "deployTx": "0x7294e0aff89cda3a3197e419e3c3273aa7a0ce3e29e2a66bbe56479226dc0ca9",
+      "note": "PERMANENT, user-facing: deploy and look up wallets here. Also the EIP-712 verifyingContract for every OwnerIntent."
+    },
+    "factoryLogic": {
+      "address": "0xe549d3D4e85cB16F687448D7acA21D9d13A7cD0f",
+      "contract": "AGWFactory",
+      "sizeBytes": 10013,
+      "verified": true,
+      "explorer": "https://donut.push.network/address/0xe549d3D4e85cB16F687448D7acA21D9d13A7cD0f",
+      "deployTx": "0x3def7e525fb9a205597351bf2c2c386cd8e668ef8d1138afb2bcc2c6cb0cd502"
+    },
+    "walletImplementation": {
+      "address": "0x4D459Da499C14548aa16c46c57fD92880A88EBb4",
+      "contract": "AGW",
+      "sizeBytes": 17584,
+      "verified": true,
+      "explorer": "https://donut.push.network/address/0x4D459Da499C14548aa16c46c57fD92880A88EBb4",
+      "deployTx": "0x8dfa2be6d1fd7266bc4685487693360d2bee67ab1272ab97bc3ba86cabecd389",
+      "note": "Clone target; accountId push.agw.1.0.0. Adds the wallet label: label(), setLabel(string), LabelSet, initializeAccount(string)."
+    },
+    "urp": {
+      "address": "0x603E7f0aF6e1aAFf46DDfb28b1e99364f8BC59af",
+      "contract": "TransparentUpgradeableProxy",
+      "sizeBytes": 830,
+      "verified": true,
+      "explorer": "https://donut.push.network/address/0x603E7f0aF6e1aAFf46DDfb28b1e99364f8BC59af",
+      "deployTx": "0xa52689e41f70b2d72d938f3c62f4dd6db0bf3595e9f89f44889ae17ff7692655",
+      "note": "PERMANENT: every wallet pins it; every rule names it as its only action policy.",
+      "reusedFrom": "v4"
+    },
+    "urpImplementation": {
+      "address": "0xA2391eee4C9EA1B32AEB3A460B77296EA709F02F",
+      "contract": "UniversalRulesPolicy 3.1.0",
+      "sizeBytes": 24326,
+      "verified": true,
+      "explorer": "https://donut.push.network/address/0xA2391eee4C9EA1B32AEB3A460B77296EA709F02F",
+      "deployTx": "0x6b5705fccec7f68c0ac71294a4cf6b1f4d509b8c1b1645658c502f2bca917a91",
+      "reusedFrom": "v4"
+    },
+    "urpProxyAdmin": {
+      "address": "0x0b7a31ec85117892aEA90AA5cB6514e2F97c2295",
+      "contract": "ProxyAdmin",
+      "sizeBytes": 926,
+      "verified": true,
+      "explorer": "https://donut.push.network/address/0x0b7a31ec85117892aEA90AA5cB6514e2F97c2295",
+      "note": "KEEP: no URP upgrade is possible without it. Created internally by the TUP; read from the ERC-1967 admin slot.",
+      "reusedFrom": "v4"
+    },
+    "sessionValidator": {
+      "address": "0x068EE2388475A98EE1f5a434C58bFF3444fffFe6",
+      "contract": "AgentValidator",
+      "sizeBytes": 806,
+      "verified": true,
+      "explorer": "https://donut.push.network/address/0x068EE2388475A98EE1f5a434C58bFF3444fffFe6",
+      "deployTx": "0xb7c736e905952354201767da3287eb4769870029f29db7baeab732ac9db73e35",
+      "reusedFrom": "v4"
+    },
+    "sessionEngine": {
+      "address": "0x165A5E6782f39D30B38c7D97e1303e4CB2aD102a",
+      "contract": "SmartSession (fork 7dc20e4)",
+      "sizeBytes": 22581,
+      "verified": true,
+      "explorer": "https://donut.push.network/address/0x165A5E6782f39D30B38c7D97e1303e4CB2aD102a",
+      "deployTx": "0xf36a57a8a626e6918cd80ffc0a635a15afac68e643b576fd3891c482e27c9fd7",
+      "reusedFrom": "v4"
+    }
+  },
+  "external": {
+    "universalGateway": "0x00000000000000000000000000000000000000C1",
+    "universalCore": "0x00000000000000000000000000000000000000C0",
+    "ueaFactory": "0x00000000000000000000000000000000000000eA",
+    "universalExecutorModule": "0x14191Ea54B4c176fCf86f51b0FAc7CB1E71Df7d7",
+    "gatewayImplementationAtDeploy": "0x1e412939780f2b834DC42C7AC58d9f99888Da659",
+    "gatewayOutboundSelector": "0x77b86bec"
+  },
+  "adminState": {
+    "factoryDefaultAdmin": "0xa89523351BE1e2De64937AA9AF61Ae06eAd199C7",
+    "defaultAdminDelaySeconds": 172800,
+    "urpProxyAdminOwner": "0xa89523351BE1e2De64937AA9AF61Ae06eAd199C7",
+    "pauserRole": "none",
+    "operatorRole": "none",
+    "note": "Testnet: the new factory's default admin and the (reused) URP ProxyAdmin owner are both the deployer EOA. PAUSER_ROLE and OPERATOR_ROLE are unassigned on the new factory; grant them before it can be paused."
+  },
+  "ruleEncoding": {
+    "initData": "abi.encode(uint16 version, string chainNamespace, bytes body), version 1",
+    "universalTermsTuple": "(uint48,address,(address,uint256,uint256)[],uint256,(address,bytes4,uint16,bool,uint256)[])",
+    "tokens": "PRC20 addresses on Push, 1..8 per cross-chain rule; type(uint256).max = unlimited, 0 = nothing",
+    "pushChainHash": "0x3d6bc1f1d3fb03065860265a8e93840b586e57075d956cd41b4319d040be87f9"
+  },
+  "walletLabel": {
+    "default": "AGW <index + 1>, the owner's own factory index",
+    "maxBytes": 64,
+    "reset": "setLabel(\"\") restores the default",
+    "checkpoint": "none",
+    "signedInDeployWalletWithSig": false
+  },
+  "supersedes": {
+    "generation": "v4",
+    "factoryProxy": "0xaF88D0FD947afAe7bBb8F34e8417DCfc165e1aaF",
+    "factoryLogic": "0xe138Dc6EfC10233BE1e6c8aF1Caf8cABe599cfC2",
+    "walletImplementation": "0x96D69ec7e6cDdaD414e656B5c9DCA24587DF713c",
+    "note": "v4 wallets keep working against the same URP and engine but have no label functions. Earlier address books are in git history."
+  }
+}

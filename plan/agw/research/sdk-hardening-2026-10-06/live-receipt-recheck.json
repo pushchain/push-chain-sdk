@@ -1,0 +1,31 @@
+{
+  "checkedAt": "2026-10-06T05:36:02.227Z",
+  "readOnly": true,
+  "transactionsSubmitted": false,
+  "receipts": [
+    {
+      "name": "positive-push",
+      "hash": "0x3236bbc8f2029f53a2aa09d0c0d3cd291568bbaccf4de70061ecd085d4adcb3e",
+      "status": "success",
+      "block": "23935801"
+    },
+    {
+      "name": "positive-sepolia",
+      "hash": "0x1dac9f08f651c30e0c2de11c42c8df8bbcbd12484575b536e4d42f40819989ea",
+      "status": "success",
+      "block": "11851537"
+    },
+    {
+      "name": "call-only-push",
+      "hash": "0x7fb0792747909149da3c8975aaba43a80224a20544c41ac88c04a3cf899c9926",
+      "status": "success",
+      "block": "23935113"
+    },
+    {
+      "name": "call-only-sepolia",
+      "hash": "0xadb89cd9cfb70fd33b9eaa2e05b109b0a9a26d3fb9221e8dc28cd8cf8d4f27fe",
+      "status": "success",
+      "block": "11851391"
+    }
+  ]
+}

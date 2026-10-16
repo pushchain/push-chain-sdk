@@ -1,0 +1,42 @@
+Compiling 1 files with Solc 0.8.26
+Solc 0.8.26 finished in 21.31s
+Compiler run successful with warnings:
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+  --> lib/smartsessions/contracts/lib/ConfigLib.sol:77:9:
+   |
+77 |         bool useRegistry
+   |         ^^^^^^^^^^^^^^^^
+
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+   --> lib/smartsessions/contracts/lib/ConfigLib.sol:123:9:
+    |
+123 |         bool useRegistry
+    |         ^^^^^^^^^^^^^^^^
+
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+   --> lib/smartsessions/contracts/lib/ConfigLib.sol:203:9:
+    |
+203 |         bool useRegistry
+    |         ^^^^^^^^^^^^^^^^
+
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+   --> lib/smartsessions/contracts/core/SmartSessionBase.sol:270:9:
+    |
+270 |         bool useRegistry
+    |         ^^^^^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+   --> src/AGWFactory.sol:352:5:
+    |
+352 |     function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+
+Ran 4 tests for test/review/AllowanceReview.t.sol:AllowanceReviewTest
+[PASS] test_Allowance_AgentCannotUseOwnerDoor() (gas: 1381739)
+[PASS] test_Allowance_MissingApprovalRevertsAndRollsBackSpend() (gas: 1461500)
+[PASS] test_Allowance_OwnerApprovalEnablesPullBurnAndCanBeRemoved() (gas: 1557294)
+[PASS] test_Allowance_UniversalRuleCannotApproveThroughAgentDoor() (gas: 1418195)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 8.06ms (5.25ms CPU time)
+
+Ran 1 test suite in 16.14ms (8.06ms CPU time): 4 tests passed, 0 failed, 0 skipped (4 total tests)

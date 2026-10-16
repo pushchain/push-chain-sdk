@@ -1,0 +1,147 @@
+--- previous/1-agw-contract-changes.md
++++ latest/1-agw-contract-changes.md
+@@ -359,4 +359,144 @@
+ 3. `creditRevert`: wire the executor module, or replace the credit path.
+ 4. Anything in the rename map or the diff that should stay as is.
+ 
+-The SDK surface lives on page 5 (SDK: AGW).+The SDK surface lives on page 5 (SDK: AGW).
++
++# 6. Changes proposed on 12 Oct 2026
++
++These come from the review of the first SDK implementation, [push-chain-sdk PR #291](https://github.com/pushchain/push-chain-sdk/pull/291), which runs against the v5 contracts on Donut. Sections 0 to 5 above are left exactly as they were. Where an entry here differs from them, the entry here is the current one. The SDK side of each change is on [5. SDK: AGW](https://app.notion.com/p/5-SDK-AGW-3e9188aea7f481cf8e8de324956549b9?pvs=21) (page 5), section 6.
++
++Struct and field names below are shown by meaning. Where the v5 source names a field differently, the source name wins.
++
++| # | Change | Contract | Replaces above | SDK side (page 5) |
++| --- | --- | --- | --- | --- |
++| 6.1 | The wallet approves the gateway itself, for the exact amount, inside each outbound | AGW | new | 6.g |
++| 6.2 | One factory call deploys the wallet and grants its rules | AGWFactory, AGW | new (page 5 called this "item 11") | 6.b |
++| 6.3 | Pins on EVM destination calls | UniversalRulesPolicy | new | 6.a |
++| 6.4 | `ref` removed from `grantRules` | AGW | section 4 item 3, and the `ref` lines in 4b and 4c | 6.b, 6.c, 6.d |
++| 6.5 | A cap of 0 means nothing moves | UniversalRulesPolicy | "0 = no total cap" in 4c | 6.b |
++
++### 6.1 The wallet approves the gateway itself, for the exact amount, inside each outbound
++
++**What happens today.** When the wallet sends a token to another chain, `UniversalGatewayPC` takes the token out of the wallet. That needs an ERC20 approval from the wallet to the gateway. Nothing in the wallet sets it, so the owner has to send `approve(gateway, amount)` through the owner door before the agent's first cross-chain send. If the owner skips it, the agent's send fails.
++
++**Why that is wrong.**
++
++- Granting a rule with an asset cap already says how much the agent may move. A second, separate permission is a step no user expects.
++- The approval goes through the owner door, so it records an `OWNER_ACTION` checkpoint. An owner who raises the allowance during a job is treated as having changed something mid-job.
++- `revokeRules` and `revokeAllRules` do not clear the allowance. It stays on the wallet.
++- When the allowance runs out, the agent stops until the owner returns.
++
++**Change.** The wallet sets the approval itself, for the exact amount of the outbound, in the same transaction, on both doors.
++
++```diff
++// AGW, owner door and agent door
++~ execute / executeWithSig / executeAsAgent
++~   when a call's target is UNIVERSAL_GATEWAY_PC and its selector is sendUniversalTxOutbound(req):
+++     before the call:  approve req.token to UNIVERSAL_GATEWAY_PC for req.amount
+++     after the call:   allowance is 0 again (the gateway took exactly req.amount; reset it if anything is left)
++~   agent door order: the rules policy checks req against the rules first, then the approval, then the gateway call
++=   a native-coin outbound (no token pulled) is untouched
++```
++
++No standing allowance exists at any point outside the call. There is nothing to top up, nothing left after a revoke, and no checkpoint, because the owner did nothing.
++
++To confirm while implementing: whether the gateway takes anything from the wallet beyond `req.amount` (a fee in the token). If it does, the approval must cover that amount as well.
++
++### 6.2 One factory call deploys the wallet and grants its rules
++
++**What happens today.** An external owner sends deploy and grants as one UEA multicall. A Push EOA owner cannot (core rejects a multicall from a Push-native sender), so the SDK sends the deploy and then each grant as its own transaction. If a later grant fails, the wallet exists with only some of its rules.
++
++**Change.** A factory entry that does both in one transaction, for any owner. Either the wallet exists with every rule passed, or the transaction reverts as a whole.
++
++```diff
++// AGWFactory
+++ createWallet(string label, Session[] rules) returns (address wallet, bytes32[] rulesIds)
+++   caller is the owner
+++   deploys the wallet, then grants every rule, in order; reverts as a whole if any grant fails
+++   rules may be empty, in which case it behaves as deployWallet
+++   rulesIds are the same ids grantRules would have returned, in the order passed
++= deployWallet(string label)                                              // unchanged
++= deployWalletWithSig(...)                                                // unchanged
++
++// AGW
+++ the wallet accepts its first rules from the factory, and only during its own deployment
++~   each rule granted this way emits RulesGranted and records a RULES_GRANTED checkpoint, exactly as grantRules does
++```
++
++To decide: whether a signed variant (`createWalletWithSig`, same digest rules as `deployWalletWithSig` with the rules hashed in) lands in the same change. The marketplace's `startJob` deploys a wallet with rules for the user, so it would use that variant.
++
++### 6.3 Pins on EVM destination calls
++
++**What happens today.** All rule checks run on Push, in the rules policy, before the wallet is allowed to call the gateway. For an outbound to an EVM chain the policy unpacks the payload and checks each destination call's target, selector, beneficiary and value. It has no field for a general pin. A rule cannot say "argument 0 of `supply` must be USDC", so an agent allowed to call `supply` can pass any asset the wallet's CEA holds. The Push rulebook has argument pins, and the Solana rulebook has account and data pins. The EVM destination rulebook is the only one without them.
++
++**Change.** The EVM allowed call gains a list of pins, read from the destination call's calldata the same way the beneficiary already is. A pin either requires an argument to equal a value or to not exceed a value.
++
++```diff
++// libraries/Types.sol
++  struct ArgPin {
++=     offset;                          // byte position of the argument in the call's calldata
+++     uint8 op;                        // 0 = EQ: the 32 bytes at offset must equal value
+++                                      // 1 = MAX: the 32 bytes at offset, read as uint256, must not exceed value
++=     bytes32 value;
++  }
++
++// universal EVM terms
++  struct AllowedCall {
++=     target; selector; beneficiary offset and flag; maxValue;
+++     ArgPin[] pins;                   // 0..MAX_PINS (8)
++  }
++
++// UniversalRulesPolicy, EVM rulebook
++~ checkAction: for each destination call in the payload, after the target, selector, beneficiary and value checks,
+++   check every pin of the matching allowed call against that call's calldata
+++ reverts reuse the Push rulebook's pin error (ArgPinMismatch) for EQ, and add one for MAX
++
++// UniversalRulesPolicy, Push rulebook
+++ the same op on its pins, so a MAX pin is an ordinary pin there too
++=   the metered argument and the call counter stay in the contract; the SDK no longer exposes them
++```
++
++The SDK now has one rule shape for every chain, with pins inside each allowed call (page 5, 6.a). Until this lands, the SDK rejects a pin on an EVM destination call before signing, and compiles a `max` pin on a Push call to the existing metered argument (one per call).
++
++The SDK also folds `beneficiary` into pins: it is written as a pin whose expected value is the wallet itself (page 5, 6.a). Until this change lands, the SDK compiles that pin to the existing beneficiary check, one per call. Once pins exist on EVM destination calls, the same check is an ordinary EQ pin against the wallet's CEA, and the dedicated beneficiary offset and flag on `AllowedCall` can be retired. To decide: retire them in this change, or keep them.
++
++### 6.4 `ref` removed from `grantRules`
++
++Section 4 item 3 added a `bytes32 ref` to `grantRules` so a job could bind to a rules id. It is not needed: `rulesId` is generated at grant, and that id is what a job, a card or an indexer latches on to. The v5 contracts on Donut already grant without it.
++
++```diff
++// AGW
++- grantRules(Session session, bytes32 ref) returns (bytes32 rulesId)
+++ grantRules(Session session) returns (bytes32 rulesId)
++- grantRulesWithSig(Session session, bytes32 ref, uint48 deadline, bytes ownerSig) returns (bytes32 rulesId)
+++ grantRulesWithSig(Session session, uint48 deadline, bytes ownerSig) returns (bytes32 rulesId)
++- RulesGranted(bytes32 indexed rulesId, uint8 mode, bytes32 indexed chainHash, string chainNamespace, bytes32 ref)
+++ RulesGranted(bytes32 indexed rulesId, uint8 mode, bytes32 indexed chainHash, string chainNamespace)
++= Checkpointed(uint64 indexed seq, uint8 kind, bytes32 ref, uint64 blockNumber)   // keeps its ref: the checkpoint's own reference
++```
++
++The `ref?: Hex` field on the SDK struct in 4c goes with it.
++
++### 6.5 A cap of 0 means nothing moves
++
++4c says `maxTotal: 0` means no total cap. That is reversed. A wallet whose purpose is to limit an agent must not hand out an unlimited budget because a field was left empty.
++
++```diff
++// universal terms (EVM and SVM)
++  struct AssetCap {
++=     address token;
++=     uint256 maxPerCall;
++-     uint256 maxTotal;                // 0 = no running cap
+++     uint256 maxTotal;                // 0 = the agent cannot move this token
++  }
++// same reading for the native coin caps on a Push call: 0 = no native coin may be sent
++```
++
++The v5 contracts on Donut already treat an explicit zero as "cannot move". The gap was in the SDK, which sent the largest possible number when `maxTotal` was left out. It now sends 0 (page 5, 6.b).
++
++### 6.6 Checked, no contract change needed
++
++- **`setLabel` is not a checkpoint.** Item 10 in section 4 already says so and the v5 contract behaves that way. The first SDK implementation routed the rename through the owner door, which does record a checkpoint. The fix is in the SDK: it calls `setLabel` on the wallet directly (page 5, 6.f).
++- **First-use destination gas.** The 500,000 default that fails when a CEA is deployed on first use is an SDK default. No contract change (page 5, 6.g).
++- **`spent` on rule records.** The counters are already readable from the policy. The SDK puts them back on the record (page 5, 6.c and 6.d).
++- **Deleting a rule.** The SDK renames `rules.revoke` to `rules.delete` (page 5, 6.m). `revokeRules` and `revokeAllRules` already remove the rule from the session engine for good, so the contract does what the new name says. The contract names stay as they are.

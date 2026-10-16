@@ -44,6 +44,10 @@ else
   npx ts-node scripts/bumpAndGenerateChangelog.ts "$SCOPE" "$BUMP"
 fi
 
+# Version bumps can change workspace semver matching (especially stable -> alpha).
+# Refresh the lockfile deliberately; the workflow's initial install stays immutable.
+YARN_ENABLE_IMMUTABLE_INSTALLS=false yarn install --mode=update-lockfile
+
 # Step 2: Build the package
 npx nx run "$SCOPE:build"
 
@@ -68,8 +72,8 @@ else
   npm publish "$PACKAGE_DIR" --access public
 fi
 
-# Step 5: Commit version + changelog
-git add "packages/$SCOPE/package.json" "packages/$SCOPE/CHANGELOG.md"
+# Step 5: Commit version + changelog + lockfile
+git add "packages/$SCOPE/package.json" "packages/$SCOPE/CHANGELOG.md" yarn.lock
 git commit -m "release($SCOPE): bump to $VERSION [skip ci]"
 
 # Step 6: Git tag + push

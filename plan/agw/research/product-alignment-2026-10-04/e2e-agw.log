@@ -1,0 +1,26 @@
+✓ agw-create-bare                  1 test
+✓ agw-create-rules                 1 test
+✓ agw-funding-pc                   1 test
+✓ agw-funding-allowance            1 test
+✓ agw-native-batch                 1 test
+✓ agw-native-batch-rollback        1 test
+✓ agw-native-agent                 1 test
+✓ agw-native-owner                 1 test
+✓ agw-native-over-cap              1 test
+✓ agw-native-stranger              1 test
+✓ agw-native-revoked               1 test
+✓ agw-native-expired               1 test
+✓ agw-lifecycle-add                1 test
+✓ agw-lifecycle-update             1 test
+✓ agw-lifecycle-checkpoints        1 test
+✓ agw-lifecycle-revoke-all         1 test
+✓ agw-universal-outbound           1 test
+✓ agw-universal-dest-revert        1 test
+✓ agw-identity-evm                 1 test
+✓ agw-identity-first-use           1 test
+✓ agw-identity-solana              1 test
+✓ agw-responses-hooks              1 test
+✓ agw-responses-replay             1 test
+
+23 scenarios, 8 spec files, 23 distinct tests.
+Manifest is consistent with the specs.

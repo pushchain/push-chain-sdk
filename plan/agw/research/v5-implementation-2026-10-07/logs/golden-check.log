@@ -1,0 +1,9 @@
+PASS core-agw-local packages/core/__agw-local__/vectors.spec.ts (6.446 s)
+  contract-generated AGW vectors (v5)
+    ✓ matches the committed fixture (or writes it) (650 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       1 passed, 1 total
+Snapshots:   0 total
+Time:        6.484 s
+Ran all test suites within paths "packages/core/__agw-local__/vectors.spec.ts".

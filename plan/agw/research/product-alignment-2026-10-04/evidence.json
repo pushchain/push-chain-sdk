@@ -1,0 +1,43 @@
+{
+  "base_commit": "a8527778d1f50728fffc0f096b583da5b8c068dc",
+  "date": "2026-10-04",
+  "defaults_unchanged": true,
+  "live_broadcasts": false,
+  "commands": [
+    {
+      "command": "node node_modules/jest/bin/jest.js --config packages/core/jest.config.ts --runInBand",
+      "result": "1917 passed, 12 skipped"
+    },
+    {
+      "command": "AGW_LOCAL_DIR=<prepared pinned build> node node_modules/jest/bin/jest.js --config packages/core/jest.agw-local.config.ts --runInBand --forceExit",
+      "result": "36 passed; local only"
+    },
+    {
+      "command": "node node_modules/typescript/bin/tsc -p packages/core/tsconfig.spec.json --noEmit (also lib and agw-local configs)",
+      "result": "passed"
+    },
+    {
+      "command": "yarn nx run core:build --skip-nx-cache",
+      "result": "passed"
+    },
+    {
+      "command": "yarn nx run core:lint --skip-nx-cache",
+      "result": "7 errors in unchanged files"
+    },
+    {
+      "command": "cd packages/core; yarn e2e:verify --group agw; yarn e2e:verify --group all",
+      "result": "23 / 76 scenarios consistent"
+    }
+  ],
+  "sha256": {
+    "README.md": "8652e06f9a5dd2c2586ea5f7488adc020b82f5acb12f5a5448a1fdf028ece0a6",
+    "build.log": "93e5781b460036e4a44f98f9e48a141e8c196336ab6ddf563e49a2c09bc9c2cb",
+    "e2e-agw.log": "55cd2e786526bfeb13acc79e8b94c6fa6baa9b3b52bde105f8034c6638c6c77c",
+    "e2e-all.log": "3d1649d660267693725f167772c8cfc6b0c51a385e1043d203efe1459798f6ff",
+    "local.log": "1a68e623f593dccfea0dc7b48a3f4311f77a7fb0d5d18b15c2faee9e1df2baf0",
+    "types-lib.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "types-local.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "types-spec.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "unit.log": "42d2d759193a3b9f68e69e6b1ef0b1684be8045823832e2809866af01fcc0691"
+  }
+}

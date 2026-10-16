@@ -1,0 +1,29 @@
+PASS core packages/core/src/lib/agentic/__tests__/management.spec.ts
+  agentic.create
+    ✓ validates first, then sends deploy + grants in input order and returns receipt IDs (9 ms)
+    ✓ a bare wallet is one deployWallet call, no funding
+    ✓ invalid input never reaches the signer
+    ✓ refuses a changed URP version before grant signing
+    ✓ a different wallet in the receipt is an INDEX_RACE with full details (1 ms)
+    ✓ IDs that differ from the input order are a RECEIPT_MISMATCH, not a silent reorder (2 ms)
+    ✓ a sequential failure after deployment is CREATE_PARTIAL; what committed comes from this call’s receipts (2 ms)
+    ✓ a pending hash keeps an unconfirmed deployment unknown (1 ms)
+    ✓ failed recovery reads report unknown state, never "not deployed" (1 ms)
+    ✓ a receipt that cannot be read after submission keeps the hash and reports unknown state (1 ms)
+    ✓ the deploy is index-bound: a raced slot reverts and is reported as INDEX_RACE with nothing committed (2 ms)
+    ✓ a generic send error is still identified as a race when the fresh slot label proves another create won (1 ms)
+    ✓ a slot that is already deployed is refused before signing (1 ms)
+  rules.add / rules.revoke
+    ✓ add: owner-only, same-agent grants allowed, IDs from the grant nonce
+    ✓ add: several rules are one atomic owner execute batch (one signature on any signer) (2 ms)
+    ✓ revoke: bare and empty are refused; unknown IDs fail before signing; several IDs are one atomic owner execute (2 ms)
+  rules.update — one owner batch: assert → revoke → grant
+    ✓ builds exactly one execute(batch) with the observed spend asserted per pair (2 ms)
+    ✓ universal replacement asserts every asset in stored order before revoke/grant (2 ms)
+    ✓ replacement may name another live agent, but may not repeat an old ID (4 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       19 passed, 19 total
+Snapshots:   0 total
+Time:        3.115 s
+Ran all test suites within paths "packages/core/src/lib/agentic/__tests__/management.spec.ts".

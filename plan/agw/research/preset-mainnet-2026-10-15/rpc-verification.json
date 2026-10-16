@@ -1,0 +1,124 @@
+[
+  {
+    "chainId": 1,
+    "rpc": "https://ethereum-rpc.publicnode.com",
+    "block": "26194775",
+    "contracts": [
+      {
+        "name": "Uniswap V3",
+        "address": "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
+        "bytes": 24497,
+        "codeHash": "0x6ec798e80f3a19de650826338677604e54d6664f44a33b53a20b22b1939f402e"
+      },
+      {
+        "name": "Aave V3",
+        "address": "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2",
+        "bytes": 2400,
+        "codeHash": "0x96107dc4006b4c7fecd1827cfb275ffeef31e6194cd50466f85f8eb24ccf2679"
+      },
+      {
+        "name": "EigenLayer",
+        "address": "0x858646372CC42E1A627fcE94aa7A7033e7CF075A",
+        "bytes": 2151,
+        "codeHash": "0x073c6ec3b11b1c79a5e70af69992743e1f9857ca449d45cf954c164b0e464a9a"
+      }
+    ]
+  },
+  {
+    "chainId": 8453,
+    "rpc": "https://base-rpc.publicnode.com",
+    "block": "52620057",
+    "contracts": [
+      {
+        "name": "Uniswap V3",
+        "address": "0x2626664c2603336E57B271c5C0b26F421741e481",
+        "bytes": 24497,
+        "codeHash": "0x38bd640f47df62b2fd5a6755a63f4976ad847dc9b946ae0d145d21d16bb124e4"
+      },
+      {
+        "name": "Aave V3",
+        "address": "0xA238Dd80C259a72e81d7e4664a9801593F98d1c5",
+        "bytes": 1933,
+        "codeHash": "0xffcb26fbebbe09d9b0d8baef76a1fa218989be6c279b7acf9865d8fb6e0718ce"
+      },
+      {
+        "name": "Moonwell USDC",
+        "address": "0xEdc817A28E8B93B03976FBd4a3dDBc9f7D176c22",
+        "bytes": 7544,
+        "codeHash": "0xcd7e22e6eef009b831781d4de03f20777094f437a9719c597c45cf9725a7dca9",
+        "underlying": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+      },
+      {
+        "name": "Moonwell WETH",
+        "address": "0x628ff693426583D9a7FB391E54366292F509D457",
+        "bytes": 7544,
+        "codeHash": "0x041dbd5067f87816c0c8d6af9992f04e71aa99c87d1a8e9fb1d27e3e7ed99985",
+        "underlying": "0x4200000000000000000000000000000000000006"
+      },
+      {
+        "name": "Moonwell controller",
+        "address": "0xfBb21d0380beE3312B33c4353c8936a0F13EF26C",
+        "bytes": 1412,
+        "codeHash": "0x86a2f6bebe3e171b8d4231544a9925e94e586139762d0164d37c34831a3d0240"
+      }
+    ]
+  },
+  {
+    "chainId": 42161,
+    "rpc": "https://arbitrum-one-rpc.publicnode.com",
+    "block": "514919525",
+    "contracts": [
+      {
+        "name": "Uniswap V3",
+        "address": "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
+        "bytes": 24497,
+        "codeHash": "0x209f9820ed7257d51c2f96ee837e8ec057b44774899f4be16fc45bd30cbb16f6"
+      },
+      {
+        "name": "Aave V3",
+        "address": "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
+        "bytes": 2400,
+        "codeHash": "0xf168c2e9e4d04292c7d5d526a9a917175a44369ab63a2f9997537acf0ffaaf2e"
+      }
+    ]
+  },
+  {
+    "chainId": 56,
+    "rpc": "https://bsc-rpc.publicnode.com",
+    "block": "127702568",
+    "contracts": [
+      {
+        "name": "PancakeSwap V3",
+        "address": "0x13f4EA83D0bd40E75C8222255bc855a974568Dd4",
+        "bytes": 24316,
+        "codeHash": "0x25cbde77f2ef6d474c31f738e67ab99e604471170d8a0ab4f544cbaba969d078"
+      },
+      {
+        "name": "Aave V3",
+        "address": "0x6807dc923806fE8Fd134338EABCA509979a7e0cB",
+        "bytes": 1933,
+        "codeHash": "0xa2aac688c1cbeae86c0b468a926632c775c7a40f1b5dec59948f9f1562c53e9e"
+      },
+      {
+        "name": "Venus USDT",
+        "address": "0xfD5840Cd36d94D7229439859C0112a4185BC0255",
+        "bytes": 4744,
+        "codeHash": "0xd6e00b8c8f24fb40df4eaeb95fcce7f605177339f239d1b04b2c21664c1b3ab2",
+        "underlying": "0x55d398326f99059fF775485246999027B3197955"
+      },
+      {
+        "name": "Venus USDC",
+        "address": "0xecA88125a5ADbe82614ffC12D0DB554E2e2867C8",
+        "bytes": 4744,
+        "codeHash": "0xd6e00b8c8f24fb40df4eaeb95fcce7f605177339f239d1b04b2c21664c1b3ab2",
+        "underlying": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d"
+      },
+      {
+        "name": "Venus controller",
+        "address": "0xfD36E2c2a6789Db23113685031d7F16329158384",
+        "bytes": 1508,
+        "codeHash": "0x7fc5c25e2e62f7d22d3340e21d5faf867c0039b404c02bb26ba8972e0be2ac97"
+      }
+    ]
+  }
+]

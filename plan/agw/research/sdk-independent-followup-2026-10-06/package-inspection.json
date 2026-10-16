@@ -1,0 +1,14 @@
+{
+  "name": "@pushchain/core",
+  "version": "6.0.26",
+  "entryCount": 390,
+  "guideIncluded": true,
+  "guide": {
+    "path": "AGW.md",
+    "size": 12631,
+    "mode": 420
+  },
+  "dryRun": true,
+  "ignoreScripts": true,
+  "published": false
+}

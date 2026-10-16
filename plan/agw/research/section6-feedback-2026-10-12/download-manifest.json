@@ -1,0 +1,18 @@
+[
+  {
+    "page": "sdk",
+    "export_entry": "Private & Shared/5 SDK AGW 3e9188aea7f481cf8e8de324956549b9.md",
+    "sha256": "7f8e6e892686fc298bd0a40d66d7e21cb457711e18a272e563322403bc0380ec",
+    "exported_at": "2026-10-12T14:53:27.075673+00:00",
+    "local_file": "plan/agw/notion/5-sdk-agw.md",
+    "native_export_includes_comments": false
+  },
+  {
+    "page": "contracts",
+    "export_entry": "Private & Shared/1 AGW Contract Changes (nomenclature standard + ch 3e9188aea7f4813aa31fc95ceb4e684d.md",
+    "sha256": "7d1690747f52a32a2e3c9eac64422db8dbc673729f370156da2c83c06634bac4",
+    "exported_at": "2026-10-12T14:53:27.077622+00:00",
+    "local_file": "plan/agw/notion/1-agw-contract-changes.md",
+    "native_export_includes_comments": false
+  }
+]

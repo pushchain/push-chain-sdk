@@ -1,0 +1,16 @@
+{
+  "checked_at": "2026-10-03T09:30:23.568072+00:00",
+  "method": "git ls-remote origin with explicit branch refs; no checkout changes",
+  "agw": {
+    "pushAgenticWallet_v3": "e704d5b58fd1d30ce02bc0ad74dccfbdb37804f9",
+    "main": "9ddd95402b9a2dbf494f6ebfdb477e9a0fb1408a"
+  },
+  "core": {
+    "universalMarketplace_v1": "cb69e0ba101bef1bb4440e54b2c45396be3e92ce"
+  },
+  "gateway": {
+    "pc20-3rd-iteration": "bcbf7df42e8e6dd11088a43bcc0b056a54ea0a18",
+    "main": "d02070dc11aeb3a081d5d6363aa0d75d63eb7c1c"
+  },
+  "notion": "No new export in this pass; source-manifest retains 2026-10-03T07:53:10.278902+00:00."
+}

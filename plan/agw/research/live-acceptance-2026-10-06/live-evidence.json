@@ -1,0 +1,145 @@
+[
+  {
+    "name": "create-with-rule",
+    "at": "2026-10-05T21:06:35.105Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "e8db74815cfbbf5389593805e464fe8d85f7f735",
+    "wallet": "0x428325Ce3966A4B32D8B1d929AB0Df0723042Da4",
+    "rulesIds": [
+      "0x6f7881f8a6e019f0a91d639dfd26170eebf12884348ed8f7f0490ed0f85e1ddf"
+    ],
+    "tx": "0xac162329f85fac96ca3fadd453aa151a92f224033f88fa49a4a33062dbd81fc0",
+    "atomic": true
+  },
+  {
+    "name": "native-agent-send",
+    "at": "2026-10-05T21:07:11.307Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "e8db74815cfbbf5389593805e464fe8d85f7f735",
+    "wallet": "0xc8982105786701598aE2A4E6685304074e7e99f0",
+    "rulesId": "0xfe24f47d822c340f0ccfac6c3fb70ea6337c52f27dad2cf5949fdf14cb07a6ae",
+    "tx": "0x18a59103e292e5b4a70e6ea1bdb14dbccf7e04e0562f6a2cefbfc219cde2bf43",
+    "block": "23934793"
+  },
+  {
+    "name": "create-bare",
+    "at": "2026-10-05T21:10:27.937Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "e8db74815cfbbf5389593805e464fe8d85f7f735",
+    "wallet": "0x91B812Fa58775a6C287658d2A51Ff899aDF3308E",
+    "index": 3,
+    "tx": "0xa9e5f13e0d4629e0be1746d0c8fe0646a9c65c4bd42256d2bb8eae7e09dd8865",
+    "block": "23934869"
+  },
+  {
+    "name": "v4-two-token-replacement",
+    "at": "2026-10-05T21:16:54.137Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "e8db74815cfbbf5389593805e464fe8d85f7f735",
+    "wallet": "0xcd9FB65aeDB3b200163D3209520926181a2C0611",
+    "oldId": "0xef98211b8734b57da5fba9ad7b32e3b5e7e6c3779e4ad86c22e2882b21810f77",
+    "newId": "0xeef1b885580ab2ae5ea2a1e112e72f4df94d7e2173406c400f697b4b68da4341",
+    "txHash": "0x31e2c657ba10d4da07c7453c8a41810af9d7e9152d9e48b5155d623a29e09f5a"
+  },
+  {
+    "name": "v4-call-only",
+    "at": "2026-10-05T21:21:18.546Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "e8db74815cfbbf5389593805e464fe8d85f7f735",
+    "wallet": "0x4780C8fd6643387BB1af016CB750fe0b8F17ed5e",
+    "pushTx": "0x7fb0792747909149da3c8975aaba43a80224a20544c41ac88c04a3cf899c9926",
+    "externalTx": "0xadb89cd9cfb70fd33b9eaa2e05b109b0a9a26d3fb9221e8dc28cd8cf8d4f27fe"
+  },
+  {
+    "name": "universal-outbound",
+    "at": "2026-10-05T21:51:27.498Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "e8db74815cfbbf5389593805e464fe8d85f7f735",
+    "wallet": "0x1C015E6B101ad2965D9912437c2499262Ef8F502",
+    "cea": "0x485E0aF54D8944ebDF9a3eC9641D8aB838b7C590",
+    "rulesId": "0xa7b3993ea6ec9794d0d46574def4379a96340773e242fbc6082c2c5c690902a4",
+    "pushTx": "0x3236bbc8f2029f53a2aa09d0c0d3cd291568bbaccf4de70061ecd085d4adcb3e",
+    "externalTx": "0x1dac9f08f651c30e0c2de11c42c8df8bbcbd12484575b536e4d42f40819989ea",
+    "amount": "1000000000000"
+  },
+  {
+    "name": "universal-destination-revert",
+    "at": "2026-10-05T21:53:12.285Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "e8db74815cfbbf5389593805e464fe8d85f7f735",
+    "wallet": "0x1C015E6B101ad2965D9912437c2499262Ef8F502",
+    "pushTx": "0xe64f8e09992b059feaaf77a00182f2337105479af028212876b5031f2363f71e",
+    "externalStatus": "failed"
+  },
+  {
+    "name": "native-agent-batch",
+    "at": "2026-10-05T21:56:41.474Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "e8db74815cfbbf5389593805e464fe8d85f7f735",
+    "wallet": "0x93e17E662a68fAD566A9BF85B864e44e13e17c4F",
+    "rulesId": "0x1bbae44588285709fd2b6a7819e9c7b2cfecfb9d1d434bca710d5693e2a46804",
+    "tx": "0x33aa4cceb64dc6652324aaab72917212a27cab191d353cd311ec81b7fa648679"
+  },
+  {
+    "name": "native-agent-batch-rollback",
+    "at": "2026-10-05T21:57:09.796Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "e8db74815cfbbf5389593805e464fe8d85f7f735",
+    "wallet": "0xBab9effbE66F51aF9Ca592472C80536EE87B0C0b",
+    "rulesId": "0x1bbae44588285709fd2b6a7819e9c7b2cfecfb9d1d434bca710d5693e2a46804"
+  },
+  {
+    "name": "replay-identity",
+    "at": "2026-10-05T21:58:18.163Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "e8db74815cfbbf5389593805e464fe8d85f7f735",
+    "wallet": "0x4114E1aE8e076818336da09e3B3A3a7a11258766",
+    "tx": "0xbf615e5c7dda51d0b448a792bfcd446de8ca49b1939d453cd4a92044db1bf236"
+  },
+  {
+    "name": "allowance-set-remove",
+    "at": "2026-10-05T21:59:07.661Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "e8db74815cfbbf5389593805e464fe8d85f7f735",
+    "wallet": "0x4A75e0060de0287987FFF9b33985119e448Ab0cE",
+    "token": "0x2971824Db68229D087931155C2b8bB820B275809",
+    "setTx": "0x8e0cfab44132e406fa3af77434f324def1bcb4ed7386dddff5d6b6c6854da3dd"
+  },
+  {
+    "name": "rules-update",
+    "at": "2026-10-05T22:00:56.863Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "e8db74815cfbbf5389593805e464fe8d85f7f735",
+    "wallet": "0x5657d413eC5f1d4Fa9Fc6a91210b29a5C399046F",
+    "original": "0x76aeb12a16f8dd99ce775fffc6642f28c8f99668cf509cee99ea1335c6d2f8d9",
+    "replacement": "0xd687e19b9ab378328b341320981ca4259682220ea589dee5a13b22ad46bc859a",
+    "tx": "0x21b1f56f999773e29c516c1944976ee923f972857211db1e8c005cb441e7526b",
+    "checkpointDelta": 5
+  },
+  {
+    "name": "external-evm-agent",
+    "at": "2026-10-05T22:02:03.221Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "e8db74815cfbbf5389593805e464fe8d85f7f735",
+    "wallet": "0x24CB91b9284097E591F36476bBc2d165AAc51873",
+    "uea": "0x5C70C864Cf1aDfB04A0e107fFA248ba3600EAb8D",
+    "tx": "0xc3f7bd68a84b7042189cd5540917f5dfd8e9b991f0548511e80801df845b8ba7"
+  },
+  {
+    "name": "first-use-uea",
+    "at": "2026-10-05T22:03:29.060Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "e8db74815cfbbf5389593805e464fe8d85f7f735",
+    "wallet": "0xa416185c2e1790A4f23da0Bb16FfEA95aca95EA1",
+    "uea": "0x0302B6d6dadDb35F3b5618b39E01C7bB874FC156"
+  },
+  {
+    "name": "solana-origin-agent",
+    "at": "2026-10-05T22:04:00.125Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "e8db74815cfbbf5389593805e464fe8d85f7f735",
+    "wallet": "0xE66E9C651548f2f94d16F4daC9C872c5dEF4361a",
+    "uea": "0xad977a75D8BEd06579D6498b7e2e3885f9D31F15",
+    "tx": "0xf010a8c0690cd1b4696a8d5b186663bc1ffd7def8acee86016c5d552f96b03a0"
+  }
+]

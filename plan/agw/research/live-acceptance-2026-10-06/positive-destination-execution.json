@@ -1,0 +1,20 @@
+{
+  "chainId": 11155111,
+  "transactionHash": "0x1dac9f08f651c30e0c2de11c42c8df8bbcbd12484575b536e4d42f40819989ea",
+  "block": "11851537",
+  "status": "success",
+  "attributionAssertionsPass": true,
+  "executionEvents": [
+    {
+      "emitter": "0x485e0af54d8944ebdf9a3ec9641d8ab838b7c590",
+      "eventName": "UniversalTxExecuted",
+      "args": {
+        "subTxId": "0x2e0cddd56aa8ceb6dcf89342a187207be138efc13d255ae296b00ff8747261de",
+        "universalTxId": "0x468b004e8920b299f06158f6fba82be8e8ac327abd107854ec7c8bee175ddc16",
+        "originCaller": "0x1C015E6B101ad2965D9912437c2499262Ef8F502",
+        "target": "0xF1552eD5ac48C273570500bD10b10C00E1C418bB",
+        "data": "0xd09de08a"
+      }
+    }
+  ]
+}

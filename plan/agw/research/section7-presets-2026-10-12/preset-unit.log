@@ -1,0 +1,8 @@
+PASS core packages/core/src/lib/agentic/__tests__/presets.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/response-surface.spec.ts
+
+Test Suites: 2 passed, 2 total
+Tests:       30 passed, 30 total
+Snapshots:   0 total
+Time:        2.314 s, estimated 5 s
+Ran all test suites within paths "packages/core/src/lib/agentic/__tests__/presets.spec.ts", "packages/core/src/lib/agentic/__tests__/response-surface.spec.ts".

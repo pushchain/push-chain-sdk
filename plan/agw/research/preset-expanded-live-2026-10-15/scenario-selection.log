@@ -1,0 +1,8 @@
+✓ agw-preset-eigen-sepolia         1 test
+✓ agw-preset-dex-base              1 test
+✓ agw-preset-dex-aave-arbitrum     1 test
+✓ agw-preset-dex-venus-bnb         1 test
+✓ agw-preset-base-aave-moonwell    1 test
+
+5 scenarios, 1 spec files, 5 distinct tests.
+Manifest is consistent with the specs.

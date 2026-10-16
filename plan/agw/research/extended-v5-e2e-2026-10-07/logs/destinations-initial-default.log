@@ -1,0 +1,36 @@
+FAIL core-e2e packages/core/__e2e__/agw/universal-evm.spec.ts (245.031 s)
+  ● Console
+
+    console.log
+      [ExternalTxVerifier] Verifying EVM tx on eip155:11155111: 0xf91e4cc9e2605ff9f27d575ceb9e928dadddd1755a428112021ef9983738abb7
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [ExternalTxVerifier] EVM tx 0xf91e4cc9e2605ff9f27d575ceb9e928dadddd1755a428112021ef9983738abb7 on eip155:11155111: status=0x0
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+  ● agw universal evm › 1. positive-amount outbound: allowance pull/burn, the wallet CEA executes on Sepolia, receipts and replay identity
+
+    ExternalTxFailedError: [ExternalTxVerifier] EVM tx 0xf91e4cc9e2605ff9f27d575ceb9e928dadddd1755a428112021ef9983738abb7 on eip155:11155111 FAILED on-chain: receipt status=0x0 (expected 0x1). The external chain transaction reverted.
+
+      78 |       // Definitive failure — receipt exists but tx reverted. No point retrying.
+      79 |       if (status !== '0x1') {
+    > 80 |         throw new ExternalTxFailedError(
+         |               ^
+      81 |           `[ExternalTxVerifier] EVM tx ${txHash} on ${chainName} FAILED on-chain: receipt status=${status} (expected 0x1). The external chain transaction reverted.`
+      82 |         );
+      83 |       }
+
+      at verifyEvmTransaction (__e2e__/shared/external-tx-verifier.ts:80:15)
+      at async verifyExternalTransaction (__e2e__/shared/external-tx-verifier.ts:221:5)
+      at async Object.<anonymous> (__e2e__/agw/universal-evm.spec.ts:157:5)
+
+PASS core-e2e packages/core/__e2e__/agw/svm-public.spec.ts (304.031 s)
+
+Test Suites: 1 failed, 1 passed, 2 total
+Tests:       1 failed, 7 passed, 8 total
+Snapshots:   0 total
+Time:        549.097 s
+Ran all test suites within paths "packages/core/__e2e__/agw/universal-evm.spec.ts", "packages/core/__e2e__/agw/svm-public.spec.ts".
