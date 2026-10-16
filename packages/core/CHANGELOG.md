@@ -1,3 +1,9 @@
+@pushchain/core@6.0.27-alpha.2 (2026-10-16)
+
+- feat: add bounded preset operations and configuration readiness
+
+---
+
 @pushchain/core@6.0.27-alpha.1 (2026-10-15)
 
 - fix: resolve AGW tokens by destination and expand live coverage
