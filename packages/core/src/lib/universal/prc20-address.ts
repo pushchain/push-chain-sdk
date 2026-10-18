@@ -1,6 +1,12 @@
 import { CHAIN, PUSH_NETWORK } from '../constants/enums';
 import { MOVEABLE_TOKENS, type MoveableToken } from '../constants/tokens';
 import { SYNTHETIC_PUSH_ERC20 } from '../constants/chain';
+import { isAddress } from 'viem';
+
+const sameTokenAddress = (a: string, b: string) =>
+  isAddress(a, { strict: false }) && isAddress(b, { strict: false })
+    ? a.toLowerCase() === b.toLowerCase()
+    : a === b;
 
 /** Shared pure origin-to-PRC20 mapping; no signer or network reads. */
 export function getPRC20Address(
@@ -58,7 +64,9 @@ export function getPRC20Address(
     for (const [key, list] of Object.entries(MOVEABLE_TOKENS)) {
       const k = key as CHAIN;
       const match = (list ?? []).find(
-        (t) => t.symbol === token.symbol && t.address === token.address
+        (t) =>
+          t.symbol === token.symbol &&
+          sameTokenAddress(t.address, token.address)
       );
       if (match) {
         originChain = k;
@@ -71,7 +79,7 @@ export function getPRC20Address(
     // { chain, address } path: trust the provided chain and resolve symbol via registry
     originChain = token.chain as CHAIN;
     const list = MOVEABLE_TOKENS[originChain] ?? [];
-    const match = list.find((t) => t.address === token.address);
+    const match = list.find((t) => sameTokenAddress(t.address, token.address));
     if (match) {
       tokenSymbol = match.symbol;
       tokenDecimals = match.decimals;
@@ -88,9 +96,9 @@ export function getPRC20Address(
   }
 
   // Map token → synthetic key by origin chain family
-  const isEthFamily =
-    originChain === CHAIN.ETHEREUM_MAINNET ||
-    originChain === CHAIN.ETHEREUM_SEPOLIA;
+  // Current synthetic keys represent testnet sources. Mainnet assets must never
+  // resolve to a same-symbol Sepolia token on Donut.
+  const isEthFamily = originChain === CHAIN.ETHEREUM_SEPOLIA;
   const isArbFamily = originChain === CHAIN.ARBITRUM_SEPOLIA;
   const isBaseFamily = originChain === CHAIN.BASE_SEPOLIA;
   const isBnbFamily = originChain === CHAIN.BNB_TESTNET;
@@ -111,9 +119,21 @@ export function getPRC20Address(
     | 'USDC_ARB'
     | 'USDC_SOL'
     | 'USDC_BSC'
-    | 'USDC_BASE';
+    | 'USDC_BASE'
+    | 'WETH_ETH'
+    | 'stETH_ETH';
 
   switch (tokenSymbol) {
+    case 'WETH':
+    case 'stETH': {
+      // These deployments represent Sepolia tokens, not other chains' assets.
+      if (originChain !== CHAIN.ETHEREUM_SEPOLIA)
+        throw new Error(
+          `Unsupported ${tokenSymbol} origin chain for synthetic mapping`
+        );
+      key = tokenSymbol === 'WETH' ? 'WETH_ETH' : 'stETH_ETH';
+      break;
+    }
     case 'ETH': {
       if (isEthFamily) key = 'pETH';
       else if (isArbFamily) key = 'pETH_ARB';

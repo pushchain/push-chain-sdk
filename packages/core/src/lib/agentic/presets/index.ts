@@ -15,6 +15,13 @@ import type {
 import { parseSelector } from '../codec/selectors';
 import { PRESET_CATALOG, type PresetDefinition } from './catalog';
 import { applyOperationLimits, assetAddress } from './operation-limits';
+import { PUSH_NETWORK } from '../../constants/enums';
+import { presetRoutes } from './routes';
+import {
+  defaultPresetAsset,
+  PRESET_GAS_BUDGETS,
+  PRESET_VALIDITY_SECONDS,
+} from './default-policy';
 
 const MAX_UINT256 = (BigInt(1) << BigInt(256)) - BigInt(1);
 const invalid = (message: string) =>
@@ -62,6 +69,7 @@ export function buildPresetApi(
     ...p,
     chains: p.chains.map((c) => ({
       ...c,
+      ...(c.defaultTokens ? { defaultTokens: [...c.defaultTokens] } : {}),
       allowedCalls: c.allowedCalls.map((call) => ({
         ...copyCall(call),
         ...(call.budget
@@ -108,6 +116,13 @@ export function buildPresetApi(
       if (!entry) throw invalid(`unknown preset ${String(preset)}`);
       if (!options || typeof options !== 'object' || Array.isArray(options))
         throw invalid('preset options must be an object');
+      const now = Math.floor(Date.now() / 1000);
+      const network = options.network ?? PUSH_NETWORK.TESTNET_DONUT;
+      const funding = options.funding ?? 'push';
+      if (!Object.values(PUSH_NETWORK).includes(network))
+        throw invalid('unknown preset Push network');
+      if (funding !== 'push' && funding !== 'destination')
+        throw invalid('preset funding must be push or destination');
       if (
         options.agent !== undefined &&
         (!isAddress(options.agent, { strict: false }) ||
@@ -117,10 +132,11 @@ export function buildPresetApi(
       if (
         options.validUntil !== undefined &&
         (!Number.isSafeInteger(options.validUntil) ||
-          options.validUntil <= Math.floor(Date.now() / 1000) ||
+          options.validUntil <= now ||
           options.validUntil >= 2 ** 48)
       )
         throw invalid('preset validUntil must be a future uint48 timestamp');
+      const validUntil = options.validUntil ?? now + PRESET_VALIDITY_SECONDS;
       if (options.maxGasPerCall !== undefined)
         cap(options.maxGasPerCall, 'maxGasPerCall');
       if (options.assets !== undefined && !Array.isArray(options.assets))
@@ -142,6 +158,17 @@ export function buildPresetApi(
           `preset ${preset} has no approved app entries`
         );
       const assets = new Map<string, RuleAsset[]>();
+      // An explicit array (including []) replaces the defaults for all selected
+      // chains. Never add permissions on chains the caller left unconfigured.
+      if (options.assets === undefined)
+        for (const chain of chains)
+          if (chain.defaultTokens)
+            assets.set(
+              chain.chainNamespace,
+              chain.defaultTokens.map((token) =>
+                defaultPresetAsset(chain.chainNamespace, token)
+              )
+            );
       for (const asset of options.assets ?? []) {
         if (!asset || typeof asset !== 'object')
           throw invalid('preset asset must be an object');
@@ -181,6 +208,12 @@ export function buildPresetApi(
       }
       const readiness: PresetChainReadiness[] = [];
       const rules: PresetRuleTemplate[] = chains.map((chain) => {
+        const maxGasPerCall =
+          options.maxGasPerCall ??
+          chain.maxGasPerCall ??
+          (chain.defaultTokens
+            ? PRESET_GAS_BUDGETS[chain.chainNamespace]
+            : undefined);
         const selectedAssets = assets.get(chain.chainNamespace) ?? [];
         const limits = applyOperationLimits(
           chain.allowedCalls.map((c) => ({
@@ -362,15 +395,7 @@ export function buildPresetApi(
             code: 'AGENT_REQUIRED',
             message: 'Choose the agent Push address.',
           });
-        if (!options.validUntil)
-          issues.push({
-            code: 'EXPIRY_REQUIRED',
-            message: 'Choose an expiry.',
-          });
-        if (
-          (options.maxGasPerCall ?? chain.maxGasPerCall ?? BigInt(0)) ===
-          BigInt(0)
-        )
+        if ((maxGasPerCall ?? BigInt(0)) === BigInt(0))
           issues.push({
             code: 'GAS_BUDGET_REQUIRED',
             message: 'Set a positive PC gas budget per outbound.',
@@ -391,14 +416,32 @@ export function buildPresetApi(
             code: 'NO_ENABLED_OPERATION',
             message: 'No asset operation has a positive per-call limit.',
           });
+        const configurationReady = issues.length === 0;
+        const routes = presetRoutes(
+          chain.chainNamespace,
+          selectedAssets,
+          network,
+          funding
+        );
+        issues.push(...routes.issues);
+        const bridgeAssets = funding === 'destination' ? [] : selectedAssets;
         readiness.push({
           chainNamespace: chain.chainNamespace,
           ready: issues.length === 0,
+          configurationReady,
+          funding,
+          selectedAssets: selectedAssets.map((a) => ({
+            ...a,
+            token: typeof a.token === 'string' ? a.token : { ...a.token },
+          })),
+          bridgeAssets: routes.bridgeAssets,
           issues,
           disabledCalls: limits.disabledCalls,
           excludedCalls: limits.excludedCalls,
-          knownTokens: limits.knownTokens,
-          zeroBridgeLimits: selectedAssets
+          knownTokens: [
+            ...new Set([...limits.knownTokens, ...(chain.defaultTokens ?? [])]),
+          ],
+          zeroBridgeLimits: bridgeAssets
             .filter(
               (a) => a.maxPerCall === BigInt(0) || a.maxTotal === BigInt(0)
             )
@@ -410,19 +453,12 @@ export function buildPresetApi(
           ...(options.agent !== undefined
             ? { agent: getAddress(options.agent) }
             : {}),
-          ...(options.validUntil !== undefined
-            ? { validUntil: options.validUntil }
+          validUntil,
+          ...(options.assets !== undefined || chain.defaultTokens
+            ? { assets: bridgeAssets }
             : {}),
-          ...(options.assets !== undefined
-            ? { assets: assets.get(chain.chainNamespace) ?? [] }
-            : {}),
-          ...((options.maxGasPerCall ?? chain.maxGasPerCall) !== undefined
-            ? {
-                maxGasPerCall: cap(
-                  options.maxGasPerCall ?? chain.maxGasPerCall,
-                  'maxGasPerCall'
-                ),
-              }
+          ...(maxGasPerCall !== undefined
+            ? { maxGasPerCall: cap(maxGasPerCall, 'maxGasPerCall') }
             : {}),
         };
       });
@@ -435,7 +471,7 @@ export function buildPresetApi(
       };
     },
   };
-  // The overload narrows templates only when both required fields were supplied and validated.
+  // Expiry is generated; the overload narrows templates when the agent is supplied.
   return Object.freeze(api) as AgenticPresets;
 }
 export const agenticPresets = buildPresetApi(PRESET_CATALOG);

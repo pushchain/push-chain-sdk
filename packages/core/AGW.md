@@ -91,7 +91,7 @@ An equality pin fixes an argument; a maximum pin bounds it. For EVM signatures, 
 
 `PushChain.CONSTANTS.AGENTIC.WALLET` resolves to the AGW on Push, its CEA on an EVM destination, or its CEA/selected token ATA on Solana. Deployment addresses and encoding helpers are internal.
 
-Omitted `maxValue`, `assets[].maxTotal`, and `maxGasPerCall` default to **zero**. Asset totals meter tokens sent from Push; they do not meter trading or lending using capital already in the destination CEA. Specify positive caps for sends that need value, tokens or destination gas. Native value is limited per call; there is no public native lifetime-total cap.
+For directly authored rules, omitted `maxValue`, `assets[].maxTotal`, and `maxGasPerCall` default to **zero**. Presets supply explicit policy values as described below. Asset totals meter tokens sent from Push; they do not meter trading or lending using capital already in the destination CEA. Specify positive caps for sends that need value, tokens or destination gas. Native value is limited per call; there is no public native lifetime-total cap.
 
 ## EVM destinations
 
@@ -171,7 +171,7 @@ The wire encoder uses uint32 maximum for unlimited native calls and 255 for unsp
 
 - DEXES: Uniswap V3 on Ethereum, Base and Arbitrum (mainnet and their Sepolia testnets); PancakeSwap V3 on BNB mainnet and BSC testnet.
 - LENDING: Aave on Ethereum, Base, Arbitrum and BNB mainnets, plus Sepolia/Base Sepolia/Arbitrum Sepolia; Moonwell on Base mainnet/testnet and Venus on BNB mainnet/testnet.
-- STAKING: EigenLayer deposits on Ethereum mainnet and Sepolia; Lido stake and wrap/unwrap on Ethereum mainnet. Withdrawal requests with dynamic amounts, claims with position-derived amounts and EigenLayer withdrawals are excluded from these bounded presets. A selected native asset supplies the Lido `submit` value cap; omitted caps remain zero.
+- STAKING: EigenLayer deposits on Ethereum mainnet and Sepolia; Lido stake and wrap/unwrap on Ethereum mainnet. Withdrawal requests with dynamic amounts, claims with position-derived amounts and EigenLayer withdrawals are excluded from these bounded presets. A selected native asset supplies the Lido `submit` value cap; omitted caps in explicitly supplied assets remain zero.
 - PREDICTION: no entries yet. Hide categories with empty `chains` lists.
 
 ```ts
@@ -180,13 +180,24 @@ const availablePresets = presets.filter(preset => preset.chains.length > 0);
 const { rules: reviewTemplates } = PushChain.utils.agentic.presets.get(
   PushChain.CONSTANTS.AGENTIC.PRESETS.CATEGORY.DEXES,
 );
-// Choose tokens in the review UI, then call get again as below.
+// Every populated chain includes curated destination tokens in rule.assets.
+// The SDK supplies spending limits, a PC budget and a seven-day expiry.
+// Supply the agent to get complete Rule[] configuration.
+const configuredPreset = PushChain.utils.agentic.presets.get(
+  PushChain.CONSTANTS.AGENTIC.PRESETS.CATEGORY.LENDING,
+  { chainNamespace: 'eip155:11155111', agent: '0x0000000000000000000000000000000000001234', funding: 'destination' },
+);
+// Destination assets must already be funded; no Push token exports are granted.
+// Show configuredPreset.readiness.chains[0].selectedAssets in the review UI.
+// Pass configuredPreset.rules directly to create after checking readiness.
+// The helper below illustrates explicit overrides, rather than required UI input.
 
 function filledPreset(agent: Address, tokenIn: Address, tokenOut: Address) {
   return PushChain.utils.agentic.presets.get(
     PushChain.CONSTANTS.AGENTIC.PRESETS.CATEGORY.DEXES,
     {
       chainNamespace: 'eip155:11155111',
+      funding: 'destination',
       agent,
       validUntil: Math.floor(Date.now() / 1000) + 3600,
       maxGasPerCall: BigInt(10) ** BigInt(18),
@@ -199,9 +210,9 @@ function filledPreset(agent: Address, tokenIn: Address, tokenOut: Address) {
 }
 ```
 
-The example caps are illustrative raw units; choose caps for the actual token decimals and gas requirements. `get` groups calls into one rule per chain. The result is `{ rules, readiness }`. With agent and expiry supplied, `rules` is typed as `Rule[]`; otherwise it is `PresetRuleTemplate[]`. This type distinction alone does not establish readiness. Assets must name their chain unless a single chain filter is supplied. Omitted asset caps and `maxGasPerCall` default to zero.
+The example caps are illustrative raw units; choose caps for the actual token decimals and gas requirements. `get` groups calls into one rule per chain. The result is `{ rules, readiness }`. With an agent supplied, `rules` is typed as `Rule[]`; otherwise it is `PresetRuleTemplate[]` with a generated expiry and missing agent. This type distinction alone does not establish readiness. When `assets` is omitted, each chain includes its curated destination tokens with the explicit spending limits below. An explicit `assets` array replaces the defaults for every returned chain; `[]` selects no tokens. Assets in an explicit list must name their chain unless a single chain filter is supplied. For an explicit asset list, omitted caps still default to zero. An omitted gas budget uses the preset policy; an explicit zero remains zero.
 
-DEX discovery works without options, with an empty asset list, or with assets for only some chains. A chain with fewer than two tokens returns full-signature review calls with wallet-recipient pins and an explicit zero input-amount maximum. A single supplied token is also pinned as the input. These calls cannot spend swap input tokens, even if asset budgets are filled later. Call `get` again after selecting both tokens to replace the review calls with the complete token-pinned rules; merely assigning `rule.assets` is insufficient.
+DEX discovery without `assets` includes a curated wrapped-native/stablecoin pair per chain, with both swap directions, exact-input/output functions and the token-specific input caps below. It does not require the UI to select tokens separately for every network. DEX discovery also works with an explicit empty asset list or with assets for only some chains. A chain with fewer than two explicitly supplied tokens returns full-signature review calls with wallet-recipient pins and an explicit zero input-amount maximum. A single supplied token is also pinned as the input. These calls cannot spend swap input tokens, even if asset budgets are filled later. Call `get` again after selecting both tokens to replace the review calls with the complete token-pinned rules; merely assigning `rule.assets` is insufficient.
 
 With two ERC20 tokens, `get` expands ordered pairs into exact-input and exact-output calls with token, wallet-recipient and input-amount pins. Native markers and expansions exceeding the policy's 32-pin limit are rejected. Two tokens fit the shipped router template; three do not. Static tuple fields use paths such as `[0, 3]`.
 
@@ -209,11 +220,55 @@ Reviewed EVM spenders generate approvals pinned to that spender and bounded by t
 
 Templates describe permissions, not available liquidity or guaranteed execution. Verify destination token balances, supported reserves and source PRC20 routes before use: protocol testnet mock tokens may differ from MOVEABLE tokens. Presets do not sign, fetch app ABIs or modify wallets. Dynamic-path swaps, Solana protocol templates and unconfirmed deployments are excluded. Mainnet addresses were checked read-only; no mainnet transactions were executed. Other mainnet protocols in the proposal remain excluded until their deployment and permission constraints are verified. Local policy tests do not execute the destination protocols.
 
+### Curated token defaults
+
+These are small, protocol-specific subsets chosen to fit the 32-call/32-pin ceilings. The full reserve catalog is not automatically granted.
+
+| Network | DEX pair | Lending tokens |
+| --- | --- | --- |
+| Ethereum | WETH / USDC | WETH, USDC |
+| Base | WETH / USDC | USDC (Aave and Moonwell) |
+| Arbitrum | WETH / native USDC | WETH, native USDC |
+| BNB | WBNB / USDT | USDT (Aave and Venus) |
+| Sepolia | DEX WETH / Circle USDC | Aave faucet LINK |
+| Base Sepolia | WETH / Circle USDC | Aave faucet LINK, Moonwell mock USDbC and WETH |
+| Arbitrum Sepolia | WETH / Circle USDC | Aave USDC |
+| BSC testnet | WBNB / Venus USDT | Venus USDT, USDC |
+
+Staking defaults are ETH/stETH/wstETH on Ethereum and the reviewed EigenLayer strategy's WETH on Sepolia. Testnet tokens with similar names can have different addresses; the returned addresses are authoritative. These tokens may lack Push PRC20 routes and can instead be used with destination-held balances. Defaults do not guarantee active reserves, liquidity, a Push PRC20 route or execution. In particular, an unmodified preset can fail rule preparation if its default assets lack PRC20 mappings. For destination-only use, pass `funding: 'destination'`: the SDK generates the operation constraints, returns empty rule bridge assets and retains selected token limits in readiness metadata. This grants no token export budget from Push and requires already-funded destination balances. Token addresses are returned as before; metadata was verified when defining the policy. No runtime metadata/price fetch is added to get.
+
+### Funding and release-network checks
+
+`funding` defaults to `'push'`. Missing PRC20 registry entries produce `BRIDGE_ASSET_UNAVAILABLE`, and readiness is false while the returned rule retains all requested assets. No address or cap is silently replaced. `network` defaults to `TESTNET_DONUT` (`TESTNET` is accepted as an alias); use the connected client's Push network when supplying it. Networks without a verified AGW deployment report `AGW_NETWORK_UNAVAILABLE`.
+
+Use `funding: 'destination'` for the prefunded CEA workflow. Selected tokens still generate the same target/function/amount/recipient/spender restrictions, exposed alongside their caps in `readiness.chains[].selectedAssets`. Returned `rule.assets` is intentionally empty, which grants zero Push token-export authority. It is safe to pass these returned rules directly to create/update. The mode does not fund the destination, wrap ETH, mint testnet tokens or enable an unsupported network. Do not relabel it as bridge funding in the UI.
+
+Existing mappings distinguish token identity by chain and address, including address casing for EVM. WETH/stETH Sepolia mappings and string/address-word source metadata are supported; mainnet or other-chain WETH is never aliased to them. Protocol mock LINK, Moonwell/Venus mocks and Circle testnet USDC can differ from the supported source tokens; they remain unavailable for bridge funding until real matching routes exist.
+
+### Default permission policy
+
+Only preset-generated assets receive these positive values. Direct rules, unknown tokens and explicit asset lists do not acquire guessed limits.
+
+| Selected token | Per allowed call / Push outbound | Cumulative Push-outbound total |
+| --- | --- | --- |
+| USDC / USDT / mock USDbC | 10 tokens | 100 tokens |
+| ETH / WETH / stETH / wstETH | 0.001 token | 0.01 token |
+| WBNB | 0.01 token | 0.1 token |
+| LINK | 1 token | 10 tokens |
+
+Amounts use verified token decimals, keyed by chain and address, rather than symbol or live prices. For example, the USDT per-call limit is `10 * 10^18` on BNB mainnet and `10 * 10^6` on BSC testnet. These are fixed token quantities, not USD budgets.
+
+The default expiry is seven days from each get call, computed once for all returned rules. The default gas ceiling is **20 PC per outbound**, including the value checked by URP; it is not a flat fee or a reservation. Actual sends obtain a fresh quote and remain subject to the rule cap. This ceiling has testnet protocol-flow coverage; mainnet templates do not have funded execution acceptance. Quotes may exceed the cap, requiring an explicit higher budget.
+
+Explicit `validUntil` and `maxGasPerCall` override policy values; zero gas is preserved and reports incomplete readiness. An explicit `assets` array replaces all default tokens and limits, and omitted caps inside it remain zero. To change a preset cap while retaining its token set, take the returned assets, replace the caps and pass them back to get. Do not just edit the returned rule assets: the allowed-call pins and approvals also need regeneration.
+
+`maxPerCall` applies to each allowed destination call; multiple calls may each consume that amount. `maxTotal` meters assets sent from Push, not aggregate destination activity. No destination lifetime limit is implied by these defaults. The general rules API continues to treat omitted caps as zero.
+
 ### Configure, inspect and regenerate
 
-`readiness.ready` means the returned chains have locally complete inputs and at least one enabled asset operation. It does not check PRC20 availability, deployments, balances, live reserve flags or liquidity. `readiness.chains` gives per-chain `issues`, `disabledCalls`, `excludedCalls`, catalog `knownTokens` and `zeroBridgeLimits`. These are additive result fields; `rules` remains accepted by the existing create/update methods.
+`readiness.ready` requires complete configuration plus offline SDK deployment/destination/bridge-registry support for the selected funding mode. Per-chain `configurationReady` reports input completeness separately. These checks do not verify live balances, reserve flags, liquidity, current deployed bytecode or source identity; grant preparation still verifies wiring and token metadata on-chain before signing. `readiness.chains` gives per-chain `issues`, `disabledCalls`, `excludedCalls`, catalog `knownTokens`, `selectedAssets`, `bridgeAssets`, `funding` and `zeroBridgeLimits`. Display `selectedAssets` as the reviewed token/amount permissions in either mode; `rule.assets` describes Push bridge permissions only. `bridgeAssets` reports registry presence, not verified live deployment. Mainnet templates remain discoverable but have `DESTINATION_UNAVAILABLE` on Donut. These are additive result fields; `rules` remains accepted by the existing create/update methods.
 
-The UI should collect chain, agent, token selections, raw-unit limits, gas budget and expiry. Show zero-cap calls as disabled. Present excluded calls explicitly. There is no SDK-selected 0.1 PC gas budget or 30-day expiry. A zero bridge limit can be intentional when assets are already at the destination; it is reported separately from operation readiness.
+Tokens and permission defaults come directly from the SDK: omitted `assets` populates the curated subset and its caps in every returned `rule.assets`. Omitted gas and expiry use the policy below. The caller supplies the agent and can filter chains; no per-network token selection is required. Show the generated permissions for owner review and allow explicit overrides. Regenerate via get after an edit so operation pins/approvals match the new caps. Show explicitly zero-cap calls as disabled and present excluded calls clearly. A zero bridge limit can be intentional when assets are already at the destination; it is reported separately from operation readiness.
 
 ```ts
 async function createConfiguredDex(

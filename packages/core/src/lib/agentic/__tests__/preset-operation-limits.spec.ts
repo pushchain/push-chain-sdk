@@ -22,7 +22,7 @@ it('Aave pins the selected reserve, operation amount and wallet beneficiary for 
     ...options,
     assets: [asset(), asset(WBTC, BigInt(7))],
   });
-  expect(readiness.ready).toBe(true);
+  expect(readiness.chains[0].configurationReady).toBe(true);
   expect(rules).toHaveLength(1);
   for (const [selector, walletArg] of [
     ['supply(address,uint256,address,uint16)', 2],
@@ -44,27 +44,33 @@ it('Aave pins the selected reserve, operation amount and wallet beneficiary for 
     }
   }
 });
-it('returns actionable readiness without silently choosing tokens, caps, gas or expiry', () => {
+it('default lending policy needs only the agent to become locally ready', () => {
   const result = agenticPresets.get('LENDING', { chainNamespace });
   expect(result.readiness.ready).toBe(false);
   expect(result.readiness.chains[0].issues.map((i) => i.code)).toEqual(
-    expect.arrayContaining([
-      'AGENT_REQUIRED',
-      'EXPIRY_REQUIRED',
-      'GAS_BUDGET_REQUIRED',
-      'ASSETS_REQUIRED',
-      'NO_ENABLED_OPERATION',
-    ])
+    expect.arrayContaining(['AGENT_REQUIRED', 'BRIDGE_ASSET_UNAVAILABLE'])
   );
-  expect(result.rules[0]).not.toHaveProperty('assets');
-  expect(result.rules[0]).not.toHaveProperty('validUntil');
-  expect(result.rules[0]).not.toHaveProperty('maxGasPerCall');
-  expect(
-    result.rules[0].allowedCalls.every((c) =>
-      c.pins?.some((p) => p.max === BigInt(0))
-    )
-  ).toBe(true);
+  expect(result.rules[0].assets).toEqual([
+    {
+      token: LINK,
+      maxPerCall: BigInt(10) ** BigInt(18),
+      maxTotal: BigInt(10) ** BigInt(19),
+    },
+  ]);
+  expect(result.rules[0].validUntil).toBeGreaterThan(
+    Math.floor(Date.now() / 1000)
+  );
+  expect(result.rules[0].maxGasPerCall).toBe(
+    BigInt(20) * BigInt(10) ** BigInt(18)
+  );
   expect(result.readiness.chains[0].knownTokens).toContain(LINK);
+  expect(
+    agenticPresets.get('LENDING', {
+      chainNamespace,
+      agent: ADDR.agent,
+      funding: 'destination',
+    }).readiness.ready
+  ).toBe(true);
 });
 it('zero operation caps remain valid disabled configurations, while zero bridge totals are separately reported', () => {
   const disabled = agenticPresets.get('LENDING', {
@@ -81,7 +87,7 @@ it('zero operation caps remain valid disabled configurations, while zero bridge 
     ...options,
     assets: [{ token: LINK, maxPerCall: BigInt(5) }],
   });
-  expect(enabled.readiness.ready).toBe(true);
+  expect(enabled.readiness.chains[0].configurationReady).toBe(true);
   expect(enabled.readiness.chains[0].zeroBridgeLimits).toEqual([LINK]);
   expect(enabled.rules[0].assets?.[0].maxTotal).toBe(BigInt(0));
 });
@@ -195,7 +201,8 @@ it('readiness is per chain and cannot be mutated to change later results', () =>
   });
   expect(res.readiness.ready).toBe(false);
   expect(
-    res.readiness.chains.find((c) => c.chainNamespace === chainNamespace)?.ready
+    res.readiness.chains.find((c) => c.chainNamespace === chainNamespace)
+      ?.configurationReady
   ).toBe(true);
   const expected = agenticPresets.get('LENDING', { chainNamespace }).readiness;
   res.readiness.chains.forEach((c) => {
