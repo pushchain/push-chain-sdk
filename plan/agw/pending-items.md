@@ -1,10 +1,11 @@
 # AGW SDK pending items
 
-October 15, 2026. The newly downloaded SDK sections 6/7 supersede the earlier `actions[]` proposal and multiple-rule creation decision. See [the item-by-item feedback list](section6-action-items.md).
+October 18, 2026. The newly downloaded SDK sections 6/7 supersede the earlier `actions[]` proposal and multiple-rule creation decision. See [the item-by-item feedback list](section6-action-items.md).
 
 | Item | Owner / dependency | Completion condition |
 | --- | --- | --- |
-| New preset-limit live acceptance | SDK / network processing | Updated local policy tests pass; funded Aave/BNB/Base setup waits timed out. Re-run affected scenarios without counting earlier unrestricted catalog results |
+| Preset bridge-token coverage | SDK registry / core token routes | SDK readiness/explicit destination-funded flow is complete and 9/9 grant simulations pass. Sepolia WETH/stETH mappings are verified/fixed; other mocks/Circle routes still need real deployments before registry expansion. Selected tokens remain in review metadata; no silent alias or cap removal. |
+| New preset-limit live acceptance | SDK / network processing | Aave passed; EigenLayer and BNB/Venus completed all scenario assertions. Fresh Base/Moonwell acceptance remains incomplete: stopped at user request during setup. No tests running |
 | Destination aggregate spend semantics | Product/contracts | Confirm whether limits must aggregate a batch or destination lifetime activity; current pins are per allowed call and maxTotal is Push-outbound only |
 | Native 1..32 calls in spec versus deployed maximum 8 | Product/contracts | Align spec or deploy increased ceiling; SDK enforces 8 now |
 | Additional preset protocols / chains | SDK + protocol prerequisites | Every shipped testnet protocol/chain combination now has a positive live flow. Remaining coverage is borrow/repay, other markets/methods and mainnet; expand excluded protocol rows only after deployment/function/permission checks |
@@ -19,3 +20,7 @@ User decisions recorded October 12: multi-action native `spent` uses per-action 
 The first-use EVM gas default is implemented and is no longer an external core/gateway question. `setLabel` already exists on v5; direct invocation requires no contract change.
 
 V6 accounting note: generic native MAX pins enforce a per-call bound but do not increment the separate `amountSpent` meter. The SDK returns the actual counter (normally zero for the new public shape), plus value/call counters per action; it does not infer token spending from arbitrary numeric arguments. If the UI needs native per-token spend totals, that requires an explicit accounting design.
+
+Preset permission defaults are now implemented following the user’s October 18 approval: seven-day expiry, 20 PC per-outbound ceiling, and token-specific positive caps. Explicit asset lists retain zero defaults for omitted caps. This resolves the configuration-policy item; it does not supply missing PRC20 routes, liquidity or destination aggregate accounting.
+
+Publish readiness: preset configuration, route diagnostics, explicit destination-funded direct creation, package checks and v5 immutable-install checks are complete. See research/preset-release-readiness-2026-10-18/README.md. Remaining destination funding/liquidity/routes are operational prerequisites. Publication is manual; no publish action was run.

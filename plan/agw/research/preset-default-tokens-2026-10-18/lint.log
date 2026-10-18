@@ -1,0 +1,31 @@
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/agentic/__tests__/preset-catalog.spec.ts
+   46:19  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   54:9   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  114:20  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  189:4   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  191:5   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  198:5   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  205:7   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  234:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  236:32  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  247:13  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/agentic/__tests__/preset-default-tokens.spec.ts
+   19:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   20:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   26:9   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   48:10  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   51:10  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   56:5   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   85:5   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   90:5   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  100:13  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  112:10  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  137:3   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  138:3   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/agentic/__tests__/preset-operation-limits.spec.ts
+  159:19  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+✖ 23 problems (0 errors, 23 warnings)

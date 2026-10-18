@@ -1,0 +1,26 @@
+➤ YN0000: · Yarn 4.2.2
+➤ YN0000: ┌ Project validation
+➤ YN0057: │ @pushprotocol/common-components: Resolutions field will be ignored
+➤ YN0057: │ @pushchain/ui-kit: Resolutions field will be ignored
+➤ YN0000: └ Completed
+➤ YN0000: ┌ Resolution step
+➤ YN0000: └ Completed in 0s 346ms
+➤ YN0000: ┌ Post-resolution validation
+➤ YN0002: │ @pushchain/core@workspace:packages/core doesn't provide @types/node (p360d1), requested by ts-node.
+➤ YN0002: │ @pushchain/core@workspace:packages/core doesn't provide typescript (p97602), requested by ts-node.
+➤ YN0002: │ @pushchain/ui-kit@workspace:packages/ui-kit doesn't provide eslint (p05da2), requested by typescript-eslint.
+➤ YN0002: │ @pushchain/ui-kit@workspace:packages/ui-kit doesn't provide eslint (p7d515), requested by eslint-plugin-react-refresh.
+➤ YN0002: │ @pushchain/ui-kit@workspace:packages/ui-kit doesn't provide eslint (pafac7), requested by eslint-plugin-react-hooks.
+➤ YN0002: │ @pushchain/ui-kit@workspace:packages/ui-kit doesn't provide typescript (pc5a0d), requested by typescript-eslint.
+➤ YN0002: │ @pushprotocol/common-components@workspace:packages/shared-components doesn't provide react-is (p3a3ff), requested by styled-components.
+➤ YN0086: │ Some peer dependencies are incorrectly met; run yarn explain peer-requirements <hash> for details, where <hash> is the six-letter p-prefixed code.
+➤ YN0000: └ Completed
+➤ YN0000: ┌ Fetch step
+➤ YN0066: │ typescript@patch:typescript@npm%3A5.5.4#optional!builtin<compat/typescript>::version=5.5.4&hash=b45daf: Cannot apply hunk #11
+➤ YN0066: │ typescript@patch:typescript@npm%3A5.6.3#optional!builtin<compat/typescript>::version=5.6.3&hash=b45daf: Cannot apply hunk #11
+➤ YN0066: │ typescript@patch:typescript@npm%3A5.8.2#optional!builtin<compat/typescript>::version=5.8.2&hash=b45daf: Cannot apply hunk #1
+➤ YN0013: │ 1675 packages were added to the project (+ 221.38 MiB).
+➤ YN0000: └ Completed in 55s 412ms
+➤ YN0000: ┌ Link step
+➤ YN0000: └ Completed in 9s 365ms
+➤ YN0000: · Done with warnings in 1m 6s
