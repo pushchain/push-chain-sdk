@@ -3,6 +3,7 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '../../..');
+const sdkOnly = process.argv.includes('--sdk-only');
 const dir = path.join(root, '.agw-validation');
 fs.mkdirSync(dir, { recursive: true });
 function run(name, file, args, options = {}) {
@@ -16,6 +17,8 @@ function run(name, file, args, options = {}) {
   const out = String(result.stdout || '') + String(result.stderr || '');
   fs.writeFileSync(path.join(dir, `${name}.log`), out);
   if (result.error || result.status !== 0) {
+    process.stderr.write(out);
+    if (result.error) process.stderr.write(String(result.error) + '\n');
     throw new Error(
       `AGW validation failed: ${name}; see .agw-validation/${name}.log`
     );
@@ -28,37 +31,39 @@ run('units', node, [
   '--config',
   'packages/core/jest.config.ts',
   '--runInBand',
-  '--testPathPattern=agentic|outbound-(confirmation-gate|svm-confirmation)|svm-idl|evm-client.batch-gas',
+  '--testPathPattern=agentic|prc20-address|outbound-(confirmation-gate|svm-confirmation)|svm-idl|evm-client.batch-gas',
 ]);
-for (const kind of ['lib', 'spec', 'agw-local'])
+for (const kind of sdkOnly ? ['spec'] : ['lib', 'spec', 'agw-local'])
   run(`types-${kind}`, node, [
     'node_modules/typescript/bin/tsc',
     '-p',
     `packages/core/tsconfig.${kind}.json`,
     '--noEmit',
   ]);
-run('docs', node, ['packages/core/scripts/check-agw-docs.js']);
-const env = {
-  ...process.env,
-  OUT: process.env.AGW_LOCAL_DIR || path.join(dir, 'contracts'),
-};
-run(
-  'prepare-contracts',
-  'bash',
-  ['packages/core/scripts/agw-local/prepare.sh'],
-  { env }
-);
-run(
-  'local-contracts',
-  node,
-  [
-    'node_modules/jest/bin/jest.js',
-    '--config',
-    'packages/core/jest.agw-local.config.ts',
-    '--runInBand',
-  ],
-  { env: { ...env, AGW_LOCAL_DIR: env.OUT } }
-);
+if (!sdkOnly) {
+  run('docs', node, ['packages/core/scripts/check-agw-docs.js']);
+  const env = {
+    ...process.env,
+    OUT: process.env.AGW_LOCAL_DIR || path.join(dir, 'contracts'),
+  };
+  run(
+    'prepare-contracts',
+    'bash',
+    ['packages/core/scripts/agw-local/prepare.sh'],
+    { env }
+  );
+  run(
+    'local-contracts',
+    node,
+    [
+      'node_modules/jest/bin/jest.js',
+      '--config',
+      'packages/core/jest.agw-local.config.ts',
+      '--runInBand',
+    ],
+    { env: { ...env, AGW_LOCAL_DIR: env.OUT } }
+  );
+}
 run(
   'build',
   node,
@@ -66,9 +71,14 @@ run(
   { env: { ...process.env, NX_DAEMON: 'false' } }
 );
 run('package', node, ['packages/core/scripts/check-agw-package.js']);
-run('public-api', node, [
-  'packages/core/scripts/check-agw-api.js',
-  '--output',
-  path.join(dir, 'api-comparison.json'),
-]);
-process.stdout.write('AGW unfunded validation completed.\n');
+if (!sdkOnly)
+  run('public-api', node, [
+    'packages/core/scripts/check-agw-api.js',
+    '--output',
+    path.join(dir, 'api-comparison.json'),
+  ]);
+process.stdout.write(
+  sdkOnly
+    ? 'AGW SDK-only validation completed.\n'
+    : 'AGW unfunded validation completed.\n'
+);
