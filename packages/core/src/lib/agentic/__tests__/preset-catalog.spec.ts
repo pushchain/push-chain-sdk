@@ -192,24 +192,42 @@ it('mutating a returned tuple path cannot change a later preset', () => {
   ).toEqual([0, 0]);
 });
 
-it('returns one zero-input-cap review template per chain without options', () => {
-  const { rules } = agenticPresets.get('DEXES');
+it('includes a curated capped token pair and exact pair pins on every DEX chain', () => {
+  const { rules, readiness } = agenticPresets.get('DEXES');
   expect(rules.map((r) => r.chainNamespace)).toEqual(
     agenticPresets.list().presets.find((p) => p.constant === 'DEXES')!.chains
   );
   for (const rule of rules) {
     expect(rule).not.toHaveProperty('agent');
-    expect(rule).not.toHaveProperty('validUntil');
-    expect(rule).not.toHaveProperty('assets');
-    expect(rule.allowedCalls).toHaveLength(2);
-    rule.allowedCalls.forEach((call, i) => {
-      expect(call.pins).toEqual([
-        { arg: [0, 3], expected: AGENTIC.WALLET },
-        { arg: [0, i === 0 ? 4 : 5], max: BigInt(0) },
-      ]);
-      expect(call.label).toContain('select two tokens');
-    });
+    expect(rule.validUntil).toBeGreaterThan(Math.floor(Date.now() / 1000));
+    expect(rule.assets).toHaveLength(2);
+    expect(
+      rule.assets!.every(
+        (a) =>
+          a.maxPerCall > BigInt(0) && (a.maxTotal ?? BigInt(0)) >= a.maxPerCall
+      )
+    ).toBe(true);
+    expect(rule.allowedCalls).toHaveLength(6);
+    const swaps = rule.allowedCalls.filter((c) =>
+      c.selector.startsWith('exact')
+    );
+    expect(swaps).toHaveLength(4);
+    for (const call of swaps) {
+      expect(call.pins).toHaveLength(4);
+      expect(call.pins).toContainEqual({
+        arg: [0, 3],
+        expected: AGENTIC.WALLET,
+      });
+      expect(call.pins?.at(-1)?.max).toBeGreaterThan(BigInt(0));
+      expect(call.label).not.toContain('select two tokens');
+    }
   }
+  expect(readiness.chains.every((c) => c.knownTokens.length >= 2)).toBe(true);
+  expect(
+    readiness.chains.every(
+      (c) => !c.issues.some((i) => i.code === 'TOKEN_PAIR_REQUIRED')
+    )
+  ).toBe(true);
 });
 it('keeps single-token swaps disabled and generates approvals only for the supplied asset', () => {
   const rule = agenticPresets.get('DEXES', {

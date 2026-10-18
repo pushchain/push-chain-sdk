@@ -23,6 +23,26 @@ async function main() {
   );
   assert(pack.files.some((f) => f.path === 'AGW.md'));
   assert(!pack.files.some((f) => /(^|\/)\.env($|\.)/.test(f.path)));
+  assert(
+    !pack.files.some((f) =>
+      /(^|\/)(plan|__e2e__|__agw-local__|scripts)(\/|$)/.test(f.path)
+    )
+  );
+  const preset = cjs.PushChain.utils.agentic.presets.get('LENDING', {
+    agent: '0x0000000000000000000000000000000000005678',
+    chainNamespace: 'eip155:11155111',
+    funding: 'destination',
+  });
+  assert.equal(preset.readiness.ready, true);
+  assert.deepEqual(preset.rules[0].assets, []);
+  assert(preset.readiness.chains[0].selectedAssets.length > 0);
+  assert.equal(
+    cjs.PushChain.utils.agentic.presets.get('LENDING', {
+      agent: '0x0000000000000000000000000000000000005678',
+      chainNamespace: 'eip155:11155111',
+    }).readiness.ready,
+    false
+  );
   const guide = fs.readFileSync(path.join(built, 'AGW.md'), 'utf8');
   const source = [...guide.matchAll(/```ts\n([\s\S]*?)```/g)]
     .map((m) => m[1])

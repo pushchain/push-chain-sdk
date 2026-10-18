@@ -2,6 +2,11 @@ import { getAddress, type Address } from 'viem';
 import type { RuleCall, ForeignChainNamespace } from '../agentic.types';
 import type { PresetCategory } from './types';
 import { AAVE_RESERVES } from './aave-reserves';
+import {
+  DEX_DEFAULT_TOKENS,
+  LENDING_DEFAULT_TOKENS,
+  STAKING_DEFAULT_TOKENS,
+} from './default-tokens';
 
 export type PresetBudget =
   | {
@@ -25,6 +30,8 @@ export interface PresetCallDefinition extends RuleCall {
 /** Internal catalog: reviewed addresses and explicit calls only; never fetched at runtime. */
 export interface PresetChainDefinition {
   chainNamespace: ForeignChainNamespace;
+  /** Used with the bundled permission policy only when assets is omitted. */
+  defaultTokens?: readonly Address[];
   allowedCalls: readonly PresetCallDefinition[];
   /** Static single-hop routers; incomplete pairs return zero-input-cap review calls. */
   swapRouters?: readonly { address: Address; app: string }[];
@@ -205,6 +212,7 @@ export const PRESET_CATALOG: readonly PresetDefinition[] = [
       ],
     ].map(([chain, router, app]) => ({
       chainNamespace: chain as ForeignChainNamespace,
+      defaultTokens: DEX_DEFAULT_TOKENS[chain],
       allowedCalls: [],
       swapRouters: [{ address: address(router), app }],
       approvals: [{ spender: address(router), app }],
@@ -223,6 +231,7 @@ export const PRESET_CATALOG: readonly PresetDefinition[] = [
         ] as const
       ).map(([chainNamespace, pool]) => ({
         chainNamespace,
+        defaultTokens: LENDING_DEFAULT_TOKENS[chainNamespace],
         allowedCalls: [
           ...aave(address(pool), chainNamespace),
           ...mainnetMarkets(chainNamespace).allowedCalls,
@@ -239,6 +248,7 @@ export const PRESET_CATALOG: readonly PresetDefinition[] = [
 
       {
         chainNamespace: 'eip155:11155111',
+        defaultTokens: LENDING_DEFAULT_TOKENS['eip155:11155111'],
         allowedCalls: aave(sepoliaPool, 'eip155:11155111'),
         approvals: [
           {
@@ -250,6 +260,7 @@ export const PRESET_CATALOG: readonly PresetDefinition[] = [
       },
       {
         chainNamespace: 'eip155:421614',
+        defaultTokens: LENDING_DEFAULT_TOKENS['eip155:421614'],
         allowedCalls: aave(arbitrumPool, 'eip155:421614'),
         approvals: [
           {
@@ -261,6 +272,7 @@ export const PRESET_CATALOG: readonly PresetDefinition[] = [
       },
       {
         chainNamespace: 'eip155:84532',
+        defaultTokens: LENDING_DEFAULT_TOKENS['eip155:84532'],
         allowedCalls: [
           ...aave(basePool, 'eip155:84532'),
           ...market(
@@ -301,6 +313,7 @@ export const PRESET_CATALOG: readonly PresetDefinition[] = [
       },
       {
         chainNamespace: 'eip155:97',
+        defaultTokens: LENDING_DEFAULT_TOKENS['eip155:97'],
         allowedCalls: [
           ...market(
             venusUSDT,
@@ -341,6 +354,7 @@ export const PRESET_CATALOG: readonly PresetDefinition[] = [
     chains: [
       {
         chainNamespace: 'eip155:1',
+        defaultTokens: STAKING_DEFAULT_TOKENS['eip155:1'],
         allowedCalls: [
           {
             target: stETH,
@@ -407,6 +421,7 @@ export const PRESET_CATALOG: readonly PresetDefinition[] = [
 
       {
         chainNamespace: 'eip155:11155111',
+        defaultTokens: STAKING_DEFAULT_TOKENS['eip155:11155111'],
         allowedCalls: [
           {
             target: eigen,

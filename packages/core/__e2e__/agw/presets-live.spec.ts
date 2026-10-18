@@ -73,7 +73,26 @@ d('agw presets live', () => {
         'PRESET_PREREQUISITE: Sepolia pool has no active liquidity'
       );
     f = await setupAgw();
+    const defaults = PushChain.utils.agentic.presets.get('DEXES', {
+      chainNamespace: CHAIN.ETHEREUM_SEPOLIA,
+      agent: f.agentAddress,
+      funding: 'destination',
+    });
+    expect(defaults.readiness.ready).toBe(true);
+    expect(defaults.rules[0].maxGasPerCall).toBe(MAX_PC);
+    expect(defaults.rules[0].validUntil).toBeGreaterThan(inSeconds(6 * 86400));
+    expect(
+      defaults.readiness.chains[0].selectedAssets.map((a) =>
+        a.token.toString().toLowerCase()
+      )
+    ).toEqual([WETH.toLowerCase(), USDC.toLowerCase()]);
+    expect(
+      defaults.readiness.chains[0].selectedAssets.every(
+        (a) => a.maxPerCall > BigInt(0)
+      )
+    ).toBe(true);
     const { rules } = PushChain.utils.agentic.presets.get('DEXES', {
+      funding: 'destination',
       chainNamespace: CHAIN.ETHEREUM_SEPOLIA,
       agent: f.agentAddress,
       validUntil: inSeconds(3600),
@@ -91,7 +110,7 @@ d('agw presets live', () => {
     // tokens, so omit bridge assets without changing any generated call or pin.
     const { wallet, rulesIds } = await f.owner.agentic.create(
       'e2e-preset-uniswap',
-      { rules: [{ ...rules[0], assets: [] }] }
+      { rules }
     );
     const cea = (await getCEAAddress(wallet, CHAIN.ETHEREUM_SEPOLIA))
       .cea as Address;
@@ -268,16 +287,36 @@ d('agw presets live', () => {
       );
     f?.teardown();
     f = await setupAgw();
+    const defaults = PushChain.utils.agentic.presets.get('LENDING', {
+      chainNamespace: CHAIN.ETHEREUM_SEPOLIA,
+      agent: f.agentAddress,
+      funding: 'destination',
+    });
+    expect(defaults.readiness.ready).toBe(true);
+    expect(defaults.readiness.chains[0].selectedAssets[0].maxPerCall).toBe(
+      parseEther('1')
+    );
+    expect(defaults.rules[0].maxGasPerCall).toBe(MAX_PC);
+    expect(
+      defaults.readiness.chains[0].selectedAssets.map((a) =>
+        a.token.toString().toLowerCase()
+      )
+    ).toEqual([mockLINK.toLowerCase()]);
     const { rules } = PushChain.utils.agentic.presets.get('LENDING', {
+      funding: 'destination',
       chainNamespace: CHAIN.ETHEREUM_SEPOLIA,
       agent: f.agentAddress,
       validUntil: inSeconds(3600),
       maxGasPerCall: MAX_PC,
-      assets: [{ token: mockLINK, maxPerCall: amount, maxTotal: amount }],
+      assets: defaults.readiness.chains[0].selectedAssets.map((a) => ({
+        ...a,
+        maxPerCall: amount,
+        maxTotal: amount,
+      })),
     });
     const { wallet, rulesIds } = await f.owner.agentic.create(
       'e2e-preset-aave',
-      { rules: [{ ...rules[0], assets: [] }] }
+      { rules }
     );
     const cea = (await getCEAAddress(wallet, CHAIN.ETHEREUM_SEPOLIA))
       .cea as Address;
@@ -417,16 +456,14 @@ d('agw presets live', () => {
       assets: [{ token: mockLINK, maxPerCall: half, maxTotal: amount }],
     });
     expect(regenerated.readiness.ready).toBe(true);
-    const changed = await f.owner.agentic
-      .wallet(wallet)
-      .rules.update({
-        rules: [
-          {
-            rulesId: rulesIds[0],
-            rule: { ...regenerated.rules[0], assets: [] },
-          },
-        ],
-      });
+    const changed = await f.owner.agentic.wallet(wallet).rules.update({
+      rules: [
+        {
+          rulesId: rulesIds[0],
+          rule: { ...regenerated.rules[0], assets: [] },
+        },
+      ],
+    });
     await expect(
       agent.universal.sendTransaction({
         to: { address: pool, chain: CHAIN.ETHEREUM_SEPOLIA },

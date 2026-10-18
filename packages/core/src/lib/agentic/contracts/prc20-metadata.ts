@@ -95,7 +95,7 @@ export async function readGasPrc20(
     )
   );
 }
-/** Donut native precompile returns a zero word; ERC20 metadata is a dynamic string. */
+/** Solidity PRC20s return a string; Donut precompiles can return an address word. */
 export async function readOriginToken(
   snap: Snapshot,
   token: Address,
@@ -109,14 +109,25 @@ export async function readOriginToken(
       'SOURCE_TOKEN_ADDRESS'
     );
   } catch (cause) {
-    if ((await readGasPrc20(snap, chain)) !== getAddress(token)) throw cause;
-    const native = await snap.read<Address>(
-      token,
-      NATIVE_SOURCE_ABI,
-      'SOURCE_TOKEN_ADDRESS'
+    let sourceWord: Address;
+    try {
+      sourceWord = getAddress(
+        await snap.read<Address>(
+          token,
+          NATIVE_SOURCE_ABI,
+          'SOURCE_TOKEN_ADDRESS'
+        )
+      );
+    } catch {
+      throw cause;
+    }
+    if (sourceWord !== zeroAddress) return sourceWord;
+    if ((await readGasPrc20(snap, chain)) === getAddress(token))
+      return zeroAddress;
+    throw new AgenticError(
+      AGENTIC_ERROR_CODE.RULE_READ_FAILED,
+      `non-native PRC20 ${token} has an empty source token address`
     );
-    if (getAddress(native) === zeroAddress) return zeroAddress;
-    throw cause;
   }
   if (isAddress(source, { strict: false })) return getAddress(source);
   if (source === '' && (await readGasPrc20(snap, chain)) === getAddress(token))

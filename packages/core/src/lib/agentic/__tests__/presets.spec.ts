@@ -84,7 +84,7 @@ it('ships verified mainnet and testnet templates and keeps prediction empty', ()
     agenticPresets.get('LENDING', { chainNamespace: 'eip155:999999' })
   ).toThrow(/no approved entry/);
 });
-it('groups all apps on a chain into one editable template and omits unspecified fields', () => {
+it('groups apps on a chain into one editable template with default expiry and omitted identity', () => {
   const data = catalog();
   data[0].chains[0].allowedCalls = [
     ...data[0].chains[0].allowedCalls,
@@ -101,7 +101,7 @@ it('groups all apps on a chain into one editable template and omits unspecified 
   for (const rule of res.rules) {
     expect(rule).not.toHaveProperty('agent');
     expect(rule).not.toHaveProperty('assets');
-    expect(rule).not.toHaveProperty('validUntil');
+    expect(rule.validUntil).toBeGreaterThan(Math.floor(Date.now() / 1000));
   }
   expect(api.list({ type: 'CATEGORY' }).presets[0].chains).toEqual([
     chain,
@@ -134,7 +134,7 @@ it('returns ready Rule types with identity and expiry; routes assets and default
 });
 it('does not type an incomplete template as a ready rule', () => {
   const { rules } = buildPresetApi(catalog()).get('DEXES');
-  // @ts-expect-error callers must fill agent and expiry before create
+  // @ts-expect-error callers must fill agent before create
   const ready: Rule[] = rules;
   expect(ready[0].agent).toBeUndefined();
 });

@@ -308,17 +308,19 @@ describe('v6 multi-asset SDK management and execution', () => {
   });
 
   it.each(['exactInputSingle', 'exactOutputSingle'] as const)(
-    'a review-only DEX %s call cannot spend tokens even after asset budgets are filled',
+    'a default-token DEX %s call rejects spending above its policy cap despite edited bridge budgets',
     async (functionName) => {
-      const preview = agenticPresets.get('DEXES', { chainNamespace: CHAIN_NS })
-        .rules[0];
-      const { agent } = await setup({
-        ...preview,
+      const preview = agenticPresets.get('DEXES', {
+        chainNamespace: CHAIN_NS,
         agent: h.wallets[1].account!.address,
-        validUntil: Math.floor(Date.now() / 1000) + 3600,
-        maxGasPerCall: BigInt(10) ** BigInt(16),
+      }).rules[0];
+      const { wallet, id, agent } = await setup({
+        ...preview,
         assets: [{ token: a, maxPerCall: BigInt(5), maxTotal: BigInt(20) }],
       });
+      const stored = await owner.agentic.wallet(wallet).rules.get(id);
+      expect(stored.rule.validUntil).toBe(preview.validUntil);
+      expect(stored.rule.maxGasPerCall).toBe(preview.maxGasPerCall);
       const router = preview.allowedCalls[0].target as Address;
       const abi = parseAbi([
         `function ${functionName}((address,address,uint24,address,uint256,uint256,uint160))`,
@@ -333,7 +335,17 @@ describe('v6 multi-asset SDK management and execution', () => {
               data: encodeFunctionData({
                 abi,
                 functionName,
-                args: [[a, b, 3000, CEA, BigInt(1), BigInt(1), BigInt(0)]],
+                args: [
+                  [
+                    preview.assets![0].token as Address,
+                    preview.assets![1].token as Address,
+                    3000,
+                    CEA,
+                    preview.assets![0].maxPerCall + BigInt(1),
+                    preview.assets![0].maxPerCall + BigInt(1),
+                    BigInt(0),
+                  ],
+                ],
               }),
             },
           ],
@@ -341,6 +353,35 @@ describe('v6 multi-asset SDK management and execution', () => {
       ).rejects.toMatchObject({
         decodedError: { name: 'PolicyCheckReverted(ArgPinAboveMax)' },
       });
+    }
+  );
+
+  it.each(['DEXES', 'LENDING', 'STAKING'] as const)(
+    'public %s destination-funded defaults create directly without rewriting returned rules',
+    async (category) => {
+      const generated = agenticPresets.get(category, {
+        chainNamespace: CHAIN_NS,
+        agent: h.wallets[1].account!.address,
+        funding: 'destination',
+      });
+      expect(generated.readiness.ready).toBe(true);
+      expect(
+        generated.readiness.chains[0].selectedAssets.length
+      ).toBeGreaterThan(0);
+      expect(generated.rules[0].assets).toEqual([]);
+      const { wallet, id } = await setup(generated.rules[0]);
+      const actual = await stored(wallet, id);
+      expect(actual.assets).toEqual([
+        {
+          token: a,
+          maxPerCall: BigInt(0),
+          maxTotal: BigInt(0),
+          spent: BigInt(0),
+        },
+      ]);
+      const record = await owner.agentic.wallet(wallet).rules.get(id);
+      expect(record.rule.maxGasPerCall).toBe(generated.rules[0].maxGasPerCall);
+      expect(record.rule.validUntil).toBe(generated.rules[0].validUntil);
     }
   );
 
@@ -359,7 +400,7 @@ describe('v6 multi-asset SDK management and execution', () => {
         validUntil: Math.floor(Date.now() / 1000) + 3600,
         maxGasPerCall: BigInt(10) ** BigInt(16),
       };
-      const preview = agenticPresets.get(category, opts);
+      const preview = agenticPresets.get(category, { ...opts, assets: [] });
       expect(preview.readiness.ready).toBe(false);
       const { wallet, id, agent } = await setup({
         ...preview.rules[0],
@@ -400,7 +441,7 @@ describe('v6 multi-asset SDK management and execution', () => {
           { token: firstToken, maxPerCall: BigInt(5), maxTotal: BigInt(10) },
         ],
       });
-      expect(first.readiness.ready).toBe(true);
+      expect(first.readiness.chains[0].configurationReady).toBe(true);
       const before = await h.publicClient.readContract({
         address: wallet,
         abi: h.generation.contracts.abis.wallet,
