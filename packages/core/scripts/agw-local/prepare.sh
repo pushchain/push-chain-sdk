@@ -7,6 +7,8 @@
 #              so the clone's working tree, branches and index are never touched.
 #   AGW_PIN    commit to extract (default: the reviewed v6).
 #   OUT        destination directory (default: $TMPDIR/push-agw-local-<pin>).
+#   AGW_ALLOW_COMPILER_DOWNLOAD=1 permits Foundry to install the pinned Solidity
+#              compiler on a fresh CI runner. Default keeps compilation offline.
 #
 # The script extracts the pinned tree, fetches each git submodule at the exact
 # commit recorded in that tree, copies the harness-only contracts from
@@ -44,5 +46,9 @@ fi
 mkdir -p "$OUT/sdk-harness"
 cp "$HERE"/contracts/*.sol "$OUT/sdk-harness/"
 
-(cd "$OUT" && forge build --offline src sdk-harness lib/smartsessions/contracts/SmartSession.sol lib/openzeppelin-contracts/contracts/proxy >/dev/null)
+AGW_BUILD_ARGS=(src sdk-harness lib/smartsessions/contracts/SmartSession.sol lib/openzeppelin-contracts/contracts/proxy)
+if [ "${AGW_ALLOW_COMPILER_DOWNLOAD:-0}" != "1" ]; then
+  AGW_BUILD_ARGS=(--offline "${AGW_BUILD_ARGS[@]}")
+fi
+(cd "$OUT" && forge build "${AGW_BUILD_ARGS[@]}" >/dev/null)
 echo "$OUT"
