@@ -14,6 +14,7 @@ jobs:
     timeout-minutes: 30
     env:
       NX_DAEMON: 'false'
+      YARN_ENABLE_HARDENED_MODE: '1'
       AGW_REPO: ${{ github.workspace }}/.ci-contracts
     steps:
       - uses: actions/checkout@v5
