@@ -1,3 +1,9 @@
+@pushchain/core@6.0.27-alpha.3 (2026-10-18)
+
+- feat: ship bounded preset defaults with funding checks
+
+---
+
 @pushchain/core@6.0.27-alpha.2 (2026-10-16)
 
 - feat: add bounded preset operations and configuration readiness
