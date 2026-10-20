@@ -14,6 +14,7 @@ export interface ChainReader {
     blockNumber?: bigint;
   }): Promise<unknown>;
   getBlockNumber(): Promise<bigint>;
+  getBlock?(args: { blockNumber: bigint }): Promise<{ timestamp: bigint }>;
   getCode(args: { address: Address; blockNumber?: bigint }): Promise<Hex | undefined>;
   getBalance(args: { address: Address; blockNumber?: bigint }): Promise<bigint>;
   getLogs(args: {
@@ -33,6 +34,7 @@ export function chainReaderFromPublicClient(client: PublicClient): ChainReader {
     readContract: (args) =>
       client.readContract(args as Parameters<PublicClient['readContract']>[0]),
     getBlockNumber: () => client.getBlockNumber({ cacheTime: 0 }),
+    getBlock: (args) => client.getBlock(args),
     getCode: (args) => client.getCode(args),
     getBalance: (args) => client.getBalance(args),
     getLogs: (args) =>

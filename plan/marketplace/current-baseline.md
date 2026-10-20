@@ -1,5 +1,7 @@
 # Verified marketplace baseline
 
+This records the contract/research baseline. SDK implementation and later live acceptance are tracked in [implementation status](implementation-status.md), including a newly verified SDK-versus-marketplace CEA factory mismatch on three chains.
+
 Observed October 20, 2026. Deployment source: `443b4e2dd9ca5dd9ffc8efebdfcecd619dd66c47`, branch `sdk-iteration-v1` in `pushchain/push-chain-core-contracts`. AGW dependency: `ffd567d3e49b2d27c6f50ad36093274dbac3090f`, matching the existing SDK v6 adapter.
 
 ## Live Donut deployment

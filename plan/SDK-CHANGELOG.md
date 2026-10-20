@@ -4,6 +4,16 @@ Running history for work continued on `feat/agw-sdk-v4`, covering AGW, marketpla
 
 For each meaningful checkpoint, add a dated entry with the change, decisions, validation, remaining work and relevant commit/evidence links. Keep earlier entries as history and mark superseded decisions explicitly. Distinguish implemented code, planning, local/fork checks, funded execution, Git delivery and package publication. Git history for this file records the exact commit introducing each checkpoint.
 
+## 2026-10-20 — first marketplace SDK implementation
+
+**Implemented:** client.market discovery/provider management, exact preview and native plain-EOA open; client.job create/pricing/funding/submit/status/list/watch/cancel/refund; deployed v2 JobSpec/template/card-rule codecs, marker resolution and authoring helpers; additive universal.read.prepare; constants/types/errors and a [consumer guide](../packages/core/MARKETPLACE.md). Binary kernel description bytes survive encoding and reads. Default E2E selection stays unchanged.
+
+**Validation:** 2,205 units pass (12 existing skips); six real-stack SDK fork E2Es pass, including nonzero pUSDC escrow/payout and paused refunds; two read-only live cases and one funded register/open/cancel/revoke/deactivate smoke pass. Build/typechecks, new-production lint, source/built API equality and compiled guide/package checks pass. [Details](marketplace/research/sdk-implementation-2026-10-20/README.md).
+
+**New findings:** three destination CEA factory tables disagree, so preview fails closed there; BSC Testnet matches and passes live. The shared test master is delegated, so the passing live path uses a fresh native owner. Current open signing explicitly gates delegated/contract/external owners. An initial live attempt registered/deactivated card 1 without opening; the later fresh-owner run opened/cancelled job 1 and deactivated card 2.
+
+**Placeholders:** historical deposit orchestration, paid read preview, compatible automatic evaluation/retry, mutable criteria, relayer, external/delegated signing, recurring jobs and ratings. No successful dummy responses or deployment substitutions were added. No package or contract was published/deployed. Continue on feat/agw-sdk-v4; [status and next requirements](marketplace/implementation-status.md).
+
 ## 2026-10-20 — marketplace research and implementation handoff
 
 **Planning delivered:** [plan/marketplace](marketplace/README.md) contains fresh exports of Notion pages 2/6/3/7/4/8, separately reviewed discussions, immutable contract/ABI snapshots, live Donut observations, a gap register, M4/K-12 analysis, the implementation sequence and draft team questions. This checkpoint adds no marketplace SDK runtime and sends no public-chain transactions or team comments.

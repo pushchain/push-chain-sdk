@@ -1,5 +1,7 @@
 # Questions to share — drafts, not posted
 
+**Implementation update:** the user authorized implementation with explicit placeholders. Approval handling now follows deployed v2; client cancel/revoke, explicit expected-budget acceptance and additive pure read authoring are implemented/tested. Historical proposals below remain useful context. The immediate rollout question is CEA configuration: SDK and marketplace factories differ on Sepolia/Base Sepolia/Arbitrum Sepolia, while BSC matches and passes live. [Addresses and read-only evidence](implementation-status.md#destination-rollout-mismatch). Which route/deployment manifest is canonical, and which configuration should be aligned? Global routing constants were not changed to bypass the guard. External/delegated signatures and evaluator integration remain explicitly gated.
+
 Prepared October 20 after fresh Notion discussions, pinned source review, unfunded tests and Donut read-only checks. Lead with the concrete mismatch and proposal; do not resend historical questions already answered below.
 
 ## Zaryab, with Nilesh / Aman: canonical wire before automatic evaluation

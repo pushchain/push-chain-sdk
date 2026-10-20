@@ -39,6 +39,8 @@ export const GROUPS = [
   'agw-svm-replay',
   'agw-presets',
   'agw-presets-expanded',
+  'marketplace',
+  'marketplace-live',
 ] as const;
 
 export type Group = (typeof GROUPS)[number];
@@ -169,6 +171,8 @@ const F = {
 } as const;
 
 export const SCENARIOS: Scenario[] = [
+  { id: 'marketplace-native-lifecycle', group: 'marketplace-live', file: '__e2e__/marketplace/lifecycle.spec.ts', grep: 'marketplace live 1\\. native provider registration', needs: { masterPC: '0.5' }, env: { MARKETPLACE_LIVE_E2E: '1', AGW_E2E_AGENT_PC: '0.1' }, note: 'Fresh provider/card/wallet only; no principal export or fee escrow. Cancels and revokes its own permission.' },
+  { id: 'marketplace-readonly-bindings', group: 'marketplace', file: '__e2e__/marketplace/readiness.spec.ts', grep: 'marketplace deployed v2 read-only', needs: {}, note: 'Unfunded public SDK card/job enumeration and capability gates; no signing keys.' },
   {
     id: 'agw-svm-replay-positive',
     group: 'agw-svm-replay',
@@ -1210,7 +1214,7 @@ export function scenariosFor(group: string | undefined): Scenario[] {
   if (!group || group === 'all') {
     // AGW stays opt-in: scenarios create/fund fresh wallets and consume testnet funds.
     return SCENARIOS.filter(
-      (s) => s.group !== 'known-fail' && !s.group.startsWith('agw')
+      (s) => s.group !== 'known-fail' && !s.group.startsWith('agw') && !s.group.startsWith('marketplace')
     );
   }
   if (!(GROUPS as readonly string[]).includes(group)) {

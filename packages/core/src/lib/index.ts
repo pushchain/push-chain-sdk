@@ -1,4 +1,44 @@
 import { PushChain } from './push-chain/push-chain';
+export { MarketError, JobError, JobSpecError } from './market';
+export type {
+  AgentCardRules,
+  MarketAssetToken,
+  MarketPin,
+  AgentCard,
+  AgentCardInput,
+  AgentCardSummary,
+  MarketNamespace,
+  MarketPreviewOptions,
+  JobPlan,
+  OwnerIntent,
+} from './market';
+export type {
+  JobNamespace,
+  Job,
+  JobStatus,
+  JobEvent,
+  CreateJobOptions,
+  FundJobOptions,
+} from './job/types';
+export type {
+  JobSpec,
+  JobSpecTemplate,
+  JobRead,
+  PreparedJobRead,
+  JobReadInput,
+  JobCheck,
+  JobCheckTemplate,
+  LogicTree,
+  Evaluation,
+  Operation,
+  LogicKind,
+  AllowedMutability,
+  PrincipalMarker,
+  PrepareJobReadOptions,
+  BuildJobSpecOptions,
+  BuildJobSpecTemplateOptions,
+  JobSpecPreview,
+} from './job-spec';
 export { CHAIN } from './constants/enums';
 export type { ConversionQuote } from './constants/tokens';
 export type {

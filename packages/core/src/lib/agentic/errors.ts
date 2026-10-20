@@ -51,8 +51,10 @@ export type AgenticErrorCode =
  * eligibility or a read that cannot be trusted. Nothing was signed or sent
  * except receipt errors, which retain the submitted transaction hash.
  */
-export class AgenticError extends Error {
-  readonly code: AgenticErrorCode;
+export class AgenticError<
+  Code extends string = AgenticErrorCode
+> extends Error {
+  readonly code: Code;
   /** Safe end-user copy; message/cause retain technical diagnostics. */
   readonly userMessage: string;
   readonly hint?: string;
@@ -60,7 +62,7 @@ export class AgenticError extends Error {
   override readonly cause?: unknown;
 
   constructor(
-    code: AgenticErrorCode,
+    code: Code,
     message: string,
     opts: {
       hint?: string;
@@ -73,7 +75,10 @@ export class AgenticError extends Error {
     this.name = 'AgenticError';
     this.code = code;
     this.userMessage =
-      opts.userMessage ?? agenticUserMessage(code, message, opts.details);
+      opts.userMessage ??
+      (Object.prototype.hasOwnProperty.call(AGENTIC_ERROR_CODE, code)
+        ? agenticUserMessage(code as AgenticErrorCode, message, opts.details)
+        : message);
     this.hint = opts.hint;
     this.details = opts.details;
     this.cause = opts.cause;

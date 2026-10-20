@@ -1,6 +1,6 @@
 # Agentic marketplace SDK planning
 
-Updated October 20, 2026. This folder is the research and implementation handoff for the next SDK phase. No marketplace SDK implementation or public-chain transaction was made by this review. Existing uncommitted AGW work is left intact.
+Updated October 20, 2026. **Actual SDK implementation has started:** see [current implementation and acceptance](implementation-status.md). The initial contract-only research below is preserved as history; its planning-only statements predate the SDK and live smoke checkpoint. No package was published.
 
 **Build against deployed UniversalMarketplace v2, pinned at `sdk-iteration-v1@443b4e2dd9ca5dd9ffc8efebdfcecd619dd66c47`.** The six supplied Notion pages were exported again through signed-in Chrome, and their visible discussion panels were reviewed. The older marketplace pages in `plan/agw/notion` remain historical.
 
@@ -9,6 +9,7 @@ Updated October 20, 2026. This folder is the research and implementation handoff
 | Document | Purpose |
 | --- | --- |
 | [SDK development history](../SDK-CHANGELOG.md) | Running checkpoints, decisions, validation and Git delivery on feat/agw-sdk-v4 |
+| [Implementation status](implementation-status.md) | Implemented SDK methods, explicit placeholders, current CEA mismatch and passing local/live coverage |
 | [Verified baseline](current-baseline.md) | Deployment, capabilities, exact wire, and shipped versus future behavior |
 | [Source inventory](SOURCES.md) | Fresh exports, immutable contract pins, comments and source priority |
 | [Spec/contract gaps](analysis/spec-and-contract-gaps.md) | Concrete mismatches, ownership and effect on delivery |

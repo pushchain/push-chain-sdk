@@ -4,11 +4,12 @@ const path = require('node:path');
 const ts = require('typescript');
 
 const root = path.resolve(__dirname, '../../..');
-const guide = path.join(root, 'packages/core/AGW.md');
+const guide = path.join(root, process.argv[2] || 'packages/core/AGW.md');
+const guideName = path.basename(guide, '.md');
 const blocks = [
   ...fs.readFileSync(guide, 'utf8').matchAll(/```ts\n([\s\S]*?)```/g),
 ].map((m) => m[1]);
-if (!blocks.length) throw new Error('No AGW TypeScript examples found');
+if (!blocks.length) throw new Error(`No ${guideName} TypeScript examples found`);
 const cache = path.join(root, 'node_modules/.cache');
 fs.mkdirSync(cache, { recursive: true });
 const dir = fs.mkdtempSync(path.join(cache, 'agw-docs-'));
@@ -42,7 +43,7 @@ try {
     process.exitCode = 1;
   } else {
     process.stdout.write(
-      `AGW guide: ${blocks.length} TypeScript blocks typechecked against public exports; no examples executed.\n`
+      `${guideName} guide: ${blocks.length} TypeScript blocks typechecked against public exports; no examples executed.\n`
     );
   }
 } finally {

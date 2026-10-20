@@ -1,5 +1,7 @@
 # Marketplace and job SDK implementation plan
 
+**Implementation is underway:** see [current status](implementation-status.md). The dated plan below records the original handoff; the referenced AGW fixes were subsequently committed as a542f303.
+
 Planning only, October 20, 2026. Start from existing `feat/agw-sdk-v4` without disturbing its uncommitted AGW error improvements. Keep marketplace delivery separate from AGW release history. This is a proposed implementation sequence; product decisions still open are listed in [questions](questions.md).
 
 ## First delivery boundary

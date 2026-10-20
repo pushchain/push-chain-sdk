@@ -22,10 +22,13 @@ async function main() {
     })
   );
   assert(pack.files.some((f) => f.path === 'AGW.md'));
+  assert(pack.files.some((f) => f.path === 'MARKETPLACE.md'));
+  assert.equal(typeof cjs.PushChain.utils.job.buildJobSpec, 'function');
+  assert.equal(typeof cjs.PushChain.utils.market.encodeAgentCardRules, 'function');
   assert(!pack.files.some((f) => /(^|\/)\.env($|\.)/.test(f.path)));
   assert(
     !pack.files.some((f) =>
-      /(^|\/)(plan|__e2e__|__agw-local__|scripts)(\/|$)/.test(f.path)
+      /(^|\/)(plan|__e2e__|__agw-local__|__market-local__|scripts)(\/|$)/.test(f.path)
     )
   );
   const preset = cjs.PushChain.utils.agentic.presets.get('LENDING', {
@@ -53,6 +56,9 @@ async function main() {
   try {
     const file = path.join(tmp, 'consumer.ts');
     fs.writeFileSync(file, source);
+    const marketFile = path.join(tmp, 'market-consumer.ts');
+    const marketGuide = fs.readFileSync(path.join(built, 'MARKETPLACE.md'), 'utf8');
+    fs.writeFileSync(marketFile, [...marketGuide.matchAll(/```ts\n([\s\S]*?)```/g)].map(m => m[1]).join('\n\n'));
     const config = ts.readConfigFile(
       path.join(root, 'packages/core/tsconfig.lib.json'),
       ts.sys.readFile
@@ -68,7 +74,7 @@ async function main() {
       paths: { '@pushchain/core': [path.join(built, 'src/index.d.ts')] },
     };
     const diagnostics = ts.getPreEmitDiagnostics(
-      ts.createProgram([file], options)
+      ts.createProgram([file, marketFile], options)
     );
     if (diagnostics.length)
       throw new Error(

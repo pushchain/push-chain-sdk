@@ -1,4 +1,6 @@
 import { agenticPresets } from './agentic/presets';
+import { jobSpecUtils } from './job-spec';
+import { validateAgentCardRules, encodeAgentCardRules, decodeAgentCardRules } from './market/rules';
 import {
   convertOriginToExecutor,
   fromChainAgnostic,
@@ -874,6 +876,8 @@ export class Utils {
 
   /** Pure preset discovery/templates; internal encoders and identifiers stay private. */
   static readonly agentic = Object.freeze({ presets: agenticPresets });
+  static readonly job = jobSpecUtils;
+  static readonly market = Object.freeze({ validateAgentCardRules, encodeAgentCardRules, decodeAgentCardRules });
 
   /**
    * Internal: resolves a CHAIN enum from either a CHAIN value or a PushChain client instance.
