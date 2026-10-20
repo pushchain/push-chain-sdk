@@ -14,7 +14,7 @@ export interface ChainReader {
     blockNumber?: bigint;
   }): Promise<unknown>;
   getBlockNumber(): Promise<bigint>;
-  getBlock?(args: { blockNumber: bigint }): Promise<{ timestamp: bigint }>;
+  getBlock?(args: { blockNumber: bigint }): Promise<{ timestamp: bigint; hash?: Hex | null }>;
   getCode(args: { address: Address; blockNumber?: bigint }): Promise<Hex | undefined>;
   getBalance(args: { address: Address; blockNumber?: bigint }): Promise<bigint>;
   getLogs(args: {
@@ -25,6 +25,7 @@ export interface ChainReader {
     toBlock: bigint;
   }): Promise<Log[]>;
   getTransactionReceipt(args: { hash: Hex }): Promise<TransactionReceipt>;
+  getTransaction?(args: { hash: Hex }): Promise<{ input: Hex; blockNumber: bigint | null }>;
   /** Raw eth_call, used to verify complete signed marketplace requests before broadcast. */
   call?(args: { to: Address; data: Hex; account?: Address; blockNumber?: bigint }): Promise<{ data?: Hex }>;
 }
@@ -42,6 +43,7 @@ export function chainReaderFromPublicClient(client: PublicClient): ChainReader {
     getLogs: (args) =>
       client.getLogs(args as Parameters<PublicClient['getLogs']>[0]) as Promise<Log[]>,
     getTransactionReceipt: (args) => client.getTransactionReceipt(args),
+    getTransaction: (args) => client.getTransaction(args),
     call: (args) => client.call(args),
   };
 }

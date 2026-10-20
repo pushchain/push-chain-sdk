@@ -2,6 +2,7 @@ import { zeroAddress, zeroHash, type Address } from 'viem';
 import { MarketNamespaceImpl } from '../market';
 import { JobNamespaceImpl } from '../../job/job';
 import { mockRuntime } from '../../agentic/__tests__/mock-runtime';
+import { fakeResponse } from '../../agentic/__tests__/mock-runtime';
 import { FakeChain } from '../../agentic/__tests__/fake-chain';
 import type { StackRuntime } from '../runtime';
 import type { JobPlan } from '../types';
@@ -161,4 +162,21 @@ it('compares the factory signing domain before prompting the owner', async () =>
   });
   expect(rt.signTypedData).not.toHaveBeenCalled();
   expect(rt.agw.reader.call).not.toHaveBeenCalled();
+});
+it('retains the submitted opening hash when receipt recovery fails, without another signature or write', async () => {
+  const { rt, read, execute } = runtime();
+  const tx = fakeResponse({
+    wait: async () => {
+      throw new Error('Receipt unavailable');
+    },
+  });
+  await expect(
+    new MarketNamespaceImpl(rt).openJob({} as JobPlan, { resume: tx })
+  ).rejects.toMatchObject({
+    code: 'OPEN_JOB_RECOVERY_REQUIRED',
+    details: { txHash: tx.hash },
+  });
+  expect(rt.signTypedData).not.toHaveBeenCalled();
+  expect(execute).not.toHaveBeenCalled();
+  expect(read).not.toHaveBeenCalled();
 });

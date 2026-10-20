@@ -1,6 +1,15 @@
-import { getAddress, keccak256, zeroHash, type Address, type Hex } from 'viem';
+import {
+  decodeAbiParameters,
+  getAddress,
+  keccak256,
+  zeroHash,
+  type Address,
+  type Hex,
+} from 'viem';
 import type { CHAIN } from '../constants/enums';
 import { READ_OUTCOME } from '../read-state/read-state.types';
+import type { UniversalReadResponse } from '../read-state/read-state.types';
+import { decodeEvmQueryEnvelope } from '../read-state/envelopes';
 import type { ReadPrepareOptions } from '../read-state/read-params';
 import { JobSpecError } from '../market/errors';
 import { decodeJobSpec, encodeJobSpec, int256 } from './codec';
@@ -153,6 +162,7 @@ export async function previewJobSpec(
     params: options.params && [...options.params],
     baseline: options.baseline && [...options.baseline],
     accounts: { ...options.accounts },
+    resume: options.resume && [...options.resume],
   };
   if (
     options.maxTotalFee !== undefined &&
@@ -210,36 +220,130 @@ export async function previewJobSpec(
       settleWindow: 1,
     });
   } else spec = input;
-  const prepared = [];
-  for (const read of spec.reads) {
-    const readOptions: ReadPrepareOptions = {
-      chain: `${read.chainNamespace}:${read.chainId}` as Extract<
-        CHAIN,
-        `eip155:${string}`
-      >,
-      callData: (read.selector + read.args.slice(2)) as Hex,
-      minConfirmations: read.minConfirmations,
-      expiryBlocks: options.expiryBlocks,
-      refundTo: options.refundTo,
-      callback: options.callback as ReadPrepareOptions['callback'],
-    };
-    prepared.push(
-      await options.client.universal.prepareRead(read.target, readOptions)
+  const waitOptions = {
+    timeoutMs: options.advanced?.timeout,
+    pollingIntervalMs: options.advanced?.pollingIntervalMs,
+    resultShape: { kind: 'raw' as const },
+  };
+  let responses: UniversalReadResponse[];
+  let quoted = BigInt(0);
+  let newlyPaid = BigInt(0);
+  if (options.resume) {
+    if (
+      options.resume.length !== spec.reads.length ||
+      options.resume.some((id) => !/^0x[\da-f]{64}$/i.test(id)) ||
+      new Set(options.resume.map((x) => x.toLowerCase())).size !==
+        options.resume.length
+    )
+      throw new JobSpecError(
+        'INVALID_PREVIEW_RESUME',
+        'Provide one distinct request ID per read, in read order.'
+      );
+    responses = [];
+    for (const [i, id] of options.resume.entries()) {
+      const response = await options.client.universal.trackRead(
+        { requestId: id },
+        { resultShape: { kind: 'raw' }, progressHook: options.progressHook }
+      );
+      const read = spec.reads[i];
+      let matched = false;
+      try {
+        const actual = response.request.spec;
+        const envelope = decodeEvmQueryEnvelope(actual.query);
+        const [target, calldata] = decodeAbiParameters(
+          [{ type: 'address' }, { type: 'bytes' }],
+          envelope.payload
+        );
+        matched =
+          response.requestId.toLowerCase() === id.toLowerCase() &&
+          actual.account.chainNamespace === read.chainNamespace &&
+          actual.account.chainId === read.chainId &&
+          actual.minConfirmations >= read.minConfirmations &&
+          envelope.queryType === 1 &&
+          envelope.refType === 0 &&
+          envelope.blockNumber === actual.blockNumber &&
+          getAddress(target) === getAddress(read.target) &&
+          calldata.toLowerCase() ===
+            (read.selector + read.args.slice(2)).toLowerCase();
+      } catch {
+        /* A request from another schema/query cannot stand in for this logical read. */
+      }
+      if (!matched)
+        throw new JobSpecError(
+          'PREVIEW_REQUEST_MISMATCH',
+          'The recorded request does not match this resolved JobSpec read.',
+          { read: i, requestId: id }
+        );
+      responses.push(response);
+    }
+    quoted = responses.reduce(
+      (sum, response) => sum + response.fees.paid,
+      BigInt(0)
+    );
+  } else {
+    const prepared = [];
+    for (const read of spec.reads) {
+      const readOptions: ReadPrepareOptions = {
+        chain: `${read.chainNamespace}:${read.chainId}` as Extract<
+          CHAIN,
+          `eip155:${string}`
+        >,
+        callData: (read.selector + read.args.slice(2)) as Hex,
+        minConfirmations: read.minConfirmations,
+        expiryBlocks: options.expiryBlocks,
+        refundTo: options.refundTo,
+        callback: options.callback as ReadPrepareOptions['callback'],
+      };
+      prepared.push(
+        await options.client.universal.prepareRead(read.target, readOptions)
+      );
+    }
+    quoted = prepared.reduce((sum, read) => sum + read.value, BigInt(0));
+    if (options.maxTotalFee !== undefined && quoted > options.maxTotalFee)
+      throw new JobSpecError(
+        'PREVIEW_FEE_EXCEEDED',
+        'The prepared read fees exceed maxTotalFee. No read was submitted.',
+        { quoted, maxTotalFee: options.maxTotalFee }
+      );
+    let batch;
+    try {
+      batch = await options.client.universal.executeReads(prepared, {
+        progressHook: options.progressHook,
+        advanced: options.advanced,
+        waitForCompletion: false,
+      });
+    } catch (cause) {
+      const error = cause as {
+        txHash?: string;
+        transactionHashes?: readonly Hex[];
+        pendingTransactionHash?: Hex;
+      };
+      throw new JobSpecError(
+        'PREVIEW_INCOMPLETE',
+        'Read submission could not be confirmed. Track the recorded transactions before requesting more reads.',
+        {
+          txHash: error?.txHash,
+          transactionHashes: error?.transactionHashes,
+          pendingTransactionHash: error?.pendingTransactionHash,
+        },
+        cause
+      );
+    }
+    responses = batch.reads;
+    newlyPaid = quoted;
+  }
+  const requestIds = responses.map((r) => r.requestId);
+  try {
+    responses = await Promise.all(responses.map((r) => r.wait(waitOptions)));
+  } catch (cause) {
+    throw new JobSpecError(
+      'PREVIEW_INCOMPLETE',
+      'The paid reads are still recoverable. Resume with these request IDs instead of paying again.',
+      { requestIds, txHashes: responses.map((r) => r.txHash) },
+      cause
     );
   }
-  const quoted = prepared.reduce((sum, read) => sum + read.value, BigInt(0));
-  if (options.maxTotalFee !== undefined && quoted > options.maxTotalFee)
-    throw new JobSpecError(
-      'PREVIEW_FEE_EXCEEDED',
-      'The prepared read fees exceed maxTotalFee. No read was submitted.',
-      { quoted, maxTotalFee: options.maxTotalFee }
-    );
-  const batch = await options.client.universal.executeReads(prepared, {
-    progressHook: options.progressHook,
-    advanced: options.advanced,
-    waitForCompletion: true,
-  });
-  const reads: JobSpecPreview['reads'] = batch.reads.map((response, i) => {
+  const reads: JobSpecPreview['reads'] = responses.map((response, i) => {
     const value = response.raw?.resultData ?? null;
     if (response.outcome !== READ_OUTCOME.SUCCESS || value === null)
       return {
@@ -286,6 +390,7 @@ export async function previewJobSpec(
     fees: {
       quoted,
       paid: reads.reduce((sum, r) => sum + r.response.fees.paid, BigInt(0)),
+      newlyPaid,
     },
   };
 }

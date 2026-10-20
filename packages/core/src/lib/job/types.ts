@@ -59,6 +59,18 @@ export interface JobEvent {
   blockNumber?: bigint;
   data?: unknown;
   error?: unknown;
+  cursor?: JobWatchCursor;
+}
+/** Last delivered log; resume includes its block and excludes this log and earlier logs. */
+export interface JobWatchCursor {
+  blockNumber: bigint;
+  logIndex: number;
+  blockHash?: Hex;
+}
+export interface JobWatchOptions {
+  fromBlock?: bigint;
+  cursor?: JobWatchCursor;
+  pollIntervalMs?: number;
 }
 export interface JobNamespace {
   create(
@@ -93,6 +105,6 @@ export interface JobNamespace {
   watch(
     jobId: bigint,
     callback: (event: JobEvent) => void,
-    options?: { fromBlock?: bigint; pollIntervalMs?: number }
+    options?: JobWatchOptions
   ): () => void;
 }

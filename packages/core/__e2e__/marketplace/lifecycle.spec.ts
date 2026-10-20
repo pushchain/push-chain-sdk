@@ -182,6 +182,37 @@ d('marketplace live', () => {
     });
     expect(result.pass).toBe(true);
     expect(result.reads[0].decoded).not.toBeNull();
+    const resumed = await PushChain.utils.job.previewJobSpec(spec, {
+      client: owner,
+      resume: result.reads.map((r) => r.response.requestId),
+      maxTotalFee: BigInt(0),
+      advanced: { timeout: 120000 },
+    });
+    expect(resumed.pass).toBe(true);
+    expect(resumed.fees.newlyPaid).toBe(BigInt(0));
+    const authored = PushChain.utils.job.prepareRead({
+      chain: CHAIN.BNB_TESTNET,
+      target: spec.reads[0].target,
+      abi: parseAbi(['function balanceOf(address) view returns (uint256)']),
+      functionName: 'balanceOf',
+      args: [owner.universal.account],
+    });
+    const direct = await owner.universal.read(authored, {
+      maxFee: parseEther('0.01'),
+      advanced: { timeout: 120000 },
+    });
+    const sameCall = await PushChain.utils.job.previewJobSpec(spec, {
+      client: owner,
+      resume: [direct.requestId],
+      maxTotalFee: BigInt(0),
+    });
+    expect(sameCall.pass).toBe(true);
+    expect(sameCall.fees.newlyPaid).toBe(BigInt(0));
+    f.evidence('marketplace-preview-recovery', {
+      originalRequestId: result.reads[0].response.requestId,
+      preparedReadRequestId: direct.requestId,
+      additionalPaymentOnResume: resumed.fees.newlyPaid,
+    });
   });
   it('3. external EVM owner opens and cancels through its real Push UEA transport', async () => {
     if (!cardId) throw new Error('The fresh test card was not registered');
@@ -217,14 +248,21 @@ d('marketplace live', () => {
       executeBy: now + 600,
       expiredAt: now + 7200,
     });
-    externalOpened = await externalOwner.market.openJob(plan);
+    const openedResult = await externalOwner.market.openJob(plan);
+    externalOpened = openedResult;
+    const recovered = await externalOwner.market.openJob(plan, {
+      resume: openedResult.tx,
+    });
+    expect(recovered.jobId).toBe(externalOpened.jobId);
     f.evidence('marketplace-external-open', {
       jobId: externalOpened.jobId,
       wallet: externalOpened.wallet,
       uea,
       signerChainId: plan.intent.signerChainId,
+      txHash: openedResult.tx.hash,
     });
-    await (await externalOwner.job.cancel(externalOpened.jobId)).wait();
+    const cancelled = await externalOwner.job.cancel(externalOpened.jobId);
+    await cancelled.wait();
     expect((await externalOwner.job.status(externalOpened.jobId)).status).toBe(
       'Rejected'
     );
@@ -232,6 +270,7 @@ d('marketplace live', () => {
     f.evidence('marketplace-external-cleanup', {
       jobId: externalOpened.jobId,
       cardId,
+      txHash: cancelled.hash,
     });
   });
 });

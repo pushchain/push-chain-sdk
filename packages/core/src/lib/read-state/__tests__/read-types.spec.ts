@@ -26,6 +26,9 @@ declare const counterIdl: CounterIdl;
 
 // Compiled by ts-jest; never executed or connected to a network.
 async function checkTypes(client: PushChain) {
+  const authored = client.universal.read.prepare({ chain: CHAIN.ETHEREUM_SEPOLIA, target: address, abi, functionName: 'balanceOf', args: [address] });
+  const authoredResult: UniversalReadResponse<`0x${string}`> = await client.universal.read(authored, { maxFee: 100n });
+  void authoredResult;
   const raw: UniversalReadResponse<`0x${string}`> = await client.universal.read(address, { chain: CHAIN.ETHEREUM_SEPOLIA, callData: '0x18160ddd' });
   // @ts-expect-error raw calls and typed calls are mutually exclusive
   const mixedRaw: ReadOptions = { chain: CHAIN.ETHEREUM_SEPOLIA, callData: '0x18160ddd', abi, functionName: 'quote' };

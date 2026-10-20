@@ -18,6 +18,7 @@ import { configId } from '../agentic/codec/ids';
 import { scanLogs } from '../agentic/reads/snapshot';
 import { confirmedLogs } from '../agentic/management/common';
 import { decodeCardRulesWire } from './rules';
+import { historicalCard } from './history';
 import { MOVEABLE_TOKENS, type MoveableToken } from '../constants/tokens';
 import { getPRC20Address } from '../universal/prc20-address';
 import { MarketError } from './errors';
@@ -165,11 +166,11 @@ export async function openedDeposit(
       'Could not recover one marketplace opening for this job.'
     );
   const opened = events[0];
-  const card = await loadCard(cardId, await snapshot(rt, block));
-  if (card.version !== version || opened.cardVersion !== version)
+  const card = await historicalCard(rt, cardId, version, block, loadCard);
+  if (opened.cardVersion !== version)
     throw new MarketError(
       'HISTORY_UNAVAILABLE',
-      'The opening block does not expose the exact opened card version. An archive with transaction-level history is required.'
+      'The opening event does not match the recorded card version.'
     );
   const spec = decodeJobSpec(kernel.description, { format: 'spec' });
   if (

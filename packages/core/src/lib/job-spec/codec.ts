@@ -15,7 +15,7 @@ import {
   PRINCIPAL,
 } from './constants';
 import { JOB_SPEC_PARAM, JOB_TEMPLATE_PARAM } from './schema';
-import { validateJobRead } from './read';
+import { inheritReadLabel, validateJobRead } from './read';
 import type {
   BuildJobSpecOptions,
   BuildJobSpecTemplateOptions,
@@ -192,6 +192,7 @@ function normalizeReads(values: BuildJobSpecOptions['reads']): JobRead[] {
       minConfirmations: wrapper.minConfirmations ?? 1,
       ...(source.fills ? { fills: source.fills.map((f) => ({ ...f })) } : {}),
     };
+    inheritReadLabel(source, read);
     return read;
   });
 }

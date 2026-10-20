@@ -1,6 +1,9 @@
 /** Public SDK → real deployed v2/AGW v6 on an isolated Anvil Donut fork. No keys or writes to public RPC. */
-import { spawn, type ChildProcess } from 'node:child_process';
+import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import { createServer } from 'node:net';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import {
   createPublicClient,
   createWalletClient,
@@ -8,6 +11,9 @@ import {
   encodeFunctionData,
   erc20Abi,
   getAddress,
+  bytesToHex,
+  hexToBytes,
+  parseTransaction,
   keccak256,
   http,
   parseAbi,
@@ -16,9 +22,10 @@ import {
   zeroHash,
   type Address,
   type PublicClient,
+  type Hex,
 } from 'viem';
 import { mnemonicToAccount } from 'viem/accounts';
-import { PushChain } from '../src';
+import { PushChain, type UniversalSigner } from '../src';
 import { CHAIN, PUSH_NETWORK, LIBRARY } from '../src/lib/constants/enums';
 import { DONUT_MARKETPLACE as D } from '../src/lib/market/deployment';
 import { JOB_KERNEL_ABI } from '../src/lib/market/contracts/AgenticCommerce';
@@ -39,7 +46,7 @@ let opened: { jobId: bigint; wallet: Address; rulesId: `0x${string}` };
 let template: JobSpecTemplate;
 let rules: AgentCardRules;
 let stopWatch: (() => void) | undefined;
-const accounts = [0, 1].map((addressIndex) =>
+const accounts = [0, 1, 2].map((addressIndex) =>
   mnemonicToAccount(
     'test test test test test test test test test test test junk',
     { addressIndex }
@@ -48,6 +55,11 @@ const accounts = [0, 1].map((addressIndex) =>
 const token = '0x731aF1Da5365259d27528557EE4aFBA4baC90ef2';
 const tokenOnSepolia = '0xE935d9c9C24D02E61186c640cc01d713C876d40F';
 beforeAll(async () => {
+  execFileSync(
+    'bash',
+    [join(__dirname, '../scripts/marketplace-local/prepare.sh')],
+    { stdio: 'pipe' }
+  );
   const port = await new Promise<number>((resolve) => {
     const server = createServer();
     server.listen(0, '127.0.0.1', () => {
@@ -74,6 +86,8 @@ beforeAll(async () => {
       '--retries',
       '2',
       '--silent',
+      '--order',
+      'fifo',
     ],
     { stdio: ['ignore', 'ignore', 'pipe'] }
   );
@@ -530,4 +544,303 @@ it('accepts a real deployed EVM UEA owner signature with its home-chain domain',
     })
   ).toBe(uea);
   expect((await owner.job.status(result.jobId)).status).toBe('Open');
+});
+
+function ownerArtifact(name: string) {
+  const base =
+    process.env['MARKETPLACE_LOCAL_DIR'] ??
+    join(tmpdir(), 'push-marketplace-local');
+  return JSON.parse(
+    readFileSync(
+      join(base, 'out', 'MarketplaceOwnerFixtures.sol', `${name}.json`),
+      'utf8'
+    )
+  );
+}
+it('uses a real ERC-1271 owner adapter, rejects malformed success values, and recovers without a second signature', async () => {
+  const artifact = ownerArtifact('Marketplace1271Owner');
+  const controller = createWalletClient({
+    account: accounts[0],
+    chain: push.chain,
+    transport: http(rpc),
+  });
+  const hash = await controller.deployContract({
+    chain: push.chain,
+    abi: artifact.abi,
+    bytecode: artifact.bytecode.object,
+    args: [accounts[0].address],
+  });
+  const contract = (await push.waitForTransactionReceipt({ hash }))
+    .contractAddress as Address;
+  await (
+    await owner.universal.sendTransaction({
+      to: contract,
+      value: BigInt(10) ** BigInt(18),
+    })
+  ).wait();
+  const signTypedData = jest.fn(
+    async (data: Parameters<(typeof accounts)[0]['signTypedData']>[0]) =>
+      hexToBytes(await accounts[0].signTypedData(data))
+  );
+  const send = jest.fn(async (unsigned: Uint8Array) => {
+    const tx = parseTransaction(bytesToHex(unsigned));
+    if (!tx.to)
+      throw new Error(
+        'The contract-owner adapter requires a transaction target'
+      );
+    const txHash = await controller.writeContract({
+      address: contract,
+      chain: push.chain,
+      abi: artifact.abi,
+      functionName: 'execute',
+      args: [tx.to, tx.value ?? BigInt(0), tx.data ?? '0x'],
+      gas: BigInt(3000000),
+    });
+    await push.request({ method: 'anvil_mine' as never, params: ['0x4'] as never });
+    return hexToBytes(txHash);
+  });
+  const signer: UniversalSigner = {
+    account: { chain: CHAIN.PUSH_TESTNET_DONUT, address: contract },
+    signMessage: async (data) =>
+      hexToBytes(await accounts[0].signMessage({ message: { raw: data } })),
+    signTypedData,
+    signAndSendTransaction: send,
+  };
+  const client = await PushChain.initialize(signer, {
+    network: PUSH_NETWORK.TESTNET_DONUT,
+    rpcUrls: { [CHAIN.PUSH_TESTNET_DONUT]: [rpc] },
+  });
+  const now = Number((await push.getBlock()).timestamp);
+  const plan = await client.market.preview(cardId, {
+    principal: BigInt(10),
+    executeBy: now + 600,
+    expiredAt: now + 7200,
+  });
+  for (const mode of [1, 2, 3]) {
+    const tx = await controller.writeContract({
+      address: contract,
+      chain: push.chain,
+      abi: artifact.abi,
+      functionName: 'setResponseMode',
+      args: [mode],
+    });
+    await push.waitForTransactionReceipt({ hash: tx });
+    await expect(client.market.openJob(plan)).rejects.toMatchObject({
+      code: 'OPEN_JOB_SIMULATION_FAILED',
+    });
+  }
+  expect(send).not.toHaveBeenCalled();
+  const reset = await controller.writeContract({
+    address: contract,
+    chain: push.chain,
+    abi: artifact.abi,
+    functionName: 'setResponseMode',
+    args: [0],
+  });
+  await push.waitForTransactionReceipt({ hash: reset });
+  const opened = await client.market.openJob(plan);
+  const signatures = signTypedData.mock.calls.length;
+  const recovered = await client.market.openJob(plan, { resume: opened.tx });
+  expect(recovered.jobId).toBe(opened.jobId);
+  expect(signTypedData.mock.calls).toHaveLength(signatures);
+  expect(send).toHaveBeenCalledTimes(1);
+  await (await client.job.cancel(opened.jobId)).wait();
+  expect((await client.job.status(opened.jobId)).status).toBe('Rejected');
+});
+it('accepts a compatible EIP-7702 verifier and refuses an echo fallback before broadcast', async () => {
+  const controller = createWalletClient({
+    account: accounts[2],
+    chain: push.chain,
+    transport: http(rpc),
+  });
+  const artifact = ownerArtifact('Marketplace1271Owner');
+  const deployed = await controller.deployContract({
+    chain: push.chain,
+    abi: artifact.abi,
+    bytecode: artifact.bytecode.object,
+    args: [accounts[2].address],
+  });
+  const delegate = (await push.waitForTransactionReceipt({ hash: deployed }))
+    .contractAddress as Address;
+  await push.request({
+    method: 'anvil_setCode' as never,
+    params: [
+      accounts[2].address,
+      ('0xef0100' + delegate.slice(2)) as Hex,
+    ] as never,
+  });
+  const signer = await PushChain.utils.signer.toUniversalFromKeypair(
+    controller,
+    { chain: CHAIN.PUSH_TESTNET_DONUT, library: LIBRARY.ETHEREUM_VIEM }
+  );
+  const client = await PushChain.initialize(signer, {
+    network: PUSH_NETWORK.TESTNET_DONUT,
+    rpcUrls: { [CHAIN.PUSH_TESTNET_DONUT]: [rpc] },
+  });
+  const now = Number((await push.getBlock()).timestamp);
+  const plan = await client.market.preview(cardId, {
+    principal: BigInt(10),
+    executeBy: now + 600,
+    expiredAt: now + 7200,
+  });
+  const result = await client.market.openJob(plan);
+  await (await client.job.cancel(result.jobId)).wait();
+  const echoArtifact = ownerArtifact('MarketplaceEchoOwner');
+  const echoHash = await controller.deployContract({
+    chain: push.chain,
+    abi: echoArtifact.abi,
+    bytecode: echoArtifact.bytecode.object,
+    args: [],
+  });
+  const echo = (await push.waitForTransactionReceipt({ hash: echoHash }))
+    .contractAddress as Address;
+  await push.request({
+    method: 'anvil_setCode' as never,
+    params: [accounts[2].address, ('0xef0100' + echo.slice(2)) as Hex] as never,
+  });
+  const next = await client.market.preview(cardId, {
+    principal: BigInt(10),
+    executeBy: now + 600,
+    expiredAt: now + 7200,
+  });
+  await expect(client.market.openJob(next)).rejects.toMatchObject({
+    code: 'OPEN_JOB_SIMULATION_FAILED',
+  });
+});
+it('recovers the original card and opening when a provider updates in the same mined block', async () => {
+  const before = await provider.market.card(cardId);
+  const now = Number((await push.getBlock()).timestamp);
+  const plan = await owner.market.preview(cardId, {
+    principal: BigInt(10),
+    executeBy: now + 600,
+    expiredAt: now + 7200,
+  });
+  let signature: Hex | undefined;
+  const sign = owner.universal.signTypedData.bind(owner.universal);
+  const capture = jest
+    .spyOn(owner.universal, 'signTypedData')
+    .mockImplementationOnce(async (data) => {
+      signature = (await sign(data)) as Hex;
+      throw new Error('Captured locally before broadcast');
+    });
+  await expect(owner.market.openJob(plan)).rejects.toThrow(
+    'Captured locally before broadcast'
+  );
+  capture.mockRestore();
+  if (!signature) throw new Error('No owner signature captured');
+  const openData = encodeFunctionData({
+    abi: (await import('../src/lib/market/contracts/UniversalMarketplace'))
+      .MARKETPLACE_ABI,
+    functionName: 'openJob',
+    args: [
+      {
+        cardId,
+        cardVersion: before.version,
+        job: plan.job,
+        session: plan.session,
+        intent: plan.intent,
+        sig: signature,
+        label: plan.label,
+      },
+    ],
+  });
+  const { chain, ...fields } = before;
+  const updateData = encodeFunctionData({
+    abi: (await import('../src/lib/market/contracts/UniversalMarketplace'))
+      .MARKETPLACE_ABI,
+    functionName: 'updateAgentCard',
+    args: [
+      cardId,
+      {
+        ...fields,
+        jobType: fields.jobType as Hex,
+        chainNamespace: chain,
+        providerFee: BigInt(7000000),
+      },
+      PushChain.utils.market.encodeAgentCardRules(
+        { ...before.rules, maxGasPerCall: BigInt(17) },
+        { chain }
+      ),
+      before.jobSpecTemplateBytes,
+    ],
+  });
+  let openingHash: Hex;
+  let updateHash: Hex;
+  await push.request({
+    method: 'evm_setAutomine' as never,
+    params: [false] as never,
+  });
+  try {
+    openingHash = (await push.request({
+      method: 'eth_sendTransaction' as never,
+      params: [
+        {
+          from: accounts[0].address,
+          to: D.marketplace,
+          data: openData,
+          gas: '0x5b8d80',
+        },
+      ] as never,
+    })) as Hex;
+    updateHash = (await push.request({
+      method: 'eth_sendTransaction' as never,
+      params: [
+        {
+          from: accounts[1].address,
+          to: D.marketplace,
+          data: updateData,
+          gas: '0x5b8d80',
+        },
+      ] as never,
+    })) as Hex;
+    await push.request({ method: 'evm_mine' as never, params: [] as never });
+  } finally {
+    await push.request({
+      method: 'evm_setAutomine' as never,
+      params: [true] as never,
+    });
+  }
+  const [openedReceipt, updatedReceipt] = await Promise.all([
+    push.waitForTransactionReceipt({ hash: openingHash }),
+    push.waitForTransactionReceipt({ hash: updateHash }),
+  ]);
+  expect(openedReceipt.status).toBe('success');
+  expect(updatedReceipt.status).toBe('success');
+  expect(openedReceipt.blockNumber).toBe(updatedReceipt.blockNumber);
+  expect((await provider.market.card(cardId)).version).toBe(
+    before.version + BigInt(1)
+  );
+  const recovered = await owner.market.openJob(plan, {
+    resume: await owner.universal.trackTransaction(openingHash),
+  });
+  const source = '0x0A16CBa65FfCAa4C2282b27b027Ab4A2fE46E0Bf';
+  await push.request({
+    method: 'anvil_impersonateAccount' as never,
+    params: [source] as never,
+  });
+  const funder = createWalletClient({
+    account: source,
+    chain: push.chain,
+    transport: http(rpc),
+  });
+  for (const [asset, amount] of [
+    [token, BigInt(10)],
+    [D.paymentToken, before.providerFee],
+  ] as const) {
+    const hash = await funder.writeContract({
+      address: asset,
+      chain: push.chain,
+      abi: erc20Abi,
+      functionName: 'transfer',
+      args: [accounts[0].address, amount],
+    });
+    await push.waitForTransactionReceipt({ hash });
+  }
+  const deposited = await owner.market.deposit(recovered.jobId);
+  expect(deposited.cardVersion).toBe(before.version);
+  expect(deposited.txs.map((t) => [t.step, t.amount])).toEqual([
+    ['PRINCIPAL', BigInt(10)],
+    ['PROVIDER_FEE', before.providerFee],
+  ]);
+  await (await owner.job.cancel(recovered.jobId)).wait();
 });

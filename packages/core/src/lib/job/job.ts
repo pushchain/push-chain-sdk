@@ -32,6 +32,7 @@ import { Snapshot, scanLogs } from '../agentic/reads/snapshot';
 import { decodeJobSpec } from '../job-spec/codec';
 import type { JobSpec } from '../job-spec/types';
 import type { Call } from '../agentic/contracts/v6';
+import { watchJob } from './watch';
 import type {
   CreateJobOptions,
   FundJobOptions,
@@ -40,6 +41,7 @@ import type {
   JobNamespace,
   JobStatus,
   JobWriteOptions,
+  JobWatchOptions,
 } from './types';
 
 const STATES: JobStatus[] = [
@@ -192,6 +194,7 @@ export class JobNamespaceImpl implements JobNamespace {
     return { jobs };
   }
   async create(options: CreateJobOptions) {
+    options = { ...options };
     const d = deployment(this.rt);
     const s = await snapshot(this.rt);
     const token = await s.read<Address>(d.kernel, ABI, 'paymentToken');
@@ -289,6 +292,7 @@ export class JobNamespaceImpl implements JobNamespace {
     );
   }
   async fund(jobId: bigint, options: FundJobOptions = {}) {
+    options = { ...options };
     const rt = this.rt;
     const d = deployment(rt);
     const s = await snapshot(rt);
@@ -454,6 +458,7 @@ export class JobNamespaceImpl implements JobNamespace {
     jobId: bigint,
     options: JobWriteOptions & { deliverable: Hex | string }
   ) {
+    options = { ...options };
     const s = await snapshot(this.rt);
     const j = await this.raw(jobId, s);
     this.provider(j);
@@ -587,99 +592,9 @@ export class JobNamespaceImpl implements JobNamespace {
   watch(
     jobId: bigint,
     callback: (event: JobEvent) => void,
-    options: { fromBlock?: bigint; pollIntervalMs?: number } = {}
+    options: JobWatchOptions = {}
   ): () => void {
     validId(jobId);
-    const d = deployment(this.rt);
-    let stopped = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let cursor = options.fromBlock;
-    const interval = options.pollIntervalMs ?? 3000;
-    if (
-      !Number.isSafeInteger(interval) ||
-      interval < 25 ||
-      (cursor !== undefined && cursor < BigInt(0))
-    )
-      throw new JobError(
-        'INVALID_WATCH_OPTIONS',
-        'Use a nonnegative block and a polling interval of at least 25ms.'
-      );
-    const names = [
-      'JobCreated',
-      'BudgetSet',
-      'JobFunded',
-      'JobSubmitted',
-      'JobCompleted',
-      'JobRejected',
-      'JobExpired',
-      'Refunded',
-    ] as const;
-    const kinds = [
-      'Created',
-      'BudgetSet',
-      'Funded',
-      'Submitted',
-      'Completed',
-      'Rejected',
-      'Expired',
-      'Refunded',
-    ];
-    const poll = async () => {
-      try {
-        const head = await this.rt.agw.reader.getBlockNumber();
-        if (stopped) return;
-        if (cursor === undefined) cursor = head;
-        const end = cursor + BigInt(999) < head ? cursor + BigInt(999) : head;
-        if (cursor <= end) {
-          const groups = await Promise.all(
-            names.map((name) =>
-              this.rt.agw.reader.getLogs({
-                address: d.kernel,
-                event: getAbiItem({ abi: ABI, name }),
-                args: { jobId },
-                fromBlock: cursor ?? head,
-                toBlock: end,
-              })
-            )
-          );
-          const logs = groups
-            .flat()
-            .sort(
-              (a, b) =>
-                Number(
-                  (a.blockNumber ?? BigInt(0)) - (b.blockNumber ?? BigInt(0))
-                ) || (a.logIndex ?? 0) - (b.logIndex ?? 0)
-            );
-          for (const log of logs) {
-            if (stopped) return;
-            const e = decodeEventLog({
-              abi: ABI,
-              data: log.data,
-              topics: log.topics,
-            });
-            callback({
-              jobId,
-              kind: kinds[names.indexOf(e.eventName as (typeof names)[number])],
-              txHash: log.transactionHash ?? undefined,
-              blockNumber: log.blockNumber ?? undefined,
-              data: e.args,
-            });
-          }
-          cursor = end + BigInt(1);
-        }
-      } catch (error) {
-        if (!stopped) callback({ jobId, kind: 'Error', error });
-      } finally {
-        if (!stopped)
-          timer = setTimeout(() => {
-            void poll();
-          }, interval);
-      }
-    };
-    void poll();
-    return () => {
-      stopped = true;
-      if (timer) clearTimeout(timer);
-    };
+    return watchJob(this.rt, jobId, callback, { ...options });
   }
 }

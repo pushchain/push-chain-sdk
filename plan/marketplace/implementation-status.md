@@ -1,25 +1,25 @@
 # Marketplace SDK implementation status
 
-October 20, 2026 — deposit, preview and external-owner checkpoint on `feat/agw-sdk-v4`. This supersedes the first checkpoint's deposit/paid-preview/external-EVM placeholders. No package was published.
+October 20, 2026 — SDK-only completion checkpoint on `feat/agw-sdk-v4`. [Completed SDK checklist and external boundary](sdk-readiness.md). No package was published.
 
 ## Coverage against SDK pages 6 and 7
 
 | Documented API group | Implemented | Pending |
 | --- | --- | --- |
-| Marketplace user APIs | 7 / 7 | Broader route acceptance; three CEA rollout mismatches below |
+| Marketplace user APIs | 7 / 7 | No scoped SDK implementation item; three external CEA rollout mismatches below |
 | Provider/card management | 4 / 4 | No additional method placeholder |
-| JobSpec/card-rule helpers | 9 / 9 | Additional paid-read/source/output acceptance remains useful |
+| JobSpec/card-rule helpers | 9 / 9 | No scoped SDK implementation item |
 | Kernel job APIs | 8 / 9 | `job.verify`: compatible evaluator/hook and canonical wire |
 | **Named API entrypoints** | **28 / 29** | **1 contract-dependent placeholder** |
 
-This is API coverage, not a release-readiness percentage or a claim that every draft option is implemented. It follows deployed v2 where the draft differs (pinned agent approvals, immutable criteria, pUSDC). `job.cancel`, pure read preparation and constants are additional delivered surfaces. Evaluation facts in `status` remain explicitly unavailable. Full live principal/escrow/protocol execution and arbitrary contract-wallet acceptance are separate validation work.
+This is API coverage, not a claim that every future draft option is implemented. It follows deployed v2 where the draft differs (pinned agent approvals, immutable criteria, pUSDC). `job.cancel`, pure read preparation and constants are additional delivered surfaces. SDK-only implementation and acceptance within this boundary are complete. Evaluation facts in `status` remain unavailable until compatible contracts exist. Live principal/escrow/payout and origin bridging now pass; reference contract/delegated-wallet acceptance passes against real local contracts. Custom wallet vendors provide their own signer transport.
 
 ## Implemented
 
-- `client.market`: card discovery/reads; provider register/update/setActive/card; independently checked CEA and JobSpec preview; simulation-backed OwnerIntent signing/open for native EOAs and deployed external EVM UEAs; job mappings and active-wallet reads.
-- `client.market.deposit`: original opening event/card-version recovery, principal/fee/PC balance targets, combined shared-token requirements, explicit registered-origin funding, confirmed step receipts and incomplete-deposit recovery. Broadcast errors retain pending hashes and stop automatic retry. No retired owner-approval array or escrow acceptance is inferred.
-- `client.job`: plain create; provider pricing; explicit-budget acceptance, balances/allowances and atomic AGW funding; submit; status/list/watch; client cancel with recorded marketplace permission revocation; expiry/grace refunds, including while paused.
-- `PushChain.utils.job`: pure EVM read authoring, complete/template builders, canonical v2 codecs and descriptions; paid `previewJobSpec` through universal reads, fee cap, output-layout decoding and three-state logic. Missing baselines/reads remain unknown. `client.universal.read.prepare` exposes the same pure authoring adapter; async prepareRead/read now also accept explicit raw EVM calldata.
+- `client.market`: card discovery/reads; simulated provider register/update; activation/card; independent CEA and JobSpec preview; simulation-backed OwnerIntent signing/open for native EOAs, deployed external EVM UEAs and reference ERC-1271/7702 owners; mined-input receipt recovery without re-signing, complete event/kernel/wallet/mapping proof; job mappings and active-wallet reads. Inputs are copied before asynchronous work.
+- `client.market.deposit`: original opening/card-version recovery, including archive-less/same-block recovery bound to event hashes and transaction input; principal/fee/PC balance targets; combined shared-token requirements; explicit origin funding; confirmed receipts and incomplete-deposit recovery. Broadcast errors retain pending hashes and stop automatic retry. No retired owner-approval array or escrow acceptance is inferred.
+- `client.job`: plain create; provider pricing; reviewed-budget acceptance, balances/allowances and native/AGW atomic funding; submit; status/list/watch with exact cursor, deduplication, retry, callback isolation and reorg stop; client cancel with recorded grant revocation; expiry/grace refunds, including while paused.
+- `PushChain.utils.job`: pure authoring, builders, canonical v2 codecs, ABI-name/decimal descriptions; paid `previewJobSpec`, fee caps, nested decoding and three-state logic; authenticated request-ID resumption without new payment. Missing baselines/reads remain unknown. `client.universal.read.prepare` exposes the same pure adapter; resolved prepared objects can be sent directly. Raw EVM calldata is also supported.
 - `PushChain.utils.market`: deployed four-field card rules, principal/wallet markers and pinned approvals. Destination-token resolution always uses the explicit card chain, including same-address native-token objects. Decoded unknown PRC20s remain explicit references. Unchanged legacy wire metadata is preserved; archive raw bytes for persistence.
 - `AGENTIC.PRINCIPAL` and `AGENTIC.JOB` vocabulary/address table; public types/errors; source and compiled consumer guide checks. The API checker now canonicalizes equivalent string-literal quote syntax in emitted property names.
 
@@ -31,13 +31,13 @@ Registry summaries do not decode an unverified provider's template. A malformed 
 
 | Surface | Current behavior / next requirement |
 | --- | --- |
-| Deposit acceptance limits | Open/unexpired and unused enabled permission; available historical state required. Same-block version ambiguity fails closed. PC target is not a whole-job quote. Registered origin funding is unit-tested; live principal/inbound-bridge acceptance is still pending. |
+| Deposit execution boundary | Open/unexpired and unused enabled permission; authenticated state/event/input history required. PC target is not a whole-job quote. Live principal and BSC-origin inbound bridging pass; independent concurrent funding clients must coordinate. |
 | Automatic evaluator / job.verify | Explicit capability error. Current evaluator is manual; the linked evaluator has a different ABI/wire. No baseline, frozen-spec or verdict data is invented. |
 | Replacement criteria / non-NONE cards | Refused before writes. Expected-spec-hash acceptance must be delivered with compatible contracts before mutable negotiation. |
-| Contract/delegated owners | Full signed-request simulation uses the actual verifier. External EVM UEA transport passes live; arbitrary ERC-1271 adapters need their own acceptance. Delegates without a compatible verifier fail simulation after signing, before broadcast. Undeployed external UEAs and missing typed signing fail before prompting. |
+| Contract/delegated owners | Real reference ERC-1271 and compatible/incompatible 7702 acceptance passes; external EVM UEA transport passes live. Custom vendors supply their own signer transport. Incompatible signatures fail simulation before broadcast; undeployed external UEAs/missing typed signing fail before prompting. |
 | Relayer, recurring jobs, ratings, non-EVM cards/evaluation | No successful placeholder or invented service. Remain outside this checkpoint. |
 
-`job.cancel` revokes only the permission recorded for that marketplace job, using the current owner's existing AGW authority. Provider/evaluator terminal actions do not acquire owner cleanup authority. Plain jobs have no marketplace permission to infer. Funded job completion/payout is tested with manual evaluator action only on an isolated fork.
+`job.cancel` revokes only the permission recorded for that marketplace job. It does not withdraw wallet deposits. Provider/evaluator terminal actions do not acquire owner cleanup authority. Plain jobs have no marketplace permission to infer. Nonzero live completion/payout uses fresh controlled evaluators on plain jobs; the marketplace's configured evaluator is unchanged. Native single/atomic broadcast failures retain their hashes, and an atomic broadcast can never trigger sequential fallback.
 
 ## Destination rollout mismatch
 
@@ -54,9 +54,9 @@ Both old/new factories in the first three chains answer and name the same gatewa
 
 ## Acceptance
 
-- **2,228 unit tests pass**, 12 existing skips; 23 cases added after the first checkpoint.
-- **8 real-stack fork E2Es pass**: existing lifecycle plus historical deposits/reconnection and a real EVM UEA signature. Actual principal/pUSDC and escrow/payout use fork-only borrowed assets. The UEA signature case uses a native submitting transport on Anvil; no Cosmos transport is mocked as successful.
-- **3 funded live cases pass**: native register/open/cancel/revoke, paid validator-consensus preview, and actual external EVM UEA open/cancel. Card 3 is inactive; jobs 2/3 are Rejected and both permissions are revoked. PC funds gas/wallet setup/read callback; principal and escrow tokens are not moved live. The first checkpoint's two read-only cases remain prior evidence.
-- Build, library/spec/local typechecks, compiled imports/declarations/package checks and source-versus-built API comparison pass; the new production modules lint without warnings. The consumer guide's six TS blocks typecheck.
+- **2,246 unit tests pass**, 12 existing skips; 18 cases added after the prior checkpoint.
+- **11 real-stack fork E2Es pass**, adding valid/malformed ERC-1271, 7702 and same-block opening/history recovery. Fixtures compile from repo-owned source without another contract checkout. The fork's UEA submitting transport is native because Anvil has no Cosmos transport.
+- **6 live cases pass across two serial runs**: three basic cases cover native/external open/cancel, receipt recovery, prepared paid reads and no-new-payment preview recovery; three funding cases cover actual deposits, native/AGW atomic escrow and manual-evaluator payouts, and BSC-origin principal bridging. Cards 4/5 are inactive; jobs 4/7/8/9 are Rejected with grants revoked and plain jobs 5/6 are Completed. Deposited/reserve/payout tokens are returned. Earlier read-only evidence remains separate.
+- Build, library/spec/local types, compiled imports/declarations/package checks and source/built API comparison pass; changed production lint passes. The consumer guide's eight TS blocks typecheck. CI reporting now derives final success from completion counts while preserving the original Jest flag.
 
-[Current validation and limits](research/sdk-completion-2026-10-20/README.md), [first checkpoint](research/sdk-implementation-2026-10-20/README.md). E2E groups `marketplace` and `marketplace-live` are opt-in; default all selection is unchanged. Future checkpoints should append to the [running changelog](../SDK-CHANGELOG.md).
+[Current validation and limits](research/sdk-independent-2026-10-20/README.md), [prior checkpoint](research/sdk-completion-2026-10-20/README.md), [first checkpoint](research/sdk-implementation-2026-10-20/README.md). All marketplace groups, including `marketplace-funding`, remain opt-in; default all selection is unchanged. Future checkpoints should append to the [running changelog](../SDK-CHANGELOG.md).

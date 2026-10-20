@@ -11,7 +11,67 @@ import {
 } from 'viem';
 import { argumentLocation } from '../agentic/codec/abi-layout';
 import { JobSpecError } from '../market/errors';
-import type { JobFill, PrepareJobReadOptions, PreparedJobRead } from './types';
+import type {
+  JobFill,
+  PrepareJobReadOptions,
+  PreparedJobRead,
+  ExecuteJobReadOptions,
+} from './types';
+import type { ReadOptions } from '../read-state/read-params';
+import type { CHAIN } from '../constants/enums';
+
+const labels = new WeakMap<
+  PreparedJobRead,
+  {
+    selector: Hex;
+    outputs: Hex;
+    target: string;
+    name: string;
+    parameters: readonly AbiParameter[];
+  }
+>();
+export function inheritReadLabel(
+  source: PreparedJobRead,
+  target: PreparedJobRead
+): void {
+  const value = labels.get(source);
+  if (
+    value &&
+    value.selector === source.selector &&
+    value.outputs === source.outputs &&
+    value.target === source.target.toLowerCase()
+  )
+    labels.set(target, value);
+}
+export function jobReadLabel(read: PreparedJobRead): string | undefined {
+  const value = labels.get(read);
+  return value &&
+    value.selector === read.selector &&
+    value.outputs === read.outputs &&
+    value.target === read.target.toLowerCase()
+    ? value.name
+    : undefined;
+}
+/** Same logical call as a JobSpec read, through the normal paid universal-read path. */
+export function jobReadOptions(
+  read: PreparedJobRead,
+  options: ExecuteJobReadOptions = {}
+): ReadOptions {
+  validateJobRead(read);
+  if (read.fills?.length)
+    throw new JobSpecError(
+      'UNFILLED_PLACEHOLDER',
+      'Resolve WALLET/PARAM holes before sending a prepared read.'
+    );
+  return {
+    ...options,
+    chain: `${read.chainNamespace}:${read.chainId}` as Extract<
+      CHAIN,
+      `eip155:${string}`
+    >,
+    callData: (read.selector + read.args.slice(2)) as Hex,
+  };
+}
 
 export function outputTypes(params: readonly AbiParameter[]): Hex {
   function type(p: AbiParameter, depth: number): number[] {
@@ -170,7 +230,7 @@ export function prepareJobRead(
     };
     const values = fn.inputs.map((p, i) => lower(p, options.args?.[i], [i], 0));
     const [chainNamespace, chainId] = options.chain.split(':');
-    return {
+    const prepared = {
       chainNamespace,
       chainId,
       target: getAddress(options.target),
@@ -179,6 +239,14 @@ export function prepareJobRead(
       outputs: outputTypes(fn.outputs),
       ...(fills.length ? { fills } : {}),
     };
+    labels.set(prepared, {
+      selector: prepared.selector,
+      outputs: prepared.outputs,
+      target: prepared.target.toLowerCase(),
+      name: fn.name,
+      parameters: fn.outputs,
+    });
+    return prepared;
   } catch (cause) {
     if (cause instanceof JobSpecError) throw cause;
     throw new JobSpecError(
@@ -196,7 +264,7 @@ export interface OutputNode {
   size?: number;
 }
 export function parseOutputs(outputs: Hex): OutputNode {
-  if (!isHex(outputs) || outputs.length > 8194)
+  if (!isHex(outputs) || outputs.length % 2 !== 0 || outputs.length > 8194)
     throw new JobSpecError('INVALID_READ', 'Invalid output type layout.');
   const bytes =
     outputs

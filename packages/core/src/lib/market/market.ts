@@ -1,5 +1,6 @@
 import {
   encodeFunctionData,
+  decodeAbiParameters,
   getAddress,
   domainSeparator,
   keccak256,
@@ -13,6 +14,7 @@ import { MARKETPLACE_ABI as ABI } from './contracts/UniversalMarketplace';
 import { JOB_KERNEL_ABI } from './contracts/AgenticCommerce';
 import { MARKET_RULES_ABI } from './contracts/UniversalMarketplaceRules';
 import { currentGeneration } from '../agentic/deployments';
+import { rulesId as permissionId } from '../agentic/codec/ids';
 import {
   buildSession,
   encodeEnvelope,
@@ -33,7 +35,8 @@ import {
   encodeAgentCardRules,
   fillCardRules,
 } from './rules';
-import { decodeCreateJob } from './kernel-wire';
+import { decodeCreateJob, KERNEL_READ_ABI } from './kernel-wire';
+import { copyData, embeddedCalls, fingerprint as fp } from './data';
 import { depositJob, type DepositCheckpoint } from './deposit';
 import {
   deployment,
@@ -55,6 +58,7 @@ import type {
   MarketPreviewOptions,
   MarketWriteOptions,
   MarketDepositOptions,
+  MarketOpenOptions,
   OwnerIntent,
 } from './types';
 import type { CHAIN } from '../constants/enums';
@@ -72,8 +76,6 @@ interface WireView {
   verified: boolean;
   disabled: boolean;
 }
-const fp = (x: unknown): string =>
-  JSON.stringify(x, (_, v) => (typeof v === 'bigint' ? v.toString() : v));
 const ownerIntentFields = [
   ['owner', 'address'],
   ['wallet', 'address'],
@@ -219,6 +221,7 @@ export class MarketNamespaceImpl implements MarketNamespace {
     cardId: bigint,
     options: MarketPreviewOptions
   ): Promise<JobPlan> {
+    options = { ...options, params: options.params && [...options.params] };
     const rt = this.rt;
     const d = deployment(rt);
     const s = await snapshot(rt);
@@ -517,11 +520,11 @@ export class MarketNamespaceImpl implements MarketNamespace {
       },
     };
   }
-  async openJob(
-    plan: JobPlan,
-    options: MarketWriteOptions & { relay?: boolean } = {}
-  ) {
+  async openJob(plan: JobPlan, options: MarketOpenOptions = {}) {
+    plan = copyData(plan);
+    options = { ...options };
     if (options.relay) unavailable('Marketplace relaying');
+    if (options.resume) return this.openedResult(plan, options.resume, true);
     if (this.rt.agw.isReadOnly)
       throw new MarketError(
         'READ_ONLY',
@@ -631,27 +634,145 @@ export class MarketNamespaceImpl implements MarketNamespace {
       );
     }
     const tx = await write(this.rt, call, options.progressHook, 'MARKET', true);
+    return this.openedResult(plan, tx);
+  }
+  private async openedResult(
+    plan: JobPlan,
+    tx: import('../orchestrator/orchestrator.types').UniversalTxResponse,
+    recover = false
+  ) {
+    try {
+      return await this.verifyOpening(plan, tx, recover);
+    } catch (cause) {
+      if (cause instanceof MarketError && cause.details?.['txHash'])
+        throw cause;
+      throw new MarketError(
+        'OPEN_JOB_RECOVERY_REQUIRED',
+        'The opening was submitted but could not be fully verified. Track this transaction and resume with the original plan before opening again.',
+        { txHash: tx.hash },
+        cause
+      );
+    }
+  }
+  private async verifyOpening(
+    plan: JobPlan,
+    tx: import('../orchestrator/orchestrator.types').UniversalTxResponse,
+    recover: boolean
+  ) {
+    const d = deployment(this.rt);
+    const gen = currentGeneration(this.rt.agw.network);
     const e = await eventArgs(this.rt, tx, d.marketplace, ABI, 'JobOpened');
+    const [agent] = decodeAbiParameters(
+      [{ type: 'address' }],
+      plan.session.sessionValidatorInitData
+    );
+    const expectedRules = permissionId({
+      validator: gen.addresses.sessionValidator,
+      agent,
+      grantNonce: plan.intent.grantNonce,
+    });
     if (
       e['cardId'] !== plan.cardId ||
       e['cardVersion'] !== plan.cardVersion ||
       getAddress(e['agw'] as Address) !== plan.wallet ||
       e['principal'] !== plan.job.principal ||
-      getAddress(e['owner'] as Address) !== plan.intent.owner
+      getAddress(e['owner'] as Address) !== getAddress(plan.intent.owner) ||
+      e['rulesId'] !== expectedRules ||
+      getAddress(plan.session.sessionValidator) !==
+        getAddress(gen.addresses.sessionValidator) ||
+      plan.intent.sessionHash !== keccak256(encodeSession(plan.session)) ||
+      plan.intent.execCalldataHash !== keccak256(plan.calldata)
     )
       throw new MarketError(
         'RECEIPT_MISMATCH',
         'The opened job does not match the signed plan.',
         { txHash: tx.hash }
       );
+    const jobId = e['jobId'] as bigint;
+    const s = await snapshot(this.rt);
+    const [cardId, version, wallet, rules, job, owner] = await Promise.all([
+      s.read<bigint>(d.marketplace, ABI, 'cardOfJob', [jobId]),
+      s.read<bigint>(d.marketplace, ABI, 'cardVersionOfJob', [jobId]),
+      s.read<Address>(d.marketplace, ABI, 'agwOfJob', [jobId]),
+      s.read<Hex>(d.marketplace, ABI, 'rulesOfJob', [jobId]),
+      s.read<{
+        client: Address;
+        provider: Address;
+        evaluator: Address;
+        hook: Address;
+        expiredAt: number;
+        description: Hex;
+      }>(d.kernel, KERNEL_READ_ABI, 'getJob', [jobId]),
+      s.read<Address>(
+        gen.addresses.factory,
+        gen.contracts.abis.factory,
+        'ownerOf',
+        [plan.wallet]
+      ),
+    ]);
+    const creation = decodeCreateJob(('0x' + plan.calldata.slice(106)) as Hex);
+    if (
+      cardId !== plan.cardId ||
+      version !== plan.cardVersion ||
+      getAddress(wallet) !== getAddress(plan.wallet) ||
+      rules !== expectedRules ||
+      getAddress(owner) !== getAddress(plan.intent.owner) ||
+      getAddress(job.client) !== getAddress(plan.wallet) ||
+      getAddress(job.provider) !== getAddress(agent) ||
+      getAddress(job.evaluator) !== getAddress(creation.evaluator) ||
+      getAddress(job.hook) !== getAddress(creation.hook) ||
+      job.expiredAt !== plan.job.expiredAt ||
+      job.description !== plan.jobSpec.bytes
+    )
+      throw new MarketError(
+        'RECEIPT_MISMATCH',
+        'The kernel, wallet and marketplace mappings do not match the opening.',
+        { txHash: tx.hash, jobId }
+      );
+    if (recover) {
+      if (!this.rt.agw.reader.getTransaction)
+        throw new MarketError(
+          'HISTORY_UNAVAILABLE',
+          'This reader cannot load the submitted opening input.',
+          { txHash: tx.hash }
+        );
+      const transaction = await this.rt.agw.reader.getTransaction({
+        hash: tx.hash as Hex,
+      });
+      const matched = embeddedCalls(transaction.input, ABI, 'openJob').some(
+        ([value]) => {
+          const p = value as {
+            cardId: bigint;
+            cardVersion: bigint;
+            job: MarketJobInputs;
+            intent: OwnerIntent;
+            session: JobPlan['session'];
+          };
+          return (
+            p.cardId === plan.cardId &&
+            p.cardVersion === plan.cardVersion &&
+            fp(p.job) === fp(plan.job) &&
+            fp(p.intent) === fp(plan.intent) &&
+            encodeSession(p.session) === encodeSession(plan.session)
+          );
+        }
+      );
+      if (!matched)
+        throw new MarketError(
+          'RECEIPT_MISMATCH',
+          'The submitted input does not contain this reviewed opening.',
+          { txHash: tx.hash, jobId }
+        );
+    }
     return {
-      jobId: e['jobId'] as bigint,
+      jobId,
       wallet: getAddress(e['agw'] as Address),
       rulesId: e['rulesId'] as Hex,
       tx,
     };
   }
   async deposit(jobId: bigint, options: MarketDepositOptions = {}) {
+    options = { ...options, resume: options.resume && [...options.resume] };
     if (this.deposits.has(jobId))
       throw new MarketError(
         'DEPOSIT_IN_PROGRESS',
@@ -728,6 +849,14 @@ export class MarketNamespaceImpl implements MarketNamespace {
     options: Parameters<MarketNamespace['agent']['register']>[1]
   ) {
     const d = deployment(this.rt);
+    card = { ...card };
+    options = { ...options };
+    const rules = encodeAgentCardRules(options.rules, {
+      chain: card.chain,
+      network: this.rt.agw.network,
+    });
+    const template = encodeJobSpec(options.jobSpecTemplate);
+    const mutability = options.jobSpecTemplate.allowedMutability;
     const s = await snapshot(this.rt);
     if (
       !card.jobType ||
@@ -777,8 +906,7 @@ export class MarketNamespaceImpl implements MarketNamespace {
           'An existing card cannot change its execution chain.'
         );
     }
-    if (options.jobSpecTemplate.allowedMutability !== 'NONE')
-      unavailable('Mutable marketplace criteria');
+    if (mutability !== 'NONE') unavailable('Mutable marketplace criteria');
     const token = await s.read<Address>(
       d.kernel,
       JOB_KERNEL_ABI,
@@ -789,11 +917,6 @@ export class MarketNamespaceImpl implements MarketNamespace {
         'TOKEN_MISMATCH',
         'This deployment accepts only the kernel payment token.'
       );
-    const rules = encodeAgentCardRules(options.rules, {
-      chain: card.chain,
-      network: this.rt.agw.network,
-    });
-    const template = encodeJobSpec(options.jobSpecTemplate);
     const { chain, ...input } = card;
     const jobType = /^0x[\da-f]{64}$/i.test(card.jobType)
       ? (card.jobType as Hex)
@@ -817,6 +940,22 @@ export class MarketNamespaceImpl implements MarketNamespace {
             functionName: 'updateAgentCard',
             args: [cardId, c, rules, template],
           });
+    if (this.rt.agw.reader.call) {
+      try {
+        await this.rt.agw.reader.call({
+          to: d.marketplace,
+          data,
+          account: this.rt.agw.signerPushAccount(),
+        });
+      } catch (cause) {
+        throw new MarketError(
+          'CARD_SIMULATION_FAILED',
+          'The card write failed contract simulation. No transaction was submitted.',
+          { contractError: stackError(cause) },
+          cause
+        );
+      }
+    }
     const tx = await write(
       this.rt,
       { target: d.marketplace, value: BigInt(0), data },

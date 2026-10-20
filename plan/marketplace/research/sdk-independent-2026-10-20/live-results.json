@@ -1,0 +1,32 @@
+{
+  "completedAt": "2026-10-20T13:15:33.181Z",
+  "numTotalTests": 3,
+  "numPassedTests": 3,
+  "numFailedTests": 0,
+  "numPendingTests": 0,
+  "success": true,
+  "jestReportedSuccess": false,
+  "tests": [
+    {
+      "file": "marketplace/lifecycle.spec.ts",
+      "fullName": "marketplace live 1. native provider registration, reviewed open and atomic cancel/revoke on BSC Testnet",
+      "status": "passed",
+      "duration": 46877,
+      "error": null
+    },
+    {
+      "file": "marketplace/lifecycle.spec.ts",
+      "fullName": "marketplace live 2. paid JobSpec preview reaches live validator consensus through the registry",
+      "status": "passed",
+      "duration": 39035,
+      "error": null
+    },
+    {
+      "file": "marketplace/lifecycle.spec.ts",
+      "fullName": "marketplace live 3. external EVM owner opens and cancels through its real Push UEA transport",
+      "status": "passed",
+      "duration": 77538,
+      "error": null
+    }
+  ]
+}

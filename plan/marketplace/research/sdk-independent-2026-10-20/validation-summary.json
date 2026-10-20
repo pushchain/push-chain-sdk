@@ -1,0 +1,71 @@
+{
+  "observedAt": "2026-10-20T13:33:13.358Z",
+  "baselineCommit": "fdfcd4608f2d3db26ee4b3c5dc4a694f93f85097",
+  "unit": {
+    "passed": 2246,
+    "failed": 0,
+    "skipped": 12
+  },
+  "fork": {
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0,
+    "runnerExitCode": 0
+  },
+  "basicLive": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "runnerExitCode": 0,
+    "reporterSuccess": true,
+    "jestReportedSuccess": false
+  },
+  "fundingLive": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "runnerExitCode": 0,
+    "originalReporterSuccess": false,
+    "note": "Run completed before the counter-based reporter fix."
+  },
+  "build": "passed",
+  "libraryTypes": "passed via build",
+  "specTypes": "passed",
+  "forkTypes": "passed",
+  "newProductionLint": "zero warnings",
+  "nativeTransportLint": {
+    "errors": 0,
+    "warnings": 13,
+    "baselineWarnings": 13,
+    "newDiagnostics": 0
+  },
+  "guideBlocks": 8,
+  "compiledPackageChecks": "passed",
+  "sourceBuiltApiMatches": true,
+  "artifacts": {
+    "unit-results.json.gz": {
+      "originalBytes": 874494,
+      "originalSha256": "87cd86ed94626e214341f5ae20ff20f9600c8557eb1c6219c50cabfbdd980584",
+      "compressedBytes": 74643,
+      "compressedSha256": "e2fa5448a43ad622c16cf6df81069b9bbd47e6e5129f429d2221fc149c310d84"
+    },
+    "api-comparison.json.gz": {
+      "originalBytes": 722796,
+      "originalSha256": "6d9fb8f0efc6887e2dd05da14212f4724af268cd71b256ff9ca7db897592e12f",
+      "compressedBytes": 52200,
+      "compressedSha256": "3082df634d01370b14ea7560cf425dbb5ac63ee05206e4fd7b0e127012ff572c"
+    },
+    "fork-before-confirmation-fix.json.gz": {
+      "originalBytes": 8620,
+      "originalSha256": "7eec3411f6fa5cedff4e1fd560032bd80479292f333dc8ca6ddcbd5a47d070bf",
+      "compressedBytes": 2047,
+      "compressedSha256": "3935189b50b89225d8efd72ad57377af9726a818f90c1bac3304c0f9f6ffe47b"
+    }
+  },
+  "scope": "Current EVM marketplace v2; SDK-only checklist complete",
+  "remainingExternal": [
+    "Three destination CEA manifests must align",
+    "Compatible automatic evaluator/hook/schema/verify ABI"
+  ],
+  "publication": "not performed"
+}

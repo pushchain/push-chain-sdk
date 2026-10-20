@@ -1,6 +1,6 @@
 # Agentic marketplace SDK planning
 
-Updated October 20, 2026. **28 of the 29 named SDK APIs now have implementations against deployed v2:** see [current coverage and acceptance](implementation-status.md). Deposits, paid previews and external EVM UEA opening are implemented; `job.verify` awaits compatible contracts. The initial contract-only research below is preserved as history. No package was published.
+Updated October 20, 2026. **SDK-only work is complete for the current EVM v2 scope:** see [readiness and external boundaries](sdk-readiness.md) and [coverage/acceptance](implementation-status.md). 28 of the 29 named APIs are implemented; `job.verify` awaits compatible contracts. Real token deposits, origin bridging and native/AGW payouts pass live. The initial contract-only research below remains history. No package was published.
 
 **Build against deployed UniversalMarketplace v2, pinned at `sdk-iteration-v1@443b4e2dd9ca5dd9ffc8efebdfcecd619dd66c47`.** The six supplied Notion pages were exported again through signed-in Chrome, and their visible discussion panels were reviewed. The older marketplace pages in `plan/agw/notion` remain historical.
 

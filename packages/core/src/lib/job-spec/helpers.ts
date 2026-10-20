@@ -1,8 +1,16 @@
-import { getAddress, keccak256, toHex, type Address, type Hex } from 'viem';
+import {
+  formatUnits,
+  getAddress,
+  keccak256,
+  toHex,
+  type Address,
+  type Hex,
+} from 'viem';
 import { encodeJobSpec, int256 } from './codec';
 import { PRINCIPAL } from './constants';
 import { JobSpecError } from '../market/errors';
 import type { JobSpec, JobSpecTemplate, LogicTree } from './types';
+import { inheritReadLabel, jobReadLabel } from './read';
 export function resolveJobSpec(
   template: JobSpecTemplate,
   ctx: {
@@ -49,7 +57,9 @@ export function resolveJobSpec(
     }
     const read = { ...r };
     delete read.fills;
-    return { ...read, args };
+    const resolved = { ...read, args };
+    inheritReadLabel(r, resolved);
+    return resolved;
   });
   const checks = template.checks.map((c) => {
     const t = c.target;
@@ -98,6 +108,29 @@ export function describeJobSpec(
   options?: { principal?: bigint; decimals?: Record<Address, number> }
 ): { checks: string[]; logic: string; timing: string } {
   encodeJobSpec(spec);
+  if (options?.principal !== undefined && int256(options.principal) < BigInt(0))
+    throw new JobSpecError(
+      'INVALID_DESCRIPTION_OPTIONS',
+      'Principal must be nonnegative.'
+    );
+  const decimals = new Map<string, number>();
+  for (const [address, value] of Object.entries(options?.decimals ?? {})) {
+    if (!Number.isInteger(value) || value < 0 || value > 255)
+      throw new JobSpecError(
+        'INVALID_DESCRIPTION_OPTIONS',
+        'Token decimals must be integers from 0 to 255.'
+      );
+    try {
+      decimals.set(getAddress(address).toLowerCase(), value);
+    } catch (cause) {
+      throw new JobSpecError(
+        'INVALID_DESCRIPTION_OPTIONS',
+        'Decimals must be keyed by token address.',
+        undefined,
+        cause
+      );
+    }
+  }
   function logic(t: LogicTree): string {
     return `${
       t.kind === 'ALL' ? 'All' : t.kind === 'ANY' ? 'Any' : `At least ${t.k}`
@@ -109,23 +142,38 @@ export function describeJobSpec(
     checks: spec.checks.map((c) => {
       const r = spec.reads[c.read];
       const t = c.target;
-      const target =
+      const resolvedTarget =
         typeof t === 'bigint'
-          ? t.toString()
+          ? t
           : t === PRINCIPAL
-          ? options?.principal?.toString() ?? 'principal'
+          ? options?.principal ?? 'principal'
           : t === 'agentic:wallet'
           ? 'the wallet on this chain'
           : 'param' in t
           ? `parameter ${t.param + 1}`
           : options?.principal !== undefined
-          ? ((options.principal * t.principalBps) / BigInt(10000)).toString()
+          ? (options.principal * t.principalBps) / BigInt(10000)
           : `${t.principalBps} basis points of principal`;
-      return `Read ${c.read + 1}: ${r.target} ${r.selector} on ${
-        r.chainNamespace
-      }:${r.chainId}, field [${r.field.join(',')}], ${c.evaluation} ${
-        words[c.operation]
-      } ${target}${c.evaluation === 'PERCENTAGE' ? ' bps' : ' (raw units)'}.`;
+      const precision = decimals.get(r.target.toLowerCase());
+      const target =
+        typeof resolvedTarget === 'bigint'
+          ? c.evaluation === 'PERCENTAGE'
+            ? `${formatUnits(resolvedTarget, 2)}% (${resolvedTarget} bps)`
+            : precision !== undefined && c.evaluation !== 'BOOLEAN'
+            ? `${formatUnits(
+                resolvedTarget,
+                precision
+              )} (${resolvedTarget} raw units; ${precision} decimals)`
+            : `${resolvedTarget} (raw units)`
+          : `${resolvedTarget}${
+              c.evaluation === 'PERCENTAGE' ? ' bps' : ' (raw units)'
+            }`;
+      const name = jobReadLabel(r);
+      return `Read ${c.read + 1}: ${r.target} ${name ? name + ' ' : ''}${
+        r.selector
+      } on ${r.chainNamespace}:${r.chainId}, field [${r.field.join(',')}], ${
+        c.evaluation
+      } ${words[c.operation]} ${target}.`;
     }),
     logic: logic(spec.logic),
     timing:

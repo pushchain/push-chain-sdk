@@ -7,6 +7,7 @@ import type {
   UniversalReadResponse,
 } from '../read-state/read-state.types';
 import type { ReadExecuteOptions } from '../read-state/read-params';
+import type { ReadOptions } from '../read-state/read-params';
 export type Evaluation =
   (typeof JOB_VOCABULARY.EVALUATION)[keyof typeof JOB_VOCABULARY.EVALUATION];
 export type Operation =
@@ -42,6 +43,18 @@ export interface PrepareJobReadOptions {
   functionName: string;
   args?: readonly unknown[];
 }
+export type ExecuteJobReadOptions = Pick<
+  ReadOptions,
+  | 'callback'
+  | 'minConfirmations'
+  | 'blockNumber'
+  | 'expiryBlocks'
+  | 'maxFee'
+  | 'refundTo'
+  | 'waitForCompletion'
+  | 'progressHook'
+  | 'advanced'
+>;
 export interface JobReadInput {
   read: PreparedJobRead;
   minConfirmations?: number;
@@ -117,6 +130,8 @@ export interface PreviewJobSpecOptions {
   refundTo?: Address;
   progressHook?: ReadExecuteOptions['progressHook'];
   advanced?: ReadExecuteOptions['advanced'];
+  /** One existing request ID per read, in read order. Validated against the resolved call; no new fees. */
+  resume?: readonly Hex[];
 }
 export interface JobSpecPreview {
   /** A preview is a paid observation, never an evaluator verdict. */
@@ -128,6 +143,6 @@ export interface JobSpecPreview {
   }[];
   checks: { pass: boolean | null; value: bigint | null; reason?: string }[];
   pass: boolean | null;
-  fees: { quoted: bigint; paid: bigint };
+  fees: { quoted: bigint; paid: bigint; newlyPaid: bigint };
 }
 export type JobArgumentPath = ArgumentPath;

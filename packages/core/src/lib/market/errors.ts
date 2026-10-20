@@ -48,6 +48,20 @@ export function unavailable(feature: string): never {
 export function stackError(error: unknown): unknown {
   if (error instanceof AgenticError) return error;
   const seen = new Set<unknown>();
+  const submitted = error as {
+    txHash?: string;
+    pendingTransactionHash?: string;
+    gatewayTxHash?: string;
+  } | null;
+  const recovery = {
+    ...(submitted?.txHash ? { txHash: submitted.txHash } : {}),
+    ...(submitted?.pendingTransactionHash
+      ? { pendingTransactionHash: submitted.pendingTransactionHash }
+      : {}),
+    ...(submitted?.gatewayTxHash
+      ? { gatewayTxHash: submitted.gatewayTxHash }
+      : {}),
+  };
   function visit(value: unknown, depth: number): MarketError | undefined {
     if (!value || typeof value !== 'object' || seen.has(value) || depth > 8)
       return;
@@ -72,7 +86,7 @@ export function stackError(error: unknown): unknown {
         return new MarketError(
           code,
           `The contract rejected the request: ${decoded.errorName}.`,
-          { decodedError: decoded },
+          { decodedError: decoded, ...recovery },
           error
         );
       } catch {

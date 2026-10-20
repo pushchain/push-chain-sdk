@@ -91,6 +91,11 @@ export interface MarketPreviewOptions extends Omit<MarketJobInputs, 'params'> {
 export interface MarketWriteOptions {
   progressHook?: StackProgressHook;
 }
+export interface MarketOpenOptions extends MarketWriteOptions {
+  relay?: boolean;
+  /** Recover a submitted opening, without signing or sending again. Rehydrate a hash with trackTransaction. */
+  resume?: UniversalTxResponse;
+}
 export interface MarketDepositStep {
   /** PRINCIPAL_AND_FEE combines requirements when both use the same token. */
   step: 'PRINCIPAL' | 'PROVIDER_FEE' | 'PRINCIPAL_AND_FEE' | 'PC';
@@ -128,7 +133,7 @@ export interface MarketNamespace {
   preview(cardId: bigint, options: MarketPreviewOptions): Promise<JobPlan>;
   openJob(
     plan: JobPlan,
-    options?: MarketWriteOptions & { relay?: boolean }
+    options?: MarketOpenOptions
   ): Promise<{
     jobId: bigint;
     wallet: Address;

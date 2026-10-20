@@ -303,4 +303,19 @@ describe('atomic-only native batches (AGW sender-preserving arrays)', () => {
     expect(pushClient.sendBatch7702).toHaveBeenCalledTimes(1);
     expect(pushClient.sendTransaction).not.toHaveBeenCalled();
   });
+  it.each([false, true])('retains a broadcast hash when confirmation fails (atomic=%s)', async atomic => {
+    const { ctx, pushClient } = await context();
+    const cause = new Error('Receipt RPC unavailable');
+    pushClient.publicClient.waitForTransactionReceipt.mockRejectedValueOnce(cause);
+    const error = await sendPushTx(ctx, atomic ? execute : directExecute, [], transformFn, atomic).catch(e => e);
+    expect(error).toMatchObject({ txHash: atomic ? HASH_2 : HASH_1, pendingTransactionHash: atomic ? HASH_2 : HASH_1, cause });
+    expect(pushClient.sendBatch7702).toHaveBeenCalledTimes(atomic ? 1 : 0);
+    expect(pushClient.sendTransaction).toHaveBeenCalledTimes(atomic ? 0 : 1);
+  });
+  it('cannot fall back after a native atomic broadcast, even if later code throws an unsupported-signing error', async () => {
+    const { ctx, pushClient } = await context();
+    pushClient.publicClient.waitForTransactionReceipt.mockRejectedValueOnce(new EIP7702NotSupportedError());
+    await expect(sendPushTx(ctx, execute, [], transformFn)).rejects.toMatchObject({ txHash: HASH_2, pendingTransactionHash: HASH_2 });
+    expect(pushClient.sendTransaction).not.toHaveBeenCalled();
+  });
 });

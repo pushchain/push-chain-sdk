@@ -4,6 +4,7 @@ import {
   parseAbi,
   parseAbiParameters,
   stringToHex,
+  toHex,
   type Hex,
 } from 'viem';
 import { buildJobSpec, buildJobSpecTemplate } from '../codec';
@@ -15,6 +16,7 @@ import {
 } from '../preview';
 import { READ_OUTCOME } from '../../read-state/read-state.types';
 import { PRINCIPAL } from '../constants';
+import { encodeEvmQueryEnvelope } from '../../read-state/envelopes';
 import type { PreviewJobSpecOptions, JobSpec } from '../types';
 const target = '0x1111111111111111111111111111111111111111';
 const word = (n: bigint): Hex => encodeAbiParameters([{ type: 'int256' }], [n]);
@@ -45,19 +47,37 @@ function spec(
 }
 function fixture(values: (Hex | null)[] = [word(BigInt(5))]) {
   const prepareRead = jest.fn(async () => ({ value: BigInt(2) }));
-  const executeReads = jest.fn(async () => ({
-    reads: values.map((resultData) => ({
+  const responses = values.map((resultData, i) => {
+    const response = {
+      requestId: toHex(BigInt(i + 1), { size: 32 }),
+      txHash: toHex(BigInt(99), { size: 32 }),
+      request: {
+        spec: {
+          account: { chainNamespace: 'eip155', chainId: '97' },
+          minConfirmations: 1,
+          blockNumber: BigInt(1),
+          query: encodeEvmQueryEnvelope(
+            { type: 'contractCall', target, callData: read.selector },
+            { blockNumber: BigInt(1) }
+          ).encoded,
+        },
+      },
       outcome:
         resultData === null ? READ_OUTCOME.SOURCE_ERROR : READ_OUTCOME.SUCCESS,
       raw: resultData === null ? null : { resultData },
       fees: { paid: BigInt(2) },
       errorMsg: '',
-    })),
-  }));
+      wait: jest.fn(),
+    };
+    response.wait.mockResolvedValue(response);
+    return response;
+  });
+  const executeReads = jest.fn(async () => ({ reads: responses }));
+  const trackRead = jest.fn(async () => responses[0]);
   const options = {
-    client: { universal: { prepareRead, executeReads } },
+    client: { universal: { prepareRead, executeReads, trackRead } },
   } as unknown as PreviewJobSpecOptions;
-  return { options, prepareRead, executeReads };
+  return { options, prepareRead, executeReads, responses, trackRead };
 }
 it('prepares raw calls through universal reads, pays the batch and evaluates comparisons', async () => {
   const f = fixture();
@@ -75,7 +95,7 @@ it('prepares raw calls through universal reads, pays the batch and evaluates com
   );
   expect(f.executeReads).toHaveBeenCalledWith(
     [{ value: BigInt(2) }],
-    expect.objectContaining({ waitForCompletion: true })
+    expect.objectContaining({ waitForCompletion: false })
   );
   expect(result).toMatchObject({
     pass: true,
@@ -89,6 +109,38 @@ it('checks the total fee cap after preparation and before any paid request', asy
     previewJobSpec(spec(), { ...f.options, maxTotalFee: BigInt(1) })
   ).rejects.toMatchObject({ code: 'PREVIEW_FEE_EXCEEDED' });
   expect(f.executeReads).not.toHaveBeenCalled();
+});
+it('retains all request IDs after a wait timeout and resumes with no additional payment', async () => {
+  const f = fixture();
+  f.responses[0].wait.mockRejectedValueOnce(new Error('Polling timed out'));
+  await expect(previewJobSpec(spec(), f.options)).rejects.toMatchObject({
+    code: 'PREVIEW_INCOMPLETE',
+    details: { requestIds: [f.responses[0].requestId] },
+  });
+  const result = await previewJobSpec(spec(), {
+    ...f.options,
+    resume: [f.responses[0].requestId],
+    maxTotalFee: BigInt(0),
+  });
+  expect(result).toMatchObject({
+    pass: true,
+    fees: { paid: BigInt(2), newlyPaid: BigInt(0) },
+  });
+  expect(f.executeReads).toHaveBeenCalledTimes(1);
+});
+it('rejects a recorded request for a different call before evaluating its result', async () => {
+  const f = fixture();
+  const changed = spec();
+  changed.reads[0].target = '0x2222222222222222222222222222222222222222';
+  await expect(
+    previewJobSpec(changed, {
+      ...f.options,
+      resume: [f.responses[0].requestId],
+    })
+  ).rejects.toMatchObject({ code: 'PREVIEW_REQUEST_MISMATCH' });
+  expect(f.prepareRead).not.toHaveBeenCalled();
+  expect(f.executeReads).not.toHaveBeenCalled();
+  expect(f.responses[0].wait).not.toHaveBeenCalled();
 });
 it('does not invent baselines or treat unavailable source reads as failures of the criteria', async () => {
   const f = fixture();

@@ -1,0 +1,78 @@
+{
+  "observedAt": "2026-10-20T13:27:56.374Z",
+  "block": "24452765",
+  "cards": [
+    {
+      "cardId": "4",
+      "active": false,
+      "provider": "0x632783531D86bE4285C24f93850B24CF1Ec6050E",
+      "providerTokenBalance": "0"
+    },
+    {
+      "cardId": "5",
+      "active": false,
+      "provider": "0x63ca68a97AA2eD6C8fDa3A67d063F27D198BaB16",
+      "providerTokenBalance": "0"
+    }
+  ],
+  "jobs": [
+    {
+      "jobId": "4",
+      "cardId": "4",
+      "status": 4,
+      "budget": "0",
+      "client": "0x5FA6AF920028Fd96fB8541f2cA74557384c4FdC0",
+      "permissionEnabled": false,
+      "paymentBalance": "0",
+      "principalBalance": "0"
+    },
+    {
+      "jobId": "5",
+      "cardId": "0",
+      "status": 3,
+      "budget": "10000",
+      "client": "0x5FA6AF920028Fd96fB8541f2cA74557384c4FdC0",
+      "paymentBalance": "0",
+      "principalBalance": "0"
+    },
+    {
+      "jobId": "6",
+      "cardId": "0",
+      "status": 3,
+      "budget": "10000",
+      "client": "0xB5C87db8f78C2597f605440de5A11790B551C9Ff",
+      "paymentBalance": "0",
+      "principalBalance": "0"
+    },
+    {
+      "jobId": "7",
+      "cardId": "4",
+      "status": 4,
+      "budget": "0",
+      "client": "0x7f7D461A5E9aF9deAC2F15dfC4a964baCeF94424",
+      "permissionEnabled": false,
+      "paymentBalance": "0",
+      "principalBalance": "0"
+    },
+    {
+      "jobId": "8",
+      "cardId": "5",
+      "status": 4,
+      "budget": "0",
+      "client": "0x803b9a0fD190afC823e2DdDd5fA3Ac3EA882EAbC",
+      "permissionEnabled": false,
+      "paymentBalance": "0",
+      "principalBalance": "0"
+    },
+    {
+      "jobId": "9",
+      "cardId": "5",
+      "status": 4,
+      "budget": "0",
+      "client": "0x4C8d290cad724e9f251806D09f51D6b2911000d3",
+      "permissionEnabled": false,
+      "paymentBalance": "0",
+      "principalBalance": "0"
+    }
+  ]
+}

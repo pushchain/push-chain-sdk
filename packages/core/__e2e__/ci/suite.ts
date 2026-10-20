@@ -41,6 +41,7 @@ export const GROUPS = [
   'agw-presets-expanded',
   'marketplace',
   'marketplace-live',
+  'marketplace-funding',
 ] as const;
 
 export type Group = (typeof GROUPS)[number];
@@ -171,6 +172,9 @@ const F = {
 } as const;
 
 export const SCENARIOS: Scenario[] = [
+  { id: 'marketplace-funding-agw', group: 'marketplace-funding', file: '__e2e__/marketplace/funding.spec.ts', grep: 'marketplace funding 1\\. deposits real principal', needs: { masterPC: '1' }, env: { MARKETPLACE_FUNDING_E2E: '1', AGW_E2E_AGENT_PC: '0.1' }, note: 'Owned test tokens only; 0.01 pUSDC escrow, controlled fresh evaluator, token cleanup.' },
+  { id: 'marketplace-funding-native', group: 'marketplace-funding', file: '__e2e__/marketplace/funding.spec.ts', grep: 'marketplace funding 2\\. funds a native plain job', needs: { masterPC: '1' }, env: { MARKETPLACE_FUNDING_E2E: '1', AGW_E2E_AGENT_PC: '0.1' }, note: '0.01 pUSDC escrow using native atomic approval/funding and a controlled manual evaluator.' },
+  { id: 'marketplace-funding-origin', group: 'marketplace-funding', file: '__e2e__/marketplace/funding.spec.ts', grep: 'marketplace funding 3\\. bridges principal', needs: { masterPC: '1' }, env: { MARKETPLACE_FUNDING_E2E: '1', AGW_E2E_AGENT_PC: '0.1' }, note: 'Fresh BSC owner, 0.01 USDT principal, up to 0.01 pBNB for source-gas setup; explicit token cleanup.' },
   { id: 'marketplace-native-lifecycle', group: 'marketplace-live', file: '__e2e__/marketplace/lifecycle.spec.ts', grep: 'marketplace live 1\\. native provider registration', needs: { masterPC: '0.5' }, env: { MARKETPLACE_LIVE_E2E: '1', AGW_E2E_AGENT_PC: '0.1' }, note: 'Fresh provider/card/wallet only; no principal export or fee escrow. Cancels and revokes its own permission.' },
   { id: 'marketplace-paid-preview', group: 'marketplace-live', file: '__e2e__/marketplace/lifecycle.spec.ts', grep: 'marketplace live 2\\. paid JobSpec preview', needs: { masterPC: '0.5' }, env: { MARKETPLACE_LIVE_E2E: '1', AGW_E2E_AGENT_PC: '0.1' }, note: 'One live validator read through the registry, with an explicit 0.01 PC callback/protocol fee cap.' },
   { id: 'marketplace-external-owner', group: 'marketplace-live', file: '__e2e__/marketplace/lifecycle.spec.ts', grep: 'marketplace live 3\\. external EVM owner', needs: { masterPC: '0.5' }, env: { MARKETPLACE_LIVE_E2E: '1', AGW_E2E_AGENT_PC: '0.1' }, note: 'Fresh Sepolia-origin UEA funded with 0.1 PC; open/cancel using the real UEA transport; reuses this run’s card.' },
