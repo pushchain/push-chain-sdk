@@ -1,3 +1,10 @@
+@pushchain/core@6.0.27-alpha.4 (2026-10-20)
+
+- fix: remove preset funding mode and preserve asset limits
+- feat: sync v4 SDK changes without plan files
+
+---
+
 @pushchain/core@6.0.27-alpha.3 (2026-10-18)
 
 - feat: ship bounded preset defaults with funding checks
