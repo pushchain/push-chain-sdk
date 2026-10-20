@@ -1,3 +1,9 @@
+@pushchain/core@6.0.27-alpha.5 (2026-10-20)
+
+- fix: clarify agentic creation permissions and route guidance
+
+---
+
 @pushchain/core@6.0.27-alpha.4 (2026-10-20)
 
 - fix: remove preset funding mode and preserve asset limits
