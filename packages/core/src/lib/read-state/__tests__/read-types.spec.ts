@@ -26,6 +26,12 @@ declare const counterIdl: CounterIdl;
 
 // Compiled by ts-jest; never executed or connected to a network.
 async function checkTypes(client: PushChain) {
+  const raw: UniversalReadResponse<`0x${string}`> = await client.universal.read(address, { chain: CHAIN.ETHEREUM_SEPOLIA, callData: '0x18160ddd' });
+  // @ts-expect-error raw calls and typed calls are mutually exclusive
+  const mixedRaw: ReadOptions = { chain: CHAIN.ETHEREUM_SEPOLIA, callData: '0x18160ddd', abi, functionName: 'quote' };
+  // @ts-expect-error raw EVM calldata cannot be used on Solana
+  const svmRaw: ReadOptions = { chain: CHAIN.SOLANA_DEVNET, callData: '0x18160ddd' };
+  void [raw, mixedRaw, svmRaw];
   // @ts-expect-error token program is inferred from the mint
   const removed: ReadOptions = { chain: CHAIN.SOLANA_DEVNET, token: address, tokenProgram: 'token-2022' };
   const accountIdl = { address, metadata: { name: 'counter', version: '1', spec: '0.1.0' }, instructions: [], accounts: [{ name: 'counter', discriminator: [1,2,3,4,5,6,7,8] }], types: [{ name: 'counter', type: { kind: 'struct', fields: [{ name: 'count', type: 'u64' }] } }] } satisfies import('@coral-xyz/anchor').Idl;

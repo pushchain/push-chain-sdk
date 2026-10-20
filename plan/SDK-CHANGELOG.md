@@ -4,6 +4,14 @@ Running history for work continued on `feat/agw-sdk-v4`, covering AGW, marketpla
 
 For each meaningful checkpoint, add a dated entry with the change, decisions, validation, remaining work and relevant commit/evidence links. Keep earlier entries as history and mark superseded decisions explicitly. Distinguish implemented code, planning, local/fork checks, funded execution, Git delivery and package publication. Git history for this file records the exact commit introducing each checkpoint.
 
+## 2026-10-20 — deposits, paid preview and external EVM owners
+
+**Implemented:** `market.deposit` recovers the opened card version and principal, combines shared-token requirements, tops up principal/fee/PC separately and retains receipts/pending hashes for recovery. Explicit registered-origin funding is available. Deployed v2 grants pinned approvals to the agent; deposit performs no retired owner-approval step. Paid `previewJobSpec` uses raw universal reads, total request-fee caps, ABI layout decoding, configured CEA resolution and unknown-aware logic/baselines. Opening checks the actual EIP-712 domain and simulates the complete signed request before broadcast; deployed external EVM UEAs are supported.
+
+**Validation:** 2,228 units pass (12 existing skips), eight real-stack fork E2Es, and three live cases: native open/cancel, paid validator-consensus preview, external-owner UEA open/cancel. Nonzero principal/fee deposits, escrow and payout remain fork-only; origin-bridge deposits are unit-tested. Live card 3 is inactive and jobs 2/3 are Rejected with permissions revoked. Build/types, production lint, package/API checks and six guide blocks pass. [Evidence and limits](marketplace/research/sdk-completion-2026-10-20/README.md).
+
+**Coverage:** 28 of the 29 named APIs on SDK pages 6/7 have implementations against deployed v2. This supersedes the first checkpoint's deposit, paid-preview and external-EVM placeholders. The remaining method placeholder is `job.verify`, awaiting a compatible evaluator/hook and shared wire. Three CEA destination rollouts, arbitrary ERC-1271 acceptance, full live principal/protocol execution and package publication remain separate work. Continue on `feat/agw-sdk-v4`; no marketplace/kernel/evaluator deployment or npm publication was performed.
+
 ## 2026-10-20 — first marketplace SDK implementation
 
 **Implemented:** client.market discovery/provider management, exact preview and native plain-EOA open; client.job create/pricing/funding/submit/status/list/watch/cancel/refund; deployed v2 JobSpec/template/card-rule codecs, marker resolution and authoring helpers; additive universal.read.prepare; constants/types/errors and a [consumer guide](../packages/core/MARKETPLACE.md). Binary kernel description bytes survive encoding and reads. Default E2E selection stays unchanged.

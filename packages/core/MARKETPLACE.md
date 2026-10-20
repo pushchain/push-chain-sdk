@@ -1,6 +1,6 @@
 # Agentic marketplace and jobs
 
-This SDK checkpoint targets UniversalMarketplace v2 on Push Donut, its pUSDC kernel and AGW v6. It implements card management, JobSpec authoring, preview/open for native owners without delegation, and the kernel lifecycle. The evaluator is currently an EOA: there is no automatic verification, baseline or rating claim.
+This SDK checkpoint targets UniversalMarketplace v2 on Push Donut, its pUSDC kernel and AGW v6. It implements card management, JobSpec authoring and paid previews, preview/open, historical deposits and the kernel lifecycle. The evaluator is currently an EOA: there is no automatic verification, baseline or rating claim.
 
 `PushChain.initialize` now exposes `client.market` and `client.job`. Helpers are `PushChain.utils.market` and `PushChain.utils.job`; vocabulary is under `PushChain.CONSTANTS.AGENTIC`. There is no separate `client.evaluation` namespace. Read-only clients can discover cards and jobs.
 
@@ -9,7 +9,7 @@ This SDK checkpoint targets UniversalMarketplace v2 on Push Donut, its pUSDC ker
 Use verified application/token addresses and raw token units. The following helper returns permissions and a criteria template; it does not sign or send anything.
 
 ```ts
-import { PushChain, MarketError, type AgentCardInput, type AgentCardRules } from '@pushchain/core';
+import { PushChain, MarketError, type AgentCardInput, type AgentCardRules, type MarketDepositResult, type PreviewJobSpecOptions } from '@pushchain/core';
 import { parseAbi, type Address } from 'viem';
 
 function authorCard(app: Address, token: Address, receiptToken: Address) {
@@ -77,7 +77,7 @@ async function openReviewedJob(owner: PushChain, cardId: bigint) {
 
 Opening deploys/reuses the AGW, grants the card's exact resolved permissions and creates an Open job. It moves no principal or fee. The plan is revalidated before signing; changed card versions, nonces, occupancy or plan content require a new preview. OwnerIntent authorization uses the factory EIP-712 domain. Client submission can require a second wallet interaction; no relay is supplied in this checkpoint.
 
-Opening currently requires a Push-native owner with no contract/delegation code. External/contract/delegated owner signing returns `CAPABILITY_UNAVAILABLE` before prompting. Provider writes use the connected signer's ordinary Push identity, including when the instance also has an AGW execution context.
+Opening supports EVM typed-data signers. An external owner's UEA must already be deployed on Push (`OWNER_NOT_DEPLOYED` otherwise). The SDK checks the factory domain before prompting, then simulates the complete signed request through the real owner verifier before broadcasting. UEA and ERC-1271 acceptance follows the deployed contract; an EIP-7702 delegate without a compatible verifier fails simulation. Signing capability checks run before prompting; a verifier can reject the resulting signature after prompting. Provider writes use the connected signer's ordinary Push identity, including when the instance also has an AGW execution context.
 
 **Current destination readiness:** BSC Testnet has passing live open/cancel coverage. Sepolia, Base Sepolia and Arbitrum Sepolia have different CEA factories in the marketplace configuration and current SDK routing table; preview returns `CEA_MISMATCH`. The SDK does not substitute the marketplace's account for an independently derived account. Align the deployment/routing configuration before opening on those chains.
 
@@ -86,8 +86,25 @@ Card IDs, versions, ratings and job IDs are bigint. `jobType` reads are the cano
 ## Fund and track the kernel lifecycle
 
 ```ts
+async function depositForJob(owner: PushChain, jobId: bigint): Promise<MarketDepositResult> {
+  return owner.market.deposit(jobId, {
+    // Target wallet PC balance, not a gas quote for the whole job.
+    pcAmount: 10n ** 18n,
+    funding: 'push',
+    progressHook: event => console.log(event.id, event.message),
+  });
+}
+```
+
+`deposit` recovers the original principal and card version from the opening event and historical card state. It never sizes an old job from today's updated card. It tops up wallet balances to the principal, original reference fee and PC target; a shared principal/fee token is combined before subtracting the balance. `providerFee` explicitly overrides the fee reserve and `pcAmount` overrides the PC target. The default PC target is one per-call card gas cap, not a promise that all job execution is covered. This operation leaves the kernel escrow Open and makes no destination approval calls: those are pinned permissions granted to the agent in v2.
+
+The default source is the connected signer's Push identity, even on an instance configured to execute through an AGW. `funding: 'origin'` explicitly uses normal inbound `funds` transfers for registered assets from the connected origin chain; required tokens without such a route fail before any leg is sent. PC still comes from the signer's Push holdings. The underlying gateway's normal route, liquidity, balance and fee checks apply.
+
+Steps are separate transactions. `DEPOSIT_INCOMPLETE` retains `details.txs`, any `details.pending` broadcast hash and chain, and the original cause. The same client remembers submitted steps; pass `resume: previousSteps` when continuing with another client. After restarting, rehydrate recorded hashes with `universal.trackTransaction(hash, { chain })` before passing their transaction responses. Pending receipts must settle before another transfer, and a confirmed transfer whose target balance has since fallen requires manual review. Concurrent deposits on the same client are rejected. Coordinate other clients and avoid running the agent during deposits. Deposits require an Open, unexpired job and an enabled permission with no recorded asset spend. If same-block updates hide the exact opening version, `HISTORY_UNAVAILABLE` stops the operation; archive/RPC read failures also stop it.
+
+```ts
 async function priceAndFund(provider: PushChain, owner: PushChain, jobId: bigint) {
-  // First fund the AGW with the payment token, principal and PC appropriate to the job.
+  // First deposit the payment token, principal and PC appropriate to the job.
   await (await provider.job.setBudget(jobId, 5_000_000n)).wait();
   // Explicitly pass the price the client reviewed; never silently accept a re-quote.
   return owner.job.fund(jobId, { expectedBudget: 5_000_000n });
@@ -123,12 +140,27 @@ Cancellation is client-side Open-job rejection. A plain job has no marketplace g
 
 Plain jobs can use `job.create` with provider/evaluator/hook/expiry/paymentToken plus either binary jobSpec or text description. The kernel's Solidity string slot can carry binary JobSpec bytes; the SDK preserves them and retains the original createJob selector.
 
+## Paid criteria preview
+
+```ts
+async function previewCriteria(client: PushChain, template: ReturnType<typeof authorCard>['jobSpecTemplate'], wallet: Address) {
+  const options: PreviewJobSpecOptions = {
+    client, wallet, principal: 100_000_000n,
+    maxTotalFee: 10n ** 16n,
+    advanced: { timeout: 120_000 },
+  };
+  return PushChain.utils.job.previewJobSpec(template, options);
+}
+```
+
+This prepares every raw read, checks the total callback/protocol fee cap, then executes through the existing universal-read registry (or an explicit `callback`). Native transaction gas is separate from `maxTotalFee`. A real SDK client derives destination CEAs for template wallet holes using its configured routes; `accounts` supplies explicit destination addresses when needed. An AGW's Push address is never substituted for its destination account.
+
+The result includes raw values, decoded fields, request responses and fees. `pass` and each check are `true`, `false`, or `null` (unknown). NUMBER and PERCENTAGE require an explicit per-read `baseline`; missing baselines, zero percentage denominators and unavailable reads stay unknown. A preview is an observation, not an automatic evaluator verdict or proof that a job is complete. Raw EVM calls are also available as `universal.read(target, { chain, callData })` and return consensus bytes.
+
 ## Explicit placeholders
 
-- `market.deposit`: historical-card deposit/resumption policy remains pending. Fund the wallet explicitly; do not recompute an old job from the current card version.
 - `job.verify`, baseline/prefund/retry integration: no compatible automatic evaluator is configured. A different linked evaluator source has a different wire and enum values.
-- Replacement JobSpecs, non-NONE marketplace criteria, recurring jobs, relay and external/delegated OwnerIntent signing are unavailable.
-- `utils.job.previewJobSpec`: paid read/callback and fee behavior remains gated. Pure build/encode/decode/describe helpers work without a network.
+- Replacement JobSpecs, non-NONE marketplace criteria, recurring jobs and relay are unavailable.
 
 Unsupported paths throw before signing/sending. They do not return successful dummy results. Keep message, code, details and cause for diagnostics.
 
@@ -145,4 +177,4 @@ node node_modules/ts-node/dist/bin.js --compiler-options '{"module":"commonjs"}'
 node node_modules/ts-node/dist/bin.js --compiler-options '{"module":"commonjs"}' packages/core/__e2e__/ci/run.ts --group marketplace-live
 ```
 
-Marketplace groups stay out of the runner's default `all`. Live smoke spends bounded PC for gas/test wallets and does not move principal or escrow tokens. Nonzero escrow, allowance, payout, manual completion and pause/refund are tested separately on the local fork. No destination protocol execution or automated verdict is implied by those results.
+Marketplace groups stay out of the runner's default `all`. Live smoke spends bounded PC for gas/test wallets and read callbacks, and does not move principal or escrow tokens. Nonzero deposits, escrow, allowance, payout, manual completion and pause/refund are tested separately on the local fork. The fork's UEA signature test uses a native submitter because Anvil has no Cosmos transport; the opt-in live case exercises actual external-owner transport. No destination protocol execution or automated verdict is implied by those results.

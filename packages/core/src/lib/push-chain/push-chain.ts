@@ -60,6 +60,7 @@ import { JobNamespaceImpl } from '../job/job';
 import type { MarketNamespace } from '../market/types';
 import type { JobNamespace } from '../job/types';
 import type { StackRuntime } from '../market/runtime';
+import { bindJobPreviewAccounts } from '../job-spec/preview';
 import { prepareJobRead } from '../job-spec/read';
 
 /** Options accepted by `PushChain.initialize` / `reinitialize`. */
@@ -345,6 +346,7 @@ export class PushChain {
       wallet: () => this.agenticContext?.wallet,
       send: (params, options) => this.universal.sendTransaction(params, options),
       signTypedData: (data) => this.universal.signTypedData(data),
+      canSignTypedData: () => typeof this.universalSigner.signTypedData === 'function',
     };
     this.market = new MarketNamespaceImpl(stackRuntime);
     this.job = new JobNamespaceImpl(stackRuntime);
@@ -473,6 +475,8 @@ export class PushChain {
         return bytesToHex(signBytes);
       },
     };
+
+    bindJobPreviewAccounts(this.universal, async (wallet, chain) => (await this.agenticRuntime.resolveCEA(wallet, chain)).cea);
 
     const network =
       orchestrator.getNetwork() === PUSH_NETWORK.MAINNET

@@ -91,6 +91,33 @@ export interface MarketPreviewOptions extends Omit<MarketJobInputs, 'params'> {
 export interface MarketWriteOptions {
   progressHook?: StackProgressHook;
 }
+export interface MarketDepositStep {
+  /** PRINCIPAL_AND_FEE combines requirements when both use the same token. */
+  step: 'PRINCIPAL' | 'PROVIDER_FEE' | 'PRINCIPAL_AND_FEE' | 'PC';
+  token?: Address;
+  amount: bigint;
+  tx: UniversalTxResponse;
+}
+export interface MarketDepositOptions extends MarketWriteOptions {
+  /** Token transfers use Push holdings by default. Origin explicitly bridges matching registered assets; PC always uses Push holdings. */
+  funding?: 'push' | 'origin';
+  /** Wallet PC balance to reach. Defaults to the opened card's per-call gas cap. */
+  pcAmount?: bigint;
+  /** Wallet fee reserve to reach. Defaults to the opened card's reference fee; does not accept a kernel price. */
+  providerFee?: bigint;
+  /** Previously submitted steps. Their waits must settle before any further transfer. */
+  resume?: readonly MarketDepositStep[];
+}
+export interface MarketDepositResult {
+  jobId: bigint;
+  wallet: Address;
+  cardId: bigint;
+  cardVersion: bigint;
+  /** Includes resumed transactions, in submission order. */
+  txs: MarketDepositStep[];
+  /** A broadcast that failed before returning a response. Track it before resuming. */
+  pending?: Omit<MarketDepositStep, 'tx'> & { txHash: string; chain: string };
+}
 export interface MarketNamespace {
   cards(options?: {
     provider?: Address;
@@ -108,10 +135,11 @@ export interface MarketNamespace {
     rulesId: Hex;
     tx: UniversalTxResponse;
   }>;
-  deposit(jobId: bigint, options?: MarketWriteOptions): Promise<never>;
-  job(
-    jobId: bigint
-  ): Promise<{
+  deposit(
+    jobId: bigint,
+    options?: MarketDepositOptions
+  ): Promise<MarketDepositResult>;
+  job(jobId: bigint): Promise<{
     cardId: bigint;
     cardVersion: bigint;
     wallet: Address;

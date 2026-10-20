@@ -6,13 +6,7 @@ import {
 } from './codec';
 import { describeJobSpec } from './helpers';
 import { prepareJobRead } from './read';
-import { unavailable } from '../market/errors';
-import type {
-  JobSpec,
-  JobSpecTemplate,
-  JobSpecPreview,
-  PreviewJobSpecOptions,
-} from './types';
+import { previewJobSpec } from './preview';
 export const jobSpecUtils = Object.freeze({
   buildJobSpec,
   buildJobSpecTemplate,
@@ -20,15 +14,6 @@ export const jobSpecUtils = Object.freeze({
   decodeJobSpec,
   describeJobSpec,
   prepareRead: prepareJobRead,
-  async previewJobSpec(
-    _spec: JobSpec | JobSpecTemplate,
-    _options: PreviewJobSpecOptions
-  ): Promise<JobSpecPreview> {
-    void _spec;
-    void _options;
-    return unavailable(
-      'Paid JobSpec preview pending the raw-read fee and callback adapter'
-    );
-  },
+  previewJobSpec,
 });
 export type * from './types';

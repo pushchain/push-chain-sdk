@@ -37,6 +37,12 @@ describe('read(subject, options) grammar → ReadQuery', () => {
   it('EVM: storageSlot', () => {
     expect(toReadQuery(TOKEN, { chain: CHAIN.ETHEREUM_SEPOLIA, storageSlot: 2n })).toEqual({ type: 'storageSlot', target: TOKEN, slot: 2n });
   });
+  it('EVM: raw callData retains the exact selector and argument bytes', () => {
+    expect(toReadQuery(TOKEN, { chain: CHAIN.ETHEREUM_SEPOLIA, callData: '0x18160ddd' })).toEqual({ type: 'contractCall', target: TOKEN, callData: '0x18160ddd' });
+    expect(() => toReadQuery(TOKEN, { chain: CHAIN.ETHEREUM_SEPOLIA, callData: '0x123' })).toThrow(InvalidReadQueryError);
+    expect(() => toReadQuery(TOKEN, { chain: CHAIN.ETHEREUM_SEPOLIA, callData: '0x18160ddd', abi: ABI, functionName: 'totalSupply' })).toThrow(InvalidReadQueryError);
+    expect(() => toReadQuery(SOL_OWNER, { chain: CHAIN.SOLANA_DEVNET, callData: '0x18160ddd' })).toThrow(InvalidReadQueryError);
+  });
   it('SVM: native → lamports of subject; token → the ATA derived offline', () => {
     expect(toReadQuery(SOL_OWNER, { chain: CHAIN.SOLANA_DEVNET })).toEqual({ type: 'lamportBalance', account: SOL_OWNER });
     const q = toReadQuery(SOL_OWNER, { chain: CHAIN.SOLANA_DEVNET, token: SOL_MINT }, TOKEN_PROGRAM_ID);

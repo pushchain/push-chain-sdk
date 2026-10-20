@@ -1,0 +1,42 @@
+{
+  "observedAt": "2026-10-20T12:35:01.320Z",
+  "baselineCommit": "fbd0e032940e523b18bb0d6f8fd80b23beae1c67",
+  "unit": {
+    "passed": 2228,
+    "skipped": 12,
+    "failed": 0,
+    "success": true
+  },
+  "fork": {
+    "passed": 8,
+    "failed": 0,
+    "runnerExitCode": 0
+  },
+  "live": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "runnerExitCode": 0,
+    "originalReporterSuccessField": false
+  },
+  "build": "passed",
+  "libraryTypes": "passed via build",
+  "specTypes": "passed",
+  "forkTypes": "passed",
+  "productionLint": "passed with zero warnings",
+  "guideBlocks": 6,
+  "compiledPackageChecks": "passed",
+  "sourceBuiltApiMatches": true,
+  "unitCompression": {
+    "originalBytes": 867010,
+    "originalSha256": "8914770e18d3d0506c35ec3c4a8d22c5401a5d1e84385a91c0f37e5df560fbdc",
+    "compressedBytes": 73812,
+    "compressedSha256": "dc570dc99cf90c567bb1ebacc3a59b76ce3b30b6461f1057f35d6dbad15b9b2a"
+  },
+  "limits": [
+    "Origin deposit routing is unit-tested; no funded live origin bridge deposit.",
+    "Principal, escrow and payouts are fork-only.",
+    "No compatible automatic evaluator or destination protocol execution.",
+    "Arbitrary ERC-1271 adapters require separate acceptance."
+  ]
+}

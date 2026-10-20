@@ -25,6 +25,8 @@ export interface ChainReader {
     toBlock: bigint;
   }): Promise<Log[]>;
   getTransactionReceipt(args: { hash: Hex }): Promise<TransactionReceipt>;
+  /** Raw eth_call, used to verify complete signed marketplace requests before broadcast. */
+  call?(args: { to: Address; data: Hex; account?: Address; blockNumber?: bigint }): Promise<{ data?: Hex }>;
 }
 
 export function chainReaderFromPublicClient(client: PublicClient): ChainReader {
@@ -40,5 +42,6 @@ export function chainReaderFromPublicClient(client: PublicClient): ChainReader {
     getLogs: (args) =>
       client.getLogs(args as Parameters<PublicClient['getLogs']>[0]) as Promise<Log[]>,
     getTransactionReceipt: (args) => client.getTransactionReceipt(args),
+    call: (args) => client.call(args),
   };
 }

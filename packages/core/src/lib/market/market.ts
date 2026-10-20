@@ -1,6 +1,7 @@
 import {
   encodeFunctionData,
   getAddress,
+  domainSeparator,
   keccak256,
   stringToHex,
   toHex,
@@ -33,6 +34,7 @@ import {
   fillCardRules,
 } from './rules';
 import { decodeCreateJob } from './kernel-wire';
+import { depositJob, type DepositCheckpoint } from './deposit';
 import {
   deployment,
   eventArgs,
@@ -42,7 +44,7 @@ import {
   type MarketSnapshot,
   type StackRuntime,
 } from './runtime';
-import { MarketError, unavailable } from './errors';
+import { MarketError, stackError, unavailable } from './errors';
 import type {
   AgentCard,
   AgentCardInput,
@@ -52,6 +54,7 @@ import type {
   MarketNamespace,
   MarketPreviewOptions,
   MarketWriteOptions,
+  MarketDepositOptions,
   OwnerIntent,
 } from './types';
 import type { CHAIN } from '../constants/enums';
@@ -95,6 +98,8 @@ function id(n: bigint): void {
 
 export class MarketNamespaceImpl implements MarketNamespace {
   constructor(private readonly rt: StackRuntime) {}
+  private readonly deposits = new Set<bigint>();
+  private readonly depositCheckpoints = new Map<bigint, DepositCheckpoint>();
   private async viewAt(cardId: bigint, s: MarketSnapshot): Promise<WireView> {
     id(cardId);
     const d = deployment(this.rt);
@@ -517,21 +522,22 @@ export class MarketNamespaceImpl implements MarketNamespace {
     options: MarketWriteOptions & { relay?: boolean } = {}
   ) {
     if (options.relay) unavailable('Marketplace relaying');
-    if (!this.rt.agw.signerIsPushNative())
-      unavailable(
-        'External-owner marketplace signatures pending ERC-1271 acceptance'
-      );
     if (this.rt.agw.isReadOnly)
       throw new MarketError(
         'READ_ONLY',
         'Connect a signing wallet to open a job.'
       );
+    if (this.rt.canSignTypedData?.() === false)
+      unavailable('EIP-712 signing with this wallet');
+    if (!this.rt.agw.reader.call)
+      unavailable('Signed marketplace transaction simulation with this reader');
     const ownerCode = await this.rt.agw.reader.getCode({
       address: this.rt.agw.signerPushAccount(),
     });
-    if (ownerCode && ownerCode !== '0x')
-      unavailable(
-        'Delegated or contract-owner intent signing pending ERC-1271 acceptance'
+    if (!this.rt.agw.signerIsPushNative() && (!ownerCode || ownerCode === '0x'))
+      throw new MarketError(
+        'OWNER_NOT_DEPLOYED',
+        'Deploy the connected signer’s UEA on Push before signing a marketplace intent.'
       );
     const fresh = await this.preview(plan.cardId, {
       ...plan.job,
@@ -550,51 +556,81 @@ export class MarketNamespaceImpl implements MarketNamespace {
       cardId: plan.cardId,
       wallet: plan.wallet,
     });
-    const sig = (await this.rt.signTypedData({
-      domain: {
-        name: 'AGWFactory',
-        version: '1',
-        chainId: Number(plan.intent.signerChainId),
-        verifyingContract: gen.addresses.factory,
-        salt: toHex(BigInt(this.rt.agw.pushChainNamespace.split(':')[1]), {
-          size: 32,
-        }),
-      },
-      types: { OwnerIntent: ownerIntentFields },
-      primaryType: 'OwnerIntent',
-      message: { ...plan.intent },
-    })) as Hex;
+    const domain = {
+      name: 'AGWFactory',
+      version: '1',
+      chainId: Number(plan.intent.signerChainId),
+      verifyingContract: gen.addresses.factory,
+      salt: toHex(BigInt(this.rt.agw.pushChainNamespace.split(':')[1]), {
+        size: 32,
+      }),
+    };
+    const separator = await (
+      await snapshot(this.rt)
+    ).read<Hex>(
+      gen.addresses.factory,
+      gen.contracts.abis.factory,
+      'domainSeparator',
+      [plan.intent.signerChainId]
+    );
+    if (separator.toLowerCase() !== domainSeparator({ domain }).toLowerCase())
+      throw new MarketError(
+        'INTENT_MISMATCH',
+        'The factory EIP-712 domain differs from the signing domain.'
+      );
+    let sig: Hex;
+    try {
+      sig = (await this.rt.signTypedData({
+        domain,
+        types: { OwnerIntent: ownerIntentFields },
+        primaryType: 'OwnerIntent',
+        message: { ...plan.intent },
+      })) as Hex;
+    } catch (error) {
+      throw stackError(error);
+    }
     progress(
       this.rt,
       options.progressHook,
       'MARKET-TX-102',
       'Owner intent signed'
     );
-    const tx = await write(
-      this.rt,
-      {
-        target: d.marketplace,
-        value: BigInt(0),
-        data: encodeFunctionData({
-          abi: ABI,
-          functionName: 'openJob',
-          args: [
-            {
-              cardId: plan.cardId,
-              cardVersion: plan.cardVersion,
-              job: plan.job,
-              session: plan.session,
-              intent: plan.intent,
-              sig,
-              label: plan.label,
-            },
-          ],
-        }),
-      },
-      options.progressHook,
-      'MARKET',
-      true
-    );
+    const call = {
+      target: d.marketplace,
+      value: BigInt(0),
+      data: encodeFunctionData({
+        abi: ABI,
+        functionName: 'openJob',
+        args: [
+          {
+            cardId: plan.cardId,
+            cardVersion: plan.cardVersion,
+            job: plan.job,
+            session: plan.session,
+            intent: plan.intent,
+            sig,
+            label: plan.label,
+          },
+        ],
+      }),
+    };
+    try {
+      // Runs the actual factory, owner verifier (UEA / ERC-1271 / EOA), grant and kernel create.
+      // This catches unsupported 7702 delegates without spending gas or bypassing owner verification.
+      await this.rt.agw.reader.call({
+        to: call.target,
+        data: call.data,
+        account: this.rt.agw.signerPushAccount(),
+      });
+    } catch (cause) {
+      throw new MarketError(
+        'OPEN_JOB_SIMULATION_FAILED',
+        'The signed marketplace request failed simulation. No transaction was submitted.',
+        { contractError: stackError(cause) },
+        cause
+      );
+    }
+    const tx = await write(this.rt, call, options.progressHook, 'MARKET', true);
     const e = await eventArgs(this.rt, tx, d.marketplace, ABI, 'JobOpened');
     if (
       e['cardId'] !== plan.cardId ||
@@ -615,14 +651,24 @@ export class MarketNamespaceImpl implements MarketNamespace {
       tx,
     };
   }
-  async deposit(_jobId: bigint, _options?: MarketWriteOptions): Promise<never> {
-    void _jobId;
-    void _options;
-    throw new MarketError(
-      'CAPABILITY_UNAVAILABLE',
-      'Automatic deposits are not implemented yet. Fund the AGW explicitly, then call client.job.fund.',
-      { feature: 'market.deposit' }
-    );
+  async deposit(jobId: bigint, options: MarketDepositOptions = {}) {
+    if (this.deposits.has(jobId))
+      throw new MarketError(
+        'DEPOSIT_IN_PROGRESS',
+        'A deposit for this job is already running on this client.'
+      );
+    this.deposits.add(jobId);
+    try {
+      return await depositJob(
+        this.rt,
+        jobId,
+        options,
+        (id, s) => this.cardAt(id, s),
+        this.depositCheckpoints
+      );
+    } finally {
+      this.deposits.delete(jobId);
+    }
   }
   readonly agent = {
     card: async (): Promise<AgentCard | undefined> => {

@@ -4,6 +4,7 @@ import { JobNamespaceImpl } from '../../job/job';
 import { mockRuntime } from '../../agentic/__tests__/mock-runtime';
 import { FakeChain } from '../../agentic/__tests__/fake-chain';
 import type { StackRuntime } from '../runtime';
+import type { JobPlan } from '../types';
 const owner = '0x1111111111111111111111111111111111111111';
 const provider = '0x2222222222222222222222222222222222222222';
 function runtime(signer: Address = owner) {
@@ -115,9 +116,49 @@ it('placeholder methods and replacement proposals fail before any reads or signa
   await expect(
     job.setBudget(BigInt(1), BigInt(5), { jobSpec: '0x00' })
   ).rejects.toMatchObject({ code: 'CAPABILITY_UNAVAILABLE' });
-  await expect(market.deposit(BigInt(1))).rejects.toMatchObject({
-    code: 'CAPABILITY_UNAVAILABLE',
-  });
+  await expect(
+    market.openJob({} as never, { relay: true })
+  ).rejects.toMatchObject({ code: 'CAPABILITY_UNAVAILABLE' });
   expect(read).not.toHaveBeenCalled();
   expect(rt.signTypedData).not.toHaveBeenCalled();
+});
+it('checks typed-data capability and external owner deployment before asking for a signature', async () => {
+  const { rt, read } = runtime();
+  rt.canSignTypedData = () => false;
+  await expect(
+    new MarketNamespaceImpl(rt).openJob({} as JobPlan)
+  ).rejects.toMatchObject({ code: 'CAPABILITY_UNAVAILABLE' });
+  expect(read).not.toHaveBeenCalled();
+  rt.canSignTypedData = () => true;
+  rt.agw.reader.call = jest.fn();
+  rt.agw.reader.getCode = async () => '0x';
+  rt.agw.signerIsPushNative = () => false;
+  await expect(
+    new MarketNamespaceImpl(rt).openJob({} as JobPlan)
+  ).rejects.toMatchObject({ code: 'OWNER_NOT_DEPLOYED' });
+  expect(rt.signTypedData).not.toHaveBeenCalled();
+});
+it('compares the factory signing domain before prompting the owner', async () => {
+  const { rt, read } = runtime();
+  rt.agw.reader.call = jest.fn();
+  rt.agw.reader.getCode = async () => '0x';
+  read.mockResolvedValue(zeroHash as never);
+  const market = new MarketNamespaceImpl(rt);
+  const plan = {
+    cardId: BigInt(1),
+    intent: {
+      owner,
+      index: BigInt(0),
+      signerChainId: BigInt(42101),
+      deadline: 1800000000,
+    },
+    label: 'test',
+    job: {},
+  } as unknown as JobPlan;
+  jest.spyOn(market, 'preview').mockResolvedValue(plan);
+  await expect(market.openJob(plan)).rejects.toMatchObject({
+    code: 'INTENT_MISMATCH',
+  });
+  expect(rt.signTypedData).not.toHaveBeenCalled();
+  expect(rt.agw.reader.call).not.toHaveBeenCalled();
 });

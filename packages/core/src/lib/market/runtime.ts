@@ -36,6 +36,7 @@ export interface StackRuntime {
     primaryType: string;
     message: Record<string, unknown>;
   }): Promise<string>;
+  canSignTypedData?(): boolean;
   /** Internal fixture override; never a public initialization option. */
   deployment?: MarketDeployment;
   /** Receipt-confirmed creation blocks accelerate bounded event recovery. */
@@ -54,8 +55,11 @@ export interface MarketSnapshot {
     args?: readonly unknown[]
   ): Promise<T>;
 }
-export async function snapshot(rt: StackRuntime): Promise<MarketSnapshot> {
-  const blockNumber = await rt.agw.reader.getBlockNumber();
+export async function snapshot(
+  rt: StackRuntime,
+  atBlock?: bigint
+): Promise<MarketSnapshot> {
+  const blockNumber = atBlock ?? (await rt.agw.reader.getBlockNumber());
   const timestamp = rt.agw.reader.getBlock
     ? Number((await rt.agw.reader.getBlock({ blockNumber })).timestamp)
     : rt.agw.nowSeconds();

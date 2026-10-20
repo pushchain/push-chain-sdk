@@ -9,6 +9,10 @@ export type {
   AgentCardSummary,
   MarketNamespace,
   MarketPreviewOptions,
+  MarketWriteOptions,
+  MarketDepositOptions,
+  MarketDepositResult,
+  MarketDepositStep,
   JobPlan,
   OwnerIntent,
 } from './market';
@@ -38,6 +42,7 @@ export type {
   BuildJobSpecOptions,
   BuildJobSpecTemplateOptions,
   JobSpecPreview,
+  PreviewJobSpecOptions,
 } from './job-spec';
 export { CHAIN } from './constants/enums';
 export type { ConversionQuote } from './constants/tokens';

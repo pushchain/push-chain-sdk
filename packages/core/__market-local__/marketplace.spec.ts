@@ -7,6 +7,7 @@ import {
   defineChain,
   encodeFunctionData,
   erc20Abi,
+  getAddress,
   keccak256,
   http,
   parseAbi,
@@ -24,6 +25,9 @@ import { JOB_KERNEL_ABI } from '../src/lib/market/contracts/AgenticCommerce';
 import { currentGeneration } from '../src/lib/agentic/deployments';
 import type { AgentCardRules } from '../src/lib/market/rules';
 import type { JobSpecTemplate } from '../src/lib/job-spec/types';
+import { MarketNamespaceImpl } from '../src/lib/market/market';
+import type { StackRuntime } from '../src/lib/market/runtime';
+import type { AgenticRuntime } from '../src/lib/agentic/runtime';
 
 let node: ChildProcess;
 let rpc: string;
@@ -226,6 +230,72 @@ it('updates a decoded card without losing rule constraints or template wire byte
   expect(after.jobSpecTemplateBytes).toBe(before.jobSpecTemplateBytes);
   expect(after.verified).toBe(false);
 });
+it('deposits original principal, fee and PC after a card update and recovers history in a fresh client', async () => {
+  await (await provider.job.setBudget(opened.jobId, BigInt(5000000))).wait();
+  await expect(
+    owner.job.fund(opened.jobId, { expectedBudget: BigInt(5000000) })
+  ).rejects.toMatchObject({ code: 'INSUFFICIENT_FUNDS' });
+  // These are real existing assets borrowed on localhost, not public-chain transfers.
+  const source = '0x0A16CBa65FfCAa4C2282b27b027Ab4A2fE46E0Bf';
+  await push.request({
+    method: 'anvil_impersonateAccount' as never,
+    params: [source] as never,
+  });
+  const funder = createWalletClient({
+    account: source,
+    chain: push.chain,
+    transport: http(rpc),
+  });
+  for (const [asset, amount] of [
+    [token, BigInt(10)],
+    [D.paymentToken, BigInt(5000000)],
+  ] as const) {
+    const hash = await funder.writeContract({
+      chain: push.chain,
+      address: asset,
+      abi: erc20Abi,
+      functionName: 'transfer',
+      args: [accounts[0].address, amount],
+    });
+    await push.waitForTransactionReceipt({ hash });
+  }
+  const deposited = await owner.market.deposit(opened.jobId, {
+    pcAmount: BigInt(10) ** BigInt(15),
+  });
+  expect(deposited.cardVersion).toBe(BigInt(1));
+  expect(deposited.txs.map((t) => t.step)).toEqual([
+    'PRINCIPAL',
+    'PROVIDER_FEE',
+    'PC',
+  ]);
+  expect((await owner.job.status(opened.jobId)).status).toBe('Open');
+  expect(
+    await push.readContract({
+      address: D.paymentToken,
+      abi: erc20Abi,
+      functionName: 'allowance',
+      args: [opened.wallet, D.kernel],
+    })
+  ).toBe(BigInt(0));
+  const wallet = createWalletClient({
+    account: accounts[0],
+    chain: push.chain,
+    transport: http(rpc),
+  });
+  const signer = await PushChain.utils.signer.toUniversalFromKeypair(wallet, {
+    chain: CHAIN.PUSH_TESTNET_DONUT,
+    library: LIBRARY.ETHEREUM_VIEM,
+  });
+  const reconnected = await PushChain.initialize(signer, {
+    network: PUSH_NETWORK.TESTNET_DONUT,
+    rpcUrls: { [CHAIN.PUSH_TESTNET_DONUT]: [rpc] },
+  });
+  const recovered = await reconnected.market.deposit(opened.jobId, {
+    pcAmount: BigInt(10) ** BigInt(15),
+  });
+  expect(recovered.cardVersion).toBe(BigInt(1));
+  expect(recovered.txs).toEqual([]);
+});
 it('funds through the real rules hook and submits as the provider; manual evaluator completes locally', async () => {
   const events: string[] = [];
   stopWatch = owner.job.watch(opened.jobId, (e) => events.push(e.kind), {
@@ -240,28 +310,6 @@ it('funds through the real rules hook and submits as the provider; manual evalua
     owner.job.fund(opened.jobId, { expectedBudget: BigInt(5000000) })
   ).rejects.toMatchObject({ code: 'BUDGET_MISMATCH' });
   await (await provider.job.setBudget(opened.jobId, BigInt(5000000))).wait();
-  await expect(
-    owner.job.fund(opened.jobId, { expectedBudget: BigInt(5000000) })
-  ).rejects.toMatchObject({ code: 'INSUFFICIENT_FUNDS' });
-  // Borrow existing pUSDC on this local fork only; no mint/transfer is sent to public Donut.
-  const source = '0x0A16CBa65FfCAa4C2282b27b027Ab4A2fE46E0Bf';
-  await push.request({
-    method: 'anvil_impersonateAccount' as never,
-    params: [source] as never,
-  });
-  const funder = createWalletClient({
-    account: source,
-    chain: push.chain,
-    transport: http(rpc),
-  });
-  const fundingHash = await funder.writeContract({
-    chain: push.chain,
-    address: D.paymentToken,
-    abi: erc20Abi,
-    functionName: 'transfer',
-    args: [opened.wallet, BigInt(5000000)],
-  });
-  await push.waitForTransactionReceipt({ hash: fundingHash });
   const before = await push.readContract({
     address: D.paymentToken,
     abi: erc20Abi,
@@ -386,6 +434,13 @@ it('rejects a tampered plan before signing and atomically cancels a second job w
       preview: { ...plan.preview, mayDo: ['tampered'] },
     })
   ).rejects.toMatchObject({ code: 'STALE_PLAN' });
+  const badSignature = jest
+    .spyOn(owner.universal, 'signTypedData')
+    .mockImplementationOnce(async (data) => accounts[1].signTypedData(data));
+  await expect(owner.market.openJob(plan)).rejects.toMatchObject({
+    code: 'OPEN_JOB_SIMULATION_FAILED',
+  });
+  badSignature.mockRestore();
   const second = await owner.market.openJob(plan);
   await (await owner.job.cancel(second.jobId)).wait();
   expect((await owner.job.status(second.jobId)).status).toBe('Rejected');
@@ -399,4 +454,80 @@ it('rejects a tampered plan before signing and atomically cancels a second job w
       args: [second.rulesId, second.wallet],
     })
   ).toBe(false);
+});
+it('accepts a real deployed EVM UEA owner signature with its home-chain domain', async () => {
+  const external = await PushChain.initialize(
+    { chain: CHAIN.ETHEREUM_SEPOLIA, address: accounts[0].address },
+    {
+      network: PUSH_NETWORK.TESTNET_DONUT,
+      rpcUrls: { [CHAIN.PUSH_TESTNET_DONUT]: [rpc] },
+    }
+  );
+  const uea = getAddress(external.universal.account);
+  const base = (owner as unknown as { agenticRuntime: AgenticRuntime })
+    .agenticRuntime;
+  const rt: StackRuntime = {
+    agw: {
+      ...base,
+      signerPushAccount: () => uea,
+      signerOrigin: () => ({
+        chain: CHAIN.ETHEREUM_SEPOLIA,
+        address: accounts[0].address,
+      }),
+      signerIsPushNative: () => false,
+    },
+    account: () => uea,
+    wallet: () => undefined,
+    send: base.execute,
+    // Relaying is permitted on-chain. Anvil has no Cosmos MsgExecutePayload transport;
+    // only the submitting transport is native here. The UEA verifies the real origin signature.
+    signTypedData: (data) => accounts[0].signTypedData(data),
+    canSignTypedData: () => true,
+    jobBlocks: new Map(),
+  };
+  const market = new MarketNamespaceImpl(rt);
+  const now = Number((await push.getBlock()).timestamp);
+  const plan = await market.preview(cardId, {
+    principal: BigInt(10),
+    executeBy: now + 600,
+    expiredAt: now + 7200,
+  });
+  await expect(market.openJob(plan)).rejects.toMatchObject({
+    code: 'OWNER_NOT_DEPLOYED',
+  });
+  const deploy = await owner.universal.sendTransaction({
+    to: '0x00000000000000000000000000000000000000eA',
+    data: encodeFunctionData({
+      abi: parseAbi([
+        'function deployUEA((string chainNamespace,string chainId,bytes owner) id) returns (address)',
+      ]),
+      functionName: 'deployUEA',
+      args: [
+        {
+          chainNamespace: 'eip155',
+          chainId: '11155111',
+          owner: accounts[0].address,
+        },
+      ],
+    }),
+  });
+  await deploy.wait();
+  expect(await push.getCode({ address: uea })).not.toBe('0x');
+  const reviewed = await market.preview(cardId, {
+    principal: BigInt(10),
+    executeBy: now + 600,
+    expiredAt: now + 7200,
+  });
+  expect(reviewed.intent.owner).toBe(uea);
+  expect(reviewed.intent.signerChainId).toBe(BigInt(11155111));
+  const result = await market.openJob(reviewed);
+  const gen = currentGeneration(PUSH_NETWORK.TESTNET_DONUT);
+  expect(
+    await push.readContract({
+      address: result.wallet,
+      abi: gen.contracts.abis.wallet,
+      functionName: 'owner',
+    })
+  ).toBe(uea);
+  expect((await owner.job.status(result.jobId)).status).toBe('Open');
 });

@@ -172,6 +172,8 @@ const F = {
 
 export const SCENARIOS: Scenario[] = [
   { id: 'marketplace-native-lifecycle', group: 'marketplace-live', file: '__e2e__/marketplace/lifecycle.spec.ts', grep: 'marketplace live 1\\. native provider registration', needs: { masterPC: '0.5' }, env: { MARKETPLACE_LIVE_E2E: '1', AGW_E2E_AGENT_PC: '0.1' }, note: 'Fresh provider/card/wallet only; no principal export or fee escrow. Cancels and revokes its own permission.' },
+  { id: 'marketplace-paid-preview', group: 'marketplace-live', file: '__e2e__/marketplace/lifecycle.spec.ts', grep: 'marketplace live 2\\. paid JobSpec preview', needs: { masterPC: '0.5' }, env: { MARKETPLACE_LIVE_E2E: '1', AGW_E2E_AGENT_PC: '0.1' }, note: 'One live validator read through the registry, with an explicit 0.01 PC callback/protocol fee cap.' },
+  { id: 'marketplace-external-owner', group: 'marketplace-live', file: '__e2e__/marketplace/lifecycle.spec.ts', grep: 'marketplace live 3\\. external EVM owner', needs: { masterPC: '0.5' }, env: { MARKETPLACE_LIVE_E2E: '1', AGW_E2E_AGENT_PC: '0.1' }, note: 'Fresh Sepolia-origin UEA funded with 0.1 PC; open/cancel using the real UEA transport; reuses this run’s card.' },
   { id: 'marketplace-readonly-bindings', group: 'marketplace', file: '__e2e__/marketplace/readiness.spec.ts', grep: 'marketplace deployed v2 read-only', needs: {}, note: 'Unfunded public SDK card/job enumeration and capability gates; no signing keys.' },
   {
     id: 'agw-svm-replay-positive',

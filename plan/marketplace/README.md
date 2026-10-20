@@ -1,6 +1,6 @@
 # Agentic marketplace SDK planning
 
-Updated October 20, 2026. **Actual SDK implementation has started:** see [current implementation and acceptance](implementation-status.md). The initial contract-only research below is preserved as history; its planning-only statements predate the SDK and live smoke checkpoint. No package was published.
+Updated October 20, 2026. **28 of the 29 named SDK APIs now have implementations against deployed v2:** see [current coverage and acceptance](implementation-status.md). Deposits, paid previews and external EVM UEA opening are implemented; `job.verify` awaits compatible contracts. The initial contract-only research below is preserved as history. No package was published.
 
 **Build against deployed UniversalMarketplace v2, pinned at `sdk-iteration-v1@443b4e2dd9ca5dd9ffc8efebdfcecd619dd66c47`.** The six supplied Notion pages were exported again through signed-in Chrome, and their visible discussion panels were reviewed. The older marketplace pages in `plan/agw/notion` remain historical.
 
@@ -25,7 +25,7 @@ Updated October 20, 2026. **Actual SDK implementation has started:** see [curren
 - Payment is currently **pUSDC only**. The evaluator is an EOA; automated baseline, criteria replacement, verification and rating are not live capabilities.
 - Page 8 retires `client.evaluation`. Plan `client.market`, `client.job`, `PushChain.utils.market`, `PushChain.utils.job`, and vocabulary under `PushChain.CONSTANTS.AGENTIC`.
 - The evaluator source linked by Nilesh's October 16 comment is **wire-incompatible** with deployed marketplace v2, including different enum ordinals. Align contracts before automatic evaluation; never combine these encoders implicitly.
-- The deployed card-rule struct has **no `approvals[]`**. Page 6 still describes the earlier owner-approval design. This needs an explicit SDK contract with product before those deposit fields are advertised.
+- The deployed card-rule struct has **no `approvals[]`**. Page 6 still describes the earlier owner-approval design. The SDK follows deployed v2: deposit moves principal/fee/PC, while the agent has pinned approval calls in its granted permissions.
 - Kernel cancellation releases the marketplace slot but leaves AGW permissions enabled. Independent fork checks examine that behavior and an existing owner-batch cleanup path.
 
-Validation totals and evidence limitations are maintained in [validation.md](research/2026-10-20/validation.md), rather than copied into dated source snapshots.
+Current SDK validation is linked from [implementation status](implementation-status.md); the earlier contract-only results remain in [validation.md](research/2026-10-20/validation.md). Dated source snapshots are unchanged.

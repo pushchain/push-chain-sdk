@@ -2,6 +2,11 @@ import type { Abi, Address, Hex } from 'viem';
 import type { ArgumentPath, WalletMarker } from '../agentic/agentic.types';
 import type { JOB_VOCABULARY, PRINCIPAL } from './constants';
 import type { PushChain } from '../push-chain/push-chain';
+import type {
+  ReadCallback,
+  UniversalReadResponse,
+} from '../read-state/read-state.types';
+import type { ReadExecuteOptions } from '../read-state/read-params';
 export type Evaluation =
   (typeof JOB_VOCABULARY.EVALUATION)[keyof typeof JOB_VOCABULARY.EVALUATION];
 export type Operation =
@@ -100,12 +105,29 @@ export interface PreviewJobSpecOptions {
   wallet?: Address;
   principal?: bigint;
   params?: bigint[];
-  /** Required for cross-chain template holes: an AGW address is not its destination account. */
+  /** Explicit destination accounts override CEA derivation from wallet on a real SDK client. */
   accounts?: Record<string, Address>;
+  /** Optional baseline per read for NUMBER/PERCENTAGE. Missing baselines remain unknown. */
+  baseline?: readonly (bigint | null)[];
+  /** Existing universal-read registry is used by default. */
+  callback?: ReadCallback;
+  /** Maximum sum of prepared read request values, checked before any payment. */
+  maxTotalFee?: bigint;
+  expiryBlocks?: bigint;
+  refundTo?: Address;
+  progressHook?: ReadExecuteOptions['progressHook'];
+  advanced?: ReadExecuteOptions['advanced'];
 }
 export interface JobSpecPreview {
-  reads: { value: Hex; decoded: bigint }[];
-  checks: { pass: boolean | null; value: bigint }[];
+  /** A preview is a paid observation, never an evaluator verdict. */
+  reads: {
+    value: Hex | null;
+    decoded: bigint | null;
+    error?: string;
+    response: UniversalReadResponse;
+  }[];
+  checks: { pass: boolean | null; value: bigint | null; reason?: string }[];
   pass: boolean | null;
+  fees: { quoted: bigint; paid: bigint };
 }
 export type JobArgumentPath = ArgumentPath;
