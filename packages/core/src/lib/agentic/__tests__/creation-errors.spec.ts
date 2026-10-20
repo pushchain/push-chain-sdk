@@ -55,7 +55,7 @@ it.each(['LENDING', 'STAKING'] as const)(
       userMessage: expect.stringContaining(
         'Rule 1: This token cannot be sent from Push to Ethereum Sepolia'
       ),
-      hint: expect.stringContaining("funding: 'destination'"),
+      hint: expect.stringContaining('verified PRC20 route'),
     });
     expect(rt.executeMock).not.toHaveBeenCalled();
     expect(rt.atomicMock).not.toHaveBeenCalled();
@@ -67,7 +67,6 @@ it('reports the complete 40-condition count for duplicated DEX entries, without 
   const sdk = new AgenticNamespaceImpl(rt);
   const { rules } = agenticPresets.get('DEXES', {
     ...options,
-    funding: 'destination',
   });
   const calls = rules[0].allowedCalls;
   const duplicated = { ...rules[0], allowedCalls: [...calls, ...calls] };
@@ -96,7 +95,6 @@ it('validates stock DEX rules independently: two 20-condition rules do not becom
     const { rules } = agenticPresets.get('DEXES', {
       ...options,
       chainNamespace: chain,
-      funding: 'destination',
     });
     const normalized = (await normalizePublicRule(
       publicRules(rules)[0],

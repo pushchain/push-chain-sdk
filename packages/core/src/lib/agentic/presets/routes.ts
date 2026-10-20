@@ -12,8 +12,7 @@ import { assetAddress } from './operation-limits';
 export function presetRoutes(
   chain: string,
   assets: RuleAsset[],
-  network: PUSH_NETWORK,
-  funding: 'push' | 'destination'
+  network: PUSH_NETWORK
 ): {
   bridgeAssets: PresetChainReadiness['bridgeAssets'];
   issues: PresetConfigurationIssue[];
@@ -43,12 +42,11 @@ export function presetRoutes(
         status: 'registered' as const,
       };
     } catch {
-      if (funding === 'push')
-        issues.push({
-          code: 'BRIDGE_ASSET_UNAVAILABLE',
-          token,
-          message: `No SDK PRC20 mapping for ${chain}:${token} on ${network}. Use a supported source asset or explicitly choose destination funding for assets already at the CEA.`,
-        });
+      issues.push({
+        code: 'BRIDGE_ASSET_UNAVAILABLE',
+        token,
+        message: `No SDK PRC20 mapping for ${chain}:${token} on ${network}. Choose a supported asset. This exact token needs a verified Push PRC20 route before it can be used.`,
+      });
       return { token, status: 'unavailable' as const };
     }
   });

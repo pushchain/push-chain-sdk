@@ -12,7 +12,7 @@ const MESSAGES: Record<AgenticErrorCode, string> = {
   ASSET_CHAIN_MISMATCH:
     'The selected token belongs to a different network. Choose a token on this rule’s network.',
   TOKEN_ROUTE_UNAVAILABLE:
-    'This token cannot currently be transferred from Push to the selected network. Choose a supported token or use funds already on the destination network.',
+    'This token cannot currently be transferred from Push to the selected network. Choose a token with a supported Push route.',
   REQUEST_REJECTED:
     'The wallet request was cancelled. Check wallet activity before trying again.',
   NOT_OWNER_OR_AGENT:

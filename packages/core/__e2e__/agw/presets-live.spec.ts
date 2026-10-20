@@ -76,9 +76,8 @@ d('agw presets live', () => {
     const defaults = PushChain.utils.agentic.presets.get('DEXES', {
       chainNamespace: CHAIN.ETHEREUM_SEPOLIA,
       agent: f.agentAddress,
-      funding: 'destination',
     });
-    expect(defaults.readiness.ready).toBe(true);
+    expect(defaults.readiness.chains[0].configurationReady).toBe(true);
     expect(defaults.rules[0].maxGasPerCall).toBe(MAX_PC);
     expect(defaults.rules[0].validUntil).toBeGreaterThan(inSeconds(6 * 86400));
     expect(
@@ -92,7 +91,6 @@ d('agw presets live', () => {
       )
     ).toBe(true);
     const { rules } = PushChain.utils.agentic.presets.get('DEXES', {
-      funding: 'destination',
       chainNamespace: CHAIN.ETHEREUM_SEPOLIA,
       agent: f.agentAddress,
       validUntil: inSeconds(3600),
@@ -108,9 +106,10 @@ d('agw presets live', () => {
     });
     // assets[] budgets bridge burns on Push. This test spends already-held CEA
     // tokens, so omit bridge assets without changing any generated call or pin.
+    // Prefunded CEA fixture: bypass bridge budgets only in this protocol test.
     const { wallet, rulesIds } = await f.owner.agentic.create(
       'e2e-preset-uniswap',
-      { rules }
+      { rules: rules.map((rule) => ({ ...rule, assets: [] })) }
     );
     const cea = (await getCEAAddress(wallet, CHAIN.ETHEREUM_SEPOLIA))
       .cea as Address;
@@ -290,9 +289,8 @@ d('agw presets live', () => {
     const defaults = PushChain.utils.agentic.presets.get('LENDING', {
       chainNamespace: CHAIN.ETHEREUM_SEPOLIA,
       agent: f.agentAddress,
-      funding: 'destination',
     });
-    expect(defaults.readiness.ready).toBe(true);
+    expect(defaults.readiness.chains[0].configurationReady).toBe(true);
     expect(defaults.readiness.chains[0].selectedAssets[0].maxPerCall).toBe(
       parseEther('1')
     );
@@ -303,7 +301,6 @@ d('agw presets live', () => {
       )
     ).toEqual([mockLINK.toLowerCase()]);
     const { rules } = PushChain.utils.agentic.presets.get('LENDING', {
-      funding: 'destination',
       chainNamespace: CHAIN.ETHEREUM_SEPOLIA,
       agent: f.agentAddress,
       validUntil: inSeconds(3600),
@@ -314,9 +311,10 @@ d('agw presets live', () => {
         maxTotal: amount,
       })),
     });
+    // Prefunded CEA fixture: bypass bridge budgets only in this protocol test.
     const { wallet, rulesIds } = await f.owner.agentic.create(
       'e2e-preset-aave',
-      { rules }
+      { rules: rules.map((rule) => ({ ...rule, assets: [] })) }
     );
     const cea = (await getCEAAddress(wallet, CHAIN.ETHEREUM_SEPOLIA))
       .cea as Address;
@@ -455,7 +453,7 @@ d('agw presets live', () => {
       maxGasPerCall: MAX_PC,
       assets: [{ token: mockLINK, maxPerCall: half, maxTotal: amount }],
     });
-    expect(regenerated.readiness.ready).toBe(true);
+    expect(regenerated.readiness.chains[0].configurationReady).toBe(true);
     const changed = await f.owner.agentic.wallet(wallet).rules.update({
       rules: [
         {

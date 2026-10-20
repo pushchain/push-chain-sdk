@@ -31,10 +31,6 @@ export interface PresetAsset {
 export interface PresetOptions {
   /** Offline route/deployment checks; defaults to TESTNET_DONUT. */
   network?: PUSH_NETWORK;
-  /** Push funding requires PRC20 routes. Destination funding explicitly emits
-   * empty bridge assets while preserving selected token/call limits in metadata.
-   * The CEA must already hold the required destination assets. Default: push. */
-  funding?: 'push' | 'destination';
   /** Push-PC budget ceiling per outbound; omitted uses the catalog policy (20 PC).
    * Explicit zero is preserved. This is not the fee charged. */
   maxGasPerCall?: bigint;
@@ -84,8 +80,7 @@ export interface PresetChainReadiness {
   chainNamespace: ForeignChainNamespace;
   ready: boolean;
   configurationReady: boolean;
-  funding: 'push' | 'destination';
-  /** Selected destination permissions, retained even when bridge assets is empty. */
+  /** Selected assets and caps, matching the returned rule assets. */
   selectedAssets: RuleAsset[];
   /** Registry presence only; grant preparation verifies exact on-chain identity. */
   bridgeAssets: {
