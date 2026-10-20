@@ -1,0 +1,146 @@
+{
+  "observedAt": "2026-10-20T09:47:56.301Z",
+  "rpc": "https://evm.donut.rpc.push.org/",
+  "chainId": 42101,
+  "blockNumber": "24447347",
+  "addresses": {
+    "marketplace": "0x9071ebE01B75123A91e88eB6ec4BF163F3fE9BF4",
+    "kernel": "0x977cf1AC973E9eC4332791d531507575006157Ed",
+    "hook": "0xDe7A94e510b6C571DE7880d441349689F73A32b3",
+    "rules": "0x5b98A8E0df5b918DF76cD2BE84bA7995B39dfd44",
+    "builder": "0x2de1e3F053b0bBa0cE0C6953144534a0b055f59e",
+    "factory": "0xFBBEB6a365178fAaA81A9789a5f64b300c37e5bc",
+    "engine": "0xf63DC0628fe1B25049FE3E3a3585Ef051CB98c1d",
+    "pUSDC": "0x7A58048036206bB898008b5bBDA85697DB1e5d66",
+    "evaluator": "0x1afC81396f1bb36F91f74506284952b81e4bd47c"
+  },
+  "components": {
+    "marketplace": {
+      "address": "0x9071ebE01B75123A91e88eB6ec4BF163F3fE9BF4",
+      "codeBytes": 1033,
+      "codeHash": "0xec110641b71085ab23f3614eca15d149d9cc83dfecbeeea076e140e6c7882b0e",
+      "implementation": "0xd683545f84698df4341b0031c892c53384ff30be",
+      "proxyAdmin": "0xb7d9315813fe87a13833871ce673073dd4b8c8af",
+      "implementationCodeBytes": 22156,
+      "implementationCodeHash": "0xabad53926791b8ea4089b86e2d7eb11397e6ede4f91deefd123a0369e2839ce3"
+    },
+    "kernel": {
+      "address": "0x977cf1AC973E9eC4332791d531507575006157Ed",
+      "codeBytes": 1033,
+      "codeHash": "0xbc67b4b15b395df23ca79660448955f993ee75c2e9e4650e0c4c6d2f30ce3e89",
+      "implementation": "0x1d631e9d0e0a7a7423743c3076054c784af8fa40",
+      "proxyAdmin": "0x5f5ef9dbbc31d59a28626d1f913a35b5b6ea0cb9",
+      "implementationCodeBytes": 10930,
+      "implementationCodeHash": "0x97f198ec46563a5906240f99aa9eeaf76d547bb0c79475486dc233bce5d4c1bc"
+    },
+    "pUSDC": {
+      "address": "0x7A58048036206bB898008b5bBDA85697DB1e5d66",
+      "codeBytes": 1201,
+      "codeHash": "0xed2764096d54cbdeccb8952d602675293f894e03faa9ad78e8d135f15cc16ac3"
+    },
+    "factory": {
+      "address": "0xFBBEB6a365178fAaA81A9789a5f64b300c37e5bc",
+      "codeBytes": 141,
+      "codeHash": "0x58e6a6553bb3565097e3d3a08dd1e72e339f004ecca9285b569286d8f459c43c"
+    },
+    "rules": {
+      "address": "0x5b98A8E0df5b918DF76cD2BE84bA7995B39dfd44",
+      "codeBytes": 7832,
+      "codeHash": "0x75daf3f6953e873ad056184e9c491487e96882bd3548beca9d4b5700c9c79c1a"
+    },
+    "engine": {
+      "address": "0xf63DC0628fe1B25049FE3E3a3585Ef051CB98c1d",
+      "codeBytes": 22581,
+      "codeHash": "0x5fa747bb1b2fb6635dbc22608f86a18a743d6ed9b3f394abf812ee3d4199bdde"
+    },
+    "evaluator": {
+      "address": "0x1afC81396f1bb36F91f74506284952b81e4bd47c",
+      "codeBytes": 0,
+      "codeHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+    },
+    "builder": {
+      "address": "0x2de1e3F053b0bBa0cE0C6953144534a0b055f59e",
+      "codeBytes": 5597,
+      "codeHash": "0x9f4d23c0b4a3ace3e37841c331fa9b0d639c6684cd94b6e8a03093c3f2fb4de0"
+    },
+    "hook": {
+      "address": "0xDe7A94e510b6C571DE7880d441349689F73A32b3",
+      "codeBytes": 1033,
+      "codeHash": "0x610391ddca2489a14762aaa988da87e8a0dc2398bccfc1cdab75146024bd3611",
+      "implementation": "0x58bd6951b653b5028aa77b4904e83df668bcef7e",
+      "proxyAdmin": "0xba96c7fb588ac17aba00c7aa920e282c088b1746",
+      "implementationCodeBytes": 3477,
+      "implementationCodeHash": "0x73d02a69e7fb974656b028d41d140d967ae9efa7564af5f49707b43f1445ed12"
+    }
+  },
+  "getters": {
+    "marketplace.RULES": "0x5b98A8E0df5b918DF76cD2BE84bA7995B39dfd44",
+    "marketplace.PUSH_CHAIN_HASH": "0x3d6bc1f1d3fb03065860265a8e93840b586e57075d956cd41b4319d040be87f9",
+    "marketplace.AGW_FACTORY": "0xFBBEB6a365178fAaA81A9789a5f64b300c37e5bc",
+    "marketplace.OPENJOB_LANE": "3138550867693340381917894711603833208051177722232017256448",
+    "marketplace.KERNEL": "0x977cf1AC973E9eC4332791d531507575006157Ed",
+    "marketplace.evaluator": "0x1afC81396f1bb36F91f74506284952b81e4bd47c",
+    "marketplace.agentCardCount": "0",
+    "marketplace.hook": "0xDe7A94e510b6C571DE7880d441349689F73A32b3",
+    "marketplace.version": "2.0.0",
+    "marketplace.paused": false,
+    "kernel.paymentToken": "0x7A58048036206bB898008b5bBDA85697DB1e5d66",
+    "kernel.platformFeeBP": "0",
+    "hook.SESSION_ENGINE": "0xf63DC0628fe1B25049FE3E3a3585Ef051CB98c1d",
+    "hook.KERNEL": "0x977cf1AC973E9eC4332791d531507575006157Ed",
+    "kernel.MIN_EXPIRY_WINDOW": "300",
+    "kernel.evaluatorFeeBP": "0",
+    "hook.AGW_FACTORY": "0xFBBEB6a365178fAaA81A9789a5f64b300c37e5bc",
+    "kernel.jobCounter": "0",
+    "kernel.paused": false,
+    "pUSDC.symbol": "USDC.eth",
+    "kernel.EVALUATOR_GRACE_PERIOD": "3600",
+    "pUSDC.decimals": 6,
+    "kernel.whitelistedHooks": true
+  },
+  "chains": [
+    {
+      "chain": "eip155:11155111",
+      "chainHash": "0xafa90c317deacd3d68f330a30f96e4fa7736e35e8d1426b2e1b2c04bce1c2fb7",
+      "factory": "0x8ED594A83301FEc545fC6c19fc12cF7111777029",
+      "implementation": "0x0a4F7be62B56830070266be81114edB93e68DA09",
+      "cea": "0x33996E73ee53988B4c446457e5f497e9a4B87B0D",
+      "independentCEA": "0x33996E73ee53988B4c446457e5f497e9a4B87B0D",
+      "matches": true
+    },
+    {
+      "chain": "eip155:84532",
+      "chainHash": "0x8a9a9c58b754a98f1ff302a7ead652cfd23eb36a5791767b5d185067dd9481c2",
+      "factory": "0x0A75ca7736b488Eb41675ADc3b3156BACF659F55",
+      "implementation": "0x6c9Cfef12155bEE91ecD6d0C8f516cABA2890656",
+      "cea": "0xf1981b90F0207135B396F698F33119FaED32e5cF",
+      "independentCEA": "0xf1981b90F0207135B396F698F33119FaED32e5cF",
+      "matches": true
+    },
+    {
+      "chain": "eip155:421614",
+      "chainHash": "0xf0b5e5225193cfd0cd1b399b5597eb35e33f77deb76267030dc6d28cf2a8d16b",
+      "factory": "0x88DC189275078Cf509E4Cc773F089c8ad07b7EA2",
+      "implementation": "0x512d1B8C185a0Fd533a69f8973A3DD6513233009",
+      "cea": "0xcE8377D906a057fEBBF5c898729B2D31644AFAf2",
+      "independentCEA": "0xcE8377D906a057fEBBF5c898729B2D31644AFAf2",
+      "matches": true
+    },
+    {
+      "chain": "eip155:97",
+      "chainHash": "0x42a13880db2f2fe1c95fc8d04876a774745355a97dfe8f3397694d11f135eccf",
+      "factory": "0x3f1B16e0B072d472951C4563d29d3da6a3EE3Ce8",
+      "implementation": "0x0ff5d8b7d9Ac3ee2Ad420e9b70Ed6Dc465f593e9",
+      "cea": "0x3223037344F37C1bf32a0d6b13035d55d88F39C7",
+      "independentCEA": "0x3223037344F37C1bf32a0d6b13035d55d88F39C7",
+      "matches": true
+    }
+  ],
+  "errors": [],
+  "sampleWallet": {
+    "owner": "0x1111111111111111111111111111111111111111",
+    "index": 0,
+    "wallet": "0xa932F2f3903379FEcAe7936559543862D4C3AbBa",
+    "deployed": false
+  }
+}

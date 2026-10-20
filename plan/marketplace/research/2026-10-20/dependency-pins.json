@@ -1,0 +1,34 @@
+[
+  {
+    "path": "lib/forge-std",
+    "sha": "3b20d60d14b343ee4f908cb8079495c07f5e8981",
+    "archived": true,
+    "skipped_links": []
+  },
+  {
+    "path": "lib/openzeppelin-contracts",
+    "sha": "e4f70216d759d8e6a64144a9e1f7bbeed78e7079",
+    "archived": true,
+    "skipped_links": []
+  },
+  {
+    "path": "lib/openzeppelin-contracts-upgradeable",
+    "sha": "0ed1f55fa6a2e50c062985f7a3cbc79f4029d85d",
+    "archived": true,
+    "skipped_links": []
+  },
+  {
+    "path": "lib/openzeppelin-foundry-upgrades",
+    "sha": "cbce1e00305e943aa1661d43f41e5ac72c662b07",
+    "archived": true,
+    "skipped_links": []
+  },
+  {
+    "path": "lib/push-agentic-wallets",
+    "sha": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+    "archived": true,
+    "skipped_links": [
+      "lib/push-chain-core-contracts"
+    ]
+  }
+]

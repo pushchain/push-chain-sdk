@@ -1,0 +1,18 @@
+{
+  "args": [
+    "forge",
+    "test",
+    "--root",
+    "/var/folders/4_/d47r2_4s1wb3x2dvmt2ghp800000gp/T/marketplace-review-443b4e2-_ib864pr",
+    "--match-path",
+    "test/8183-tests/*.t.sol",
+    "--no-match-test",
+    "invariant_",
+    "--offline",
+    "--json"
+  ],
+  "exit_code": 0,
+  "seconds": 45.76,
+  "log": "contract-tests.log",
+  "scope": "All 8183 test files, invariant functions excluded; fork files are reviewed separately for gated execution."
+}

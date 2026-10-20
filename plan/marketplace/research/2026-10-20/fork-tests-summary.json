@@ -1,0 +1,47 @@
+{
+  "args": [
+    "forge",
+    "test",
+    "--root",
+    "/var/folders/4_/d47r2_4s1wb3x2dvmt2ghp800000gp/T/marketplace-review-443b4e2-_ib864pr",
+    "--match-path",
+    "test/8183-tests/*.fork.t.sol",
+    "--offline",
+    "--json"
+  ],
+  "environment": {
+    "PUSH_CHAIN_TESTNET_RPC_URL": "https://evm.donut.rpc.push.org/",
+    "FORK_BLOCK": "24447347"
+  },
+  "exit_code": 0,
+  "seconds": 41.36,
+  "counts": {
+    "Success": 2
+  },
+  "tests": [
+    {
+      "suite": "test/8183-tests/RulesBindingHook.fork.t.sol:RulesBindingHookForkTest",
+      "test": "test_fork_mirrorsMatchDeployedAGW()",
+      "status": "Success",
+      "reason": null,
+      "decoded_logs": [],
+      "kind": {
+        "Unit": {
+          "gas": 193974
+        }
+      }
+    },
+    {
+      "suite": "test/8183-tests/UniversalMarketplace.fork.t.sol:UniversalMarketplaceForkTest",
+      "test": "test_fork_openJob_realAGWv6()",
+      "status": "Success",
+      "reason": null,
+      "decoded_logs": [],
+      "kind": {
+        "Unit": {
+          "gas": 21035856
+        }
+      }
+    }
+  ]
+}

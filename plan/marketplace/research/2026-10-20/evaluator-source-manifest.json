@@ -1,0 +1,14 @@
+{
+  "source_commit": "8059817591cca16c59f1cc154f475f51e1736a67",
+  "authority": "comparison source linked in Nilesh Oct16 comment; not a deployed v2 dependency",
+  "files": [
+    {
+      "file": "research/2026-10-20/evaluator-8059817/JobSpecTypes.sol",
+      "sha256": "dad44d25e1793c5c9303eb1d38b27de61472ba8aa749b487cd7e5b3039c3d363"
+    },
+    {
+      "file": "research/2026-10-20/evaluator-8059817/UniversalEvaluator.sol",
+      "sha256": "efb2f1a4045e3be2101c92ba47e192adafa0478a86897d80a5041505e0a3e98a"
+    }
+  ]
+}

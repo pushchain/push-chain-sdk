@@ -1,0 +1,224 @@
+{
+  "repository": "https://github.com/pushchain/push-chain-core-contracts",
+  "branch": "sdk-iteration-v1",
+  "sha": "443b4e2dd9ca5dd9ffc8efebdfcecd619dd66c47",
+  "fetched_at": "2026-10-20T09:43:33.190042+00:00",
+  "files": [
+    {
+      "path": "docs/addresses/push_donut_universal_marketplace.md",
+      "sha256": "71bd3676843ca4ef8f3c252cd7e6b9461affbcacf8ce885c805e07cd5f2c23e4"
+    },
+    {
+      "path": "docs/universalmarketplace/README.md",
+      "sha256": "7caa8efcfd608c026f56f28e1b873a23b39acaf967223990074d3c03fec5ede5"
+    },
+    {
+      "path": "docs/universalmarketplace/criteria.md",
+      "sha256": "ff66b0e63b1bfb81eafa3cd540c1db7ca0b7eabadd5830f11c4dcfc14df945ad"
+    },
+    {
+      "path": "docs/universalmarketplace/reference.md",
+      "sha256": "bac4e09b0f13490b8f786266efc3118d65a7a7c6328cf3fc4a577239bdc1b33f"
+    },
+    {
+      "path": "foundry.toml",
+      "sha256": "4343577dc84f7db108cfcd64736af12b2d848b206496b3e7d15fc5c352db807d"
+    },
+    {
+      "path": "remappings.txt",
+      "sha256": "33b31e373f063571d30483b3ffc6e53bd19703071b50847c7fd2ac4d55087544"
+    },
+    {
+      "path": "scripts/agentic-commerce-8183/DeployUniversalMarketplace.s.sol",
+      "sha256": "89f17de70d673f739417d9d73d25689437311943732f386c59e6fab6c7314b7d"
+    },
+    {
+      "path": "src/agentic-commerce-8183/AgenticCommerce.sol",
+      "sha256": "bfc39d710ed8f3daf118ba8fcb5a83422797a241f99a788b7b920392e822a99f"
+    },
+    {
+      "path": "src/agentic-commerce-8183/UniversalMarketplace.sol",
+      "sha256": "5acafe41338b5734b9df2cc295a88deebbeddb39e473e6583cdcf5a12f23b439"
+    },
+    {
+      "path": "src/agentic-commerce-8183/UniversalMarketplaceRules.sol",
+      "sha256": "b8818e2d8b232f5913876ce32c67b630a0fc9cabf9c2dd5cc68ff16d2d1b7a82"
+    },
+    {
+      "path": "src/agentic-commerce-8183/hooks/BaseERC8183Hook.sol",
+      "sha256": "3dd2af20677ceb71561a999bb564c25a6d9396a19c50da99706afcaf3d174c24"
+    },
+    {
+      "path": "src/agentic-commerce-8183/hooks/RulesBindingHook.sol",
+      "sha256": "24fff91d14d3e1bafce79f71f7f58a2dc35de98019e04bd1099cfbb4021da077"
+    },
+    {
+      "path": "src/agentic-commerce-8183/interfaces/IAgenticCommerce.sol",
+      "sha256": "a90d1bc5518e8ef190e250d7523f2268dacce1b380493699377063a096d8fd14"
+    },
+    {
+      "path": "src/agentic-commerce-8183/interfaces/IERC8183Hook.sol",
+      "sha256": "d344ead446fbb7c10502843ae22ba87743ca0acd8befc84f328a97b62545d70e"
+    },
+    {
+      "path": "src/agentic-commerce-8183/interfaces/IUniversalMarketplace.sol",
+      "sha256": "5ad7c860ecf19209b7dfde30af3d3693d5ba27ae815f965c61de66656844262a"
+    },
+    {
+      "path": "src/agentic-commerce-8183/interfaces/IUniversalMarketplaceRules.sol",
+      "sha256": "8b15e1962bb136cc70b558c154dc5d3056cedc636cd4d803cd083b6c244c02ff"
+    },
+    {
+      "path": "src/agentic-commerce-8183/interfaces/external/IAGW.sol",
+      "sha256": "17a06215afc2136aa795cce81acca5a3743eed404afc8a89c44f8171501912af"
+    },
+    {
+      "path": "src/agentic-commerce-8183/interfaces/external/IAGWFactory.sol",
+      "sha256": "20ae9164904171ba01f6fa866bcbb089a721af20014243ebd8c1457aea87bb12"
+    },
+    {
+      "path": "src/agentic-commerce-8183/interfaces/external/ISmartSession.sol",
+      "sha256": "c4d749382733544eccc7b53fdec6e505ef587eaac3331e6193cf534fa359c62a"
+    },
+    {
+      "path": "src/agentic-commerce-8183/libraries/Errors.sol",
+      "sha256": "bfc0e60e6af1a0cb06d7ae2f2e5125ef74a4a0ffdde2544419b9e98604d7f6ac"
+    },
+    {
+      "path": "src/agentic-commerce-8183/libraries/JobSpecBuilder.sol",
+      "sha256": "2b637585a6218d5474c5a5ba3f554a8830622745e48a2c5bc7fda12844ba8359"
+    },
+    {
+      "path": "src/agentic-commerce-8183/libraries/JobSpecTypes.sol",
+      "sha256": "cdd81b07709c662f577007b557b31b7e97ffa54f8c6785b66361ced6024f895c"
+    },
+    {
+      "path": "src/agentic-commerce-8183/libraries/Types.sol",
+      "sha256": "59896b8fce2ef03a37b372617122a56f1447da92f58fc47c18a3da37ffab4d44"
+    },
+    {
+      "path": "test/8183-tests/AgenticCommerce.admin.t.sol",
+      "sha256": "bb1b729b5b643e7e3e5a7a5102def4729be55fb6e29606ae670c4de7532b2fee"
+    },
+    {
+      "path": "test/8183-tests/AgenticCommerce.fuzz.t.sol",
+      "sha256": "cec05ba373a3a4a394d4a5a112c318e1257c0f22aef3bdf842425147874cb420"
+    },
+    {
+      "path": "test/8183-tests/AgenticCommerce.hooks.t.sol",
+      "sha256": "f4e3085b009e9b04da9627f7526a510db7dd4e0dbd73d8cda835fbb0d993182d"
+    },
+    {
+      "path": "test/8183-tests/AgenticCommerce.invariants.t.sol",
+      "sha256": "87cf5279ada6cbcc17c3e06356e501e2c39801906d78d2d48bc3fb24454fd997"
+    },
+    {
+      "path": "test/8183-tests/AgenticCommerce.lifecycle.t.sol",
+      "sha256": "16c70160e1b055391a02444f8f3e1f98daa04e290735f63cd6c6d2912e0fc5c7"
+    },
+    {
+      "path": "test/8183-tests/BaseERC8183Hook.t.sol",
+      "sha256": "ea2cf4e3ecfb9b6561573a64821edce7912c37fa9cc5dc48afb37c2e3827f9d3"
+    },
+    {
+      "path": "test/8183-tests/Interfaces.t.sol",
+      "sha256": "07224a4daa067466dbbed7fac2da3f8854f0f92a29bd123a425d3ab4adcf4515"
+    },
+    {
+      "path": "test/8183-tests/JobSpecBuilder.t.sol",
+      "sha256": "60ba8bcc5a90f48b59654253851dee204c0137d0501444f6a4f00e91639674ba"
+    },
+    {
+      "path": "test/8183-tests/KernelBase.t.sol",
+      "sha256": "fb120cc4dcbfa227321d87daa4b68185381fd43889bdd55b3f01137af450dca0"
+    },
+    {
+      "path": "test/8183-tests/Naming.t.sol",
+      "sha256": "313a49b0a083039110ca2553779fa29a4511f5b98100bf29cedce0b83e209d8b"
+    },
+    {
+      "path": "test/8183-tests/RulesBindingHook.fork.t.sol",
+      "sha256": "1140f2394d433450c0324677d4c824597e56e5387c61ccb2a95ae34d2756f3f9"
+    },
+    {
+      "path": "test/8183-tests/RulesBindingHook.t.sol",
+      "sha256": "779e99ee165549cb70b3b91031ea2b6a843d4b1f8d98a865894548e10e939955"
+    },
+    {
+      "path": "test/8183-tests/UniversalMarketplace.conformance.t.sol",
+      "sha256": "e7dba1f27b2483d028fd2cb7ab2552e1f5ce79828901b369b5bc06b2ee929d55"
+    },
+    {
+      "path": "test/8183-tests/UniversalMarketplace.fork.t.sol",
+      "sha256": "e302e56f7c82cadbcc6ca22c530bb43060517e71e453d427d2351ff01ef0e21a"
+    },
+    {
+      "path": "test/8183-tests/UniversalMarketplace.invariants.t.sol",
+      "sha256": "fb6381e003b9b412d927cf85ac4185cabf4479643b121380839c422bafb23bf8"
+    },
+    {
+      "path": "test/8183-tests/UniversalMarketplace.t.sol",
+      "sha256": "e10d6668b579a400ada8d877b1e7fb50aa0799151948baff8d1b07f7f5cefa9e"
+    },
+    {
+      "path": "test/8183-tests/UniversalMarketplaceRules.t.sol",
+      "sha256": "82bd14c04f4aa949a131299369dd2c819dfe85014fa9b3aa9833529073698835"
+    },
+    {
+      "path": "test/8183-tests/helpers/RulesFixtures.sol",
+      "sha256": "36de1516702919e007e8255f1556406a043ca70e25d7e801442e925a68d33f50"
+    },
+    {
+      "path": "test/8183-tests/helpers/TemplateParts.sol",
+      "sha256": "17fddc29d8c5bfe2a4554fe61351064eae21adddc0d01693a42e30c29f8fce05"
+    },
+    {
+      "path": "test/8183-tests/helpers/V2Decoder.sol",
+      "sha256": "2224cde7ef9a92ee061760a29de7ec89ccbdac22d49e0467022e118efd6bada5"
+    },
+    {
+      "path": "test/8183-tests/mocks/BareHook.sol",
+      "sha256": "cf3dba5de2318fbf040c0bfd340ea62a98b4fd3e2db8c4e1c4192ff4baae46d9"
+    },
+    {
+      "path": "test/8183-tests/mocks/ERC165Only.sol",
+      "sha256": "813dcc2fac5b4bcb796fdbe8fbc4183345e49e90f6da92c970fa38f81ed0d37f"
+    },
+    {
+      "path": "test/8183-tests/mocks/MockAGW.sol",
+      "sha256": "fc6bea534ae3f3e5f0560a452d26a77b43311168918615c85030ad7371981847"
+    },
+    {
+      "path": "test/8183-tests/mocks/MockAGWFactory.sol",
+      "sha256": "5d7b3b537d0169c0647aab2646d18bb608c9311b08dcb10c93c31c1dc9e268d2"
+    },
+    {
+      "path": "test/8183-tests/mocks/MockERC20_6.sol",
+      "sha256": "d66d5e7c147613ab9986420f66d28a468e73aa3c55891ef4653d31771050d43e"
+    },
+    {
+      "path": "test/8183-tests/mocks/MockPRC20Source.sol",
+      "sha256": "bddf0460fd38c7fe485a77cd6b99695b9f2eec74edb163b6a555b161244d8197"
+    },
+    {
+      "path": "test/8183-tests/mocks/MockSmartSession.sol",
+      "sha256": "5d1a6be41784938f5117a72f9a19fbaa5a4579410355a022d11a01ca59db8975"
+    },
+    {
+      "path": "test/8183-tests/mocks/RecordingHook.sol",
+      "sha256": "2fa999d4319a35b4b18566d824a74103f892d7a5bc6ec480414e75181b568267"
+    },
+    {
+      "path": "test/8183-tests/mocks/ReentrantHook.sol",
+      "sha256": "034d63401a510ba6ab1e8186430e4e71bd32a6d8d6c9550ea461a71bb257a8b6"
+    },
+    {
+      "path": "test/8183-tests/mocks/RevertingHook.sol",
+      "sha256": "cab340c8d79ba30578ef3f66c6117333c39b34f67298f896262d26a4c61ba784"
+    },
+    {
+      "path": "test/8183-tests/mocks/RoutingProbeHook.sol",
+      "sha256": "180c1f409b903013976c0e6222bb21bde2dd523189e4114a4dd8e833efb9414f"
+    }
+  ]
+}
