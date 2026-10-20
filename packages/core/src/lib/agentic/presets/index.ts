@@ -119,11 +119,12 @@ export function buildPresetApi(
         throw invalid('preset options must be an object');
       const now = Math.floor(Date.now() / 1000);
       const network = options.network ?? PUSH_NETWORK.TESTNET_DONUT;
-      const funding = options.funding ?? 'push';
       if (!Object.values(PUSH_NETWORK).includes(network))
         throw invalid('unknown preset Push network');
-      if (funding !== 'push' && funding !== 'destination')
-        throw invalid('preset funding must be push or destination');
+      if ('funding' in options)
+        throw invalid(
+          'The preset funding option is no longer supported. Remove it; preset assets and limits are always preserved.'
+        );
       if (
         options.agent !== undefined &&
         (!isAddress(options.agent, { strict: false }) ||
@@ -426,16 +427,14 @@ export function buildPresetApi(
         const routes = presetRoutes(
           chain.chainNamespace,
           selectedAssets,
-          network,
-          funding
+          network
         );
         issues.push(...routes.issues);
-        const bridgeAssets = funding === 'destination' ? [] : selectedAssets;
+        const bridgeAssets = selectedAssets;
         readiness.push({
           chainNamespace: chain.chainNamespace,
           ready: issues.length === 0,
           configurationReady,
-          funding,
           selectedAssets: selectedAssets.map((a) => ({
             ...a,
             token: typeof a.token === 'string' ? a.token : { ...a.token },

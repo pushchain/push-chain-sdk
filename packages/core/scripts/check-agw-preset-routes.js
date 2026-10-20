@@ -124,19 +124,18 @@ async function main() {
           chainNamespace,
         });
         result.pushReadiness = push.readiness;
-        const destination = PushChain.utils.agentic.presets.get(category, {
-          agent,
-          chainNamespace,
-          funding: 'destination',
-        });
-        assert.equal(destination.readiness.ready, true);
-        assert.deepEqual(destination.rules[0].assets, []);
+        // Explicit prefunded fixture, not public preset acceptance or bridge proof.
+        assert.equal(push.readiness.chains[0].configurationReady, true);
+        const fixtureRules = push.rules.map((rule) => ({
+          ...rule,
+          assets: [],
+        }));
         const prepared = await prepareWalletRules(
           runtime,
           gen,
           owner,
           wallet,
-          publicRules(destination.rules),
+          publicRules(fixtureRules),
           snap
         );
         const data = gen.contracts.encodeCreateWalletAt(
@@ -154,8 +153,8 @@ async function main() {
           gas: BigInt(20000000),
         });
         assert(simulated.data && simulated.data !== '0x');
-        result.destinationFactorySimulation = 'passed';
-        result.selectedAssets = destination.readiness.chains[0].selectedAssets;
+        result.prefundedFixtureFactorySimulation = 'passed';
+        result.selectedAssets = push.readiness.chains[0].selectedAssets;
         // If static registry support is advertised, verify preparation against real metadata too.
         if (push.readiness.ready) {
           await prepareWalletRules(

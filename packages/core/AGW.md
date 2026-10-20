@@ -132,11 +132,11 @@ function walletErrorText(error: unknown): string {
 
 Creation and rule-preparation errors include a zero-based `details.ruleIndex` when a rule can be identified, with `assetIndex`, `callIndex` and `field` where available. The UI message uses a one-based rule number. Use these details to show the error on the relevant rule instead of only in a footer. Read/receipt failures preserve their causes and transaction hashes; do not automatically retry a submitted transaction whose outcome is unknown.
 
-`TOKEN_ROUTE_UNAVAILABLE` means an asset cannot be resolved for transfers from Push. It is not a token-symbol formatting request. Choose a supported source token, or regenerate the preset with `funding: 'destination'` when using assets already held by the destination account. The wallet can be created before funding; destination balances are needed before execution. Pass returned `rules` unchanged. **Do not copy `readiness.chains[].selectedAssets` back into `rules[].assets` in destination-funded mode**: selectedAssets is review metadata and doing so reintroduces unsupported bridge requirements.
+`TOKEN_ROUTE_UNAVAILABLE` means an asset cannot be resolved for transfers from Push. Choose a token with a supported route on this network, or wait for a verified PRC20 route for that exact token address. Changing a symbol does not create a route. Display `error.userMessage` and check preset readiness before creation.
 
 A DEX condition-limit failure reports `details.reason = 'RULE_CONSTRAINT_LIMIT'`, `actual`, `limit` and `callCount`. Conditions here are generated input checks (for example token, recipient and amount checks), rather than the number of visible function names. A stock two-token, single-router preset contains six allowed-call entries and twenty conditions. Appending the same call list again makes forty conditions. The SDK rejects this; it does not deduplicate, remove conditions or split authority automatically. Preserve per-chain rules and regenerate after edits rather than appending generated calls.
 
-For the review screen, show the actual network (including testnet name) and funding mode. In destination-funded mode, selectedAssets.maxTotal is not an enforced destination lifetime limit; the grant has no Push token-export budget. Label maxGasPerCall as a maximum PC gas budget, not a guaranteed fee or execution gas-unit count.
+For the review screen, show the actual network (including testnet name), selected token addresses and limits. Label maxGasPerCall as a maximum PC gas budget, not a guaranteed fee or execution gas-unit count. maxTotal meters cumulative Push outbounds; it is not a lifetime destination-spend limit.
 
 ## Solana destinations
 
@@ -207,7 +207,7 @@ const { rules: reviewTemplates } = PushChain.utils.agentic.presets.get(
 // Supply the agent to get complete Rule[] configuration.
 const configuredPreset = PushChain.utils.agentic.presets.get(
   PushChain.CONSTANTS.AGENTIC.PRESETS.CATEGORY.LENDING,
-  { chainNamespace: 'eip155:11155111', agent: '0x0000000000000000000000000000000000001234', funding: 'destination' },
+  { chainNamespace: 'eip155:11155111', agent: '0x0000000000000000000000000000000000001234' },
 );
 // Destination assets must already be funded; no Push token exports are granted.
 // Show configuredPreset.readiness.chains[0].selectedAssets in the review UI.
@@ -219,7 +219,6 @@ function filledPreset(agent: Address, tokenIn: Address, tokenOut: Address) {
     PushChain.CONSTANTS.AGENTIC.PRESETS.CATEGORY.DEXES,
     {
       chainNamespace: 'eip155:11155111',
-      funding: 'destination',
       agent,
       validUntil: Math.floor(Date.now() / 1000) + 3600,
       maxGasPerCall: BigInt(10) ** BigInt(18),
@@ -257,13 +256,13 @@ These are small, protocol-specific subsets chosen to fit the 32-call/32-pin ceil
 | Arbitrum Sepolia | WETH / Circle USDC | Aave USDC |
 | BSC testnet | WBNB / Venus USDT | Venus USDT, USDC |
 
-Staking defaults are ETH/stETH/wstETH on Ethereum and the reviewed EigenLayer strategy's WETH on Sepolia. Testnet tokens with similar names can have different addresses; the returned addresses are authoritative. These tokens may lack Push PRC20 routes and can instead be used with destination-held balances. Defaults do not guarantee active reserves, liquidity, a Push PRC20 route or execution. In particular, an unmodified preset can fail rule preparation if its default assets lack PRC20 mappings. For destination-only use, pass `funding: 'destination'`: the SDK generates the operation constraints, returns empty rule bridge assets and retains selected token limits in readiness metadata. This grants no token export budget from Push and requires already-funded destination balances. Token addresses are returned as before; metadata was verified when defining the policy. No runtime metadata/price fetch is added to get.
+Staking defaults are ETH/stETH/wstETH on Ethereum and the reviewed EigenLayer strategy's WETH on Sepolia. Testnet tokens with similar names can have different addresses; the returned addresses are authoritative. Defaults do not guarantee active reserves, liquidity or a Push PRC20 route. An unmodified preset cannot be granted when its assets lack matching PRC20 routes. The SDK preserves the selected tokens and caps and reports unavailable routes; it never removes assets to bypass this check. No runtime metadata/price fetch is added to get.
 
 ### Funding and release-network checks
 
-`funding` defaults to `'push'`. Missing PRC20 registry entries produce `BRIDGE_ASSET_UNAVAILABLE`, and readiness is false while the returned rule retains all requested assets. No address or cap is silently replaced. `network` defaults to `TESTNET_DONUT` (`TESTNET` is accepted as an alias); use the connected client's Push network when supplying it. Networks without a verified AGW deployment report `AGW_NETWORK_UNAVAILABLE`.
+Missing PRC20 registry entries produce `BRIDGE_ASSET_UNAVAILABLE`, and readiness is false while the returned rule retains all requested assets. No address or cap is silently replaced. `network` defaults to `TESTNET_DONUT` (`TESTNET` is accepted as an alias). Networks without a verified AGW deployment report `AGW_NETWORK_UNAVAILABLE`.
 
-Use `funding: 'destination'` for the prefunded CEA workflow. Selected tokens still generate the same target/function/amount/recipient/spender restrictions, exposed alongside their caps in `readiness.chains[].selectedAssets`. Returned `rule.assets` is intentionally empty, which grants zero Push token-export authority. It is safe to pass these returned rules directly to create/update. The mode does not fund the destination, wrap ETH, mint testnet tokens or enable an unsupported network. Do not relabel it as bridge funding in the UI.
+The public preset API has no `funding` option. Remove it from existing integrations; supplying it now produces `INVALID_RULE` rather than silently changing permissions. Internal prefunded CEA test fixtures explicitly clear bridge assets to isolate protocol constraints. Those fixtures do not demonstrate that an unsupported preset route is executable.
 
 Existing mappings distinguish token identity by chain and address, including address casing for EVM. WETH/stETH Sepolia mappings and string/address-word source metadata are supported; mainnet or other-chain WETH is never aliased to them. Protocol mock LINK, Moonwell/Venus mocks and Circle testnet USDC can differ from the supported source tokens; they remain unavailable for bridge funding until real matching routes exist.
 
@@ -288,7 +287,7 @@ Explicit `validUntil` and `maxGasPerCall` override policy values; zero gas is pr
 
 ### Configure, inspect and regenerate
 
-`readiness.ready` requires complete configuration plus offline SDK deployment/destination/bridge-registry support for the selected funding mode. Per-chain `configurationReady` reports input completeness separately. These checks do not verify live balances, reserve flags, liquidity, current deployed bytecode or source identity; grant preparation still verifies wiring and token metadata on-chain before signing. `readiness.chains` gives per-chain `issues`, `disabledCalls`, `excludedCalls`, catalog `knownTokens`, `selectedAssets`, `bridgeAssets`, `funding` and `zeroBridgeLimits`. Display `selectedAssets` as the reviewed token/amount permissions in either mode; `rule.assets` describes Push bridge permissions only. `bridgeAssets` reports registry presence, not verified live deployment. Mainnet templates remain discoverable but have `DESTINATION_UNAVAILABLE` on Donut. These are additive result fields; `rules` remains accepted by the existing create/update methods.
+`readiness.ready` requires complete configuration plus offline SDK deployment, destination and bridge-registry support. Per-chain `configurationReady` reports input completeness separately. These checks do not verify live balances, reserve flags, liquidity or deployed bytecode. Grant preparation verifies wiring and token metadata on-chain before signing. Per-chain `selectedAssets` mirrors the selected rule assets; `bridgeAssets` reports registry presence, not verified live deployment. Mainnet templates remain discoverable but report `DESTINATION_UNAVAILABLE` on Donut. Check readiness before passing `rules` to create/update.
 
 Tokens and permission defaults come directly from the SDK: omitted `assets` populates the curated subset and its caps in every returned `rule.assets`. Omitted gas and expiry use the policy below. The caller supplies the agent and can filter chains; no per-network token selection is required. Show the generated permissions for owner review and allow explicit overrides. Regenerate via get after an edit so operation pins/approvals match the new caps. Show explicitly zero-cap calls as disabled and present excluded calls clearly. A zero bridge limit can be intentional when assets are already at the destination; it is reported separately from operation readiness.
 

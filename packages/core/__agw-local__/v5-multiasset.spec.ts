@@ -358,19 +358,18 @@ describe('v6 multi-asset SDK management and execution', () => {
   );
 
   it.each(['DEXES', 'LENDING', 'STAKING'] as const)(
-    'public %s destination-funded defaults create directly without rewriting returned rules',
+    '%s constraints work in an explicit prefunded contract fixture',
     async (category) => {
       const generated = agenticPresets.get(category, {
         chainNamespace: CHAIN_NS,
         agent: h.wallets[1].account!.address,
-        funding: 'destination',
       });
-      expect(generated.readiness.ready).toBe(true);
+      expect(generated.readiness.chains[0].configurationReady).toBe(true);
       expect(
         generated.readiness.chains[0].selectedAssets.length
       ).toBeGreaterThan(0);
-      expect(generated.rules[0].assets).toEqual([]);
-      const { wallet, id } = await setup(generated.rules[0]);
+      expect(generated.rules[0].assets!.length).toBeGreaterThan(0);
+      const { wallet, id } = await setup({ ...generated.rules[0], assets: [] });
       const actual = await stored(wallet, id);
       expect(actual.assets).toEqual([
         {

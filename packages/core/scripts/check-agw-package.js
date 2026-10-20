@@ -24,20 +24,27 @@ async function main() {
   assert(pack.files.some((f) => f.path === 'AGW.md'));
   assert(pack.files.some((f) => f.path === 'MARKETPLACE.md'));
   assert.equal(typeof cjs.PushChain.utils.job.buildJobSpec, 'function');
-  assert.equal(typeof cjs.PushChain.utils.market.encodeAgentCardRules, 'function');
+  assert.equal(
+    typeof cjs.PushChain.utils.market.encodeAgentCardRules,
+    'function'
+  );
   assert(!pack.files.some((f) => /(^|\/)\.env($|\.)/.test(f.path)));
   assert(
     !pack.files.some((f) =>
-      /(^|\/)(plan|__e2e__|__agw-local__|__market-local__|scripts)(\/|$)/.test(f.path)
+      /(^|\/)(plan|__e2e__|__agw-local__|__market-local__|scripts)(\/|$)/.test(
+        f.path
+      )
     )
   );
   const preset = cjs.PushChain.utils.agentic.presets.get('LENDING', {
     agent: '0x0000000000000000000000000000000000005678',
     chainNamespace: 'eip155:11155111',
-    funding: 'destination',
   });
-  assert.equal(preset.readiness.ready, true);
-  assert.deepEqual(preset.rules[0].assets, []);
+  assert.equal(preset.readiness.ready, false);
+  assert.deepEqual(
+    preset.rules[0].assets,
+    preset.readiness.chains[0].selectedAssets
+  );
   assert(preset.readiness.chains[0].selectedAssets.length > 0);
   assert.equal(
     cjs.PushChain.utils.agentic.presets.get('LENDING', {
@@ -57,8 +64,16 @@ async function main() {
     const file = path.join(tmp, 'consumer.ts');
     fs.writeFileSync(file, source);
     const marketFile = path.join(tmp, 'market-consumer.ts');
-    const marketGuide = fs.readFileSync(path.join(built, 'MARKETPLACE.md'), 'utf8');
-    fs.writeFileSync(marketFile, [...marketGuide.matchAll(/```ts\n([\s\S]*?)```/g)].map(m => m[1]).join('\n\n'));
+    const marketGuide = fs.readFileSync(
+      path.join(built, 'MARKETPLACE.md'),
+      'utf8'
+    );
+    fs.writeFileSync(
+      marketFile,
+      [...marketGuide.matchAll(/```ts\n([\s\S]*?)```/g)]
+        .map((m) => m[1])
+        .join('\n\n')
+    );
     const config = ts.readConfigFile(
       path.join(root, 'packages/core/tsconfig.lib.json'),
       ts.sys.readFile

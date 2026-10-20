@@ -178,16 +178,15 @@ export function tokenRouteUnavailable(
     (chainNamespace.startsWith('solana:')
       ? 'the selected Solana network'
       : 'the selected network');
-  const message = `This token cannot be sent from Push to ${network}. Choose a supported token, or use destination funding for balances held on that network.`;
+  const message = `This token cannot be sent from Push to ${network}. Choose a token with a supported Push route.`;
   return new AgenticError(AGENTIC_ERROR_CODE.TOKEN_ROUTE_UNAVAILABLE, message, {
     userMessage: message,
-    hint: "For prefunded preset destinations, use funding: 'destination' and pass the returned rules unchanged. selectedAssets is review metadata; do not copy it back into rule.assets.",
+    hint: 'Choose a supported token on this network, or wait for a verified PRC20 route for this exact token address. Token symbols alone do not identify a route.',
     details: {
       token,
       chainNamespace,
       assetIndex,
       field: `assets[${assetIndex}].token`,
-      funding: 'push',
     },
     cause,
   });

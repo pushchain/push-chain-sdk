@@ -68,8 +68,7 @@ it('default lending policy needs only the agent to become locally ready', () => 
     agenticPresets.get('LENDING', {
       chainNamespace,
       agent: ADDR.agent,
-      funding: 'destination',
-    }).readiness.ready
+    }).readiness.chains[0].configurationReady
   ).toBe(true);
 });
 it('zero operation caps remain valid disabled configurations, while zero bridge totals are separately reported', () => {
