@@ -4,6 +4,10 @@ Running history for work continued on `feat/agw-sdk-v4`, covering AGW, marketpla
 
 For each meaningful checkpoint, add a dated entry with the change, decisions, validation, remaining work and relevant commit/evidence links. Keep earlier entries as history and mark superseded decisions explicitly. Distinguish implemented code, planning, local/fork checks, funded execution, Git delivery and package publication. Git history for this file records the exact commit introducing each checkpoint.
 
+## 2026-10-20 — concise contracts-team handoff
+
+Reduced [pending questions](marketplace/questions.md) to the two current dependencies: canonical CEA deployments and the shared JobSpec/evaluator interface. Removed resolved and deferred discussions from the handoff; earlier context remains in Git history and the research docs. Documentation only; no SDK behavior changed.
+
 ## 2026-10-20 — SDK-only completion before contract/deployment handoff
 
 **Implemented:** opening proof and mined-input recovery without re-signing; immutable reviewed inputs; event-hash/transaction-input recovery for same-block and archive-less card history; resumable paid previews with zero new payment, direct prepared-read sending and ABI-name/decimal descriptions; exact watcher cursors, deduplication, callback isolation and canonical-cursor reorg stop; provider write simulation. Native single/atomic sends now preserve broadcast hashes after receipt/index failures and cannot fall back after broadcast. Signature fixtures compile from repo-owned source; the CI reporter derives success from final counts instead of Jest's pre-final flag.
