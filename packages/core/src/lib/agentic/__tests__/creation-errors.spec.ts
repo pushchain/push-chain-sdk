@@ -202,3 +202,25 @@ it.each([
     ).toContain(text);
   }
 );
+
+it.each([undefined, []])(
+  'rejects a tokens-only rule with actionable guidance before signing (%j)',
+  async (allowedCalls) => {
+    const rt = mockRuntime(new FakeChain(), { signer: ADDR.owner });
+    const sdk = new AgenticNamespaceImpl(rt);
+    const { rules } = agenticPresets.get('LENDING', options);
+    await expect(
+      sdk.create('Tokens only', {
+        rules: [{ ...rules[0], allowedCalls } as never],
+      })
+    ).rejects.toMatchObject({
+      code: 'INVALID_RULE',
+      details: { reason: 'ALLOWED_FUNCTION_REQUIRED', field: 'allowedCalls' },
+      userMessage: expect.stringContaining(
+        'Selecting tokens and limits alone does not authorize transfers'
+      ),
+    });
+    expect(rt.executeMock).not.toHaveBeenCalled();
+    expect(rt.atomicMock).not.toHaveBeenCalled();
+  }
+);

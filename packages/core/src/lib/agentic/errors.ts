@@ -181,7 +181,7 @@ export function tokenRouteUnavailable(
   const message = `This token cannot be sent from Push to ${network}. Choose a token with a supported Push route.`;
   return new AgenticError(AGENTIC_ERROR_CODE.TOKEN_ROUTE_UNAVAILABLE, message, {
     userMessage: message,
-    hint: 'Choose a supported token on this network, or wait for a verified PRC20 route for this exact token address. Token symbols alone do not identify a route.',
+    hint: 'Choose a supported token on this network, or wait for a verified PRC20 route for this exact token address. The selected app must also support that exact token address; matching symbols are not sufficient.',
     details: {
       token,
       chainNamespace,

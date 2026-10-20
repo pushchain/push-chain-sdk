@@ -353,3 +353,11 @@ Uniswap uses destination WETH/Circle USDC; Aave uses its faucet LINK. Their gene
 The additional opt-in group `agw-presets-expanded` covers EigenLayer deposits on Sepolia; Uniswap swaps on Base/Arbitrum Sepolia; PancakeSwap plus Venus on BNB testnet; and Aave plus Moonwell on Base Sepolia. Use the same preflight/run commands with `--group agw-presets-expanded`. Each scenario funds a fresh wallet with at most 100 PC and checks any required destination-native PRC20 before transfer. Native-wrap cases use 10^12 raw native-token units. These are deposit/swap/redemption checks, not borrow/repay or every-market coverage.
 
 AGW token resolution uses the destination chain for ordinary token objects: an explicit Base or Arbitrum ETH token must not select Sepolia's PRC20 merely because its symbol/address is identical. An explicit Push PRC20 reference must name the same source chain as the destination; a mismatch fails before signing.
+
+### Creation UI: apps, tokens and preset availability
+
+A rule requires at least one allowed function, even when tokens and limits are selected. A tokens-only rule returns `INVALID_RULE`, with `details.reason = 'ALLOWED_FUNCTION_REQUIRED'` and actionable `userMessage`. App selection can only be hidden if the application explicitly supplies the intended function permissions; the SDK does not invent transfer recipients or permissions.
+
+`assets: []` remains valid for a universal rule with allowed calls. It grants no token transfers from Push; it never means all tokens. Allowed calls may still interact with destination-held assets under their configured constraints. There is no all-token wildcard. List each permitted token and cap explicitly (at most eight assets).
+
+For presets, check `readiness.ready` before enabling Create. Display the per-chain issues and the affected token address. Empty selections explain that transfers from Push are disabled. `BRIDGE_ASSET_UNAVAILABLE` identifies an unverified SDK route, not proof that no deployment exists anywhere. Do not substitute a routed token solely because its symbol matches: the protocol must support that exact address, and swaps need compatible liquidity. A transfer-only helper and additional token routes are not included in this update.

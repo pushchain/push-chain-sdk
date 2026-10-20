@@ -411,7 +411,7 @@ export function buildPresetApi(
           issues.push({
             code: 'ASSETS_REQUIRED',
             message:
-              'Choose tokens and their limits, then regenerate this preset.',
+              'No tokens selected: transfers from Push are disabled, not unrestricted. Choose explicit tokens and limits, then regenerate this preset.',
           });
         if (chain.swapRouters?.length && selectedAssets.length < 2)
           issues.push({

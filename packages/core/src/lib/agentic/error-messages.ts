@@ -66,6 +66,8 @@ export function agenticUserMessage(
       return 'This preset is unavailable for the selected network.';
   }
   if (code !== 'INVALID_RULE') return MESSAGES[code];
+  if (details?.['reason'] === 'ALLOWED_FUNCTION_REQUIRED')
+    return 'Add at least one allowed function. Selecting tokens and limits alone does not authorize transfers.';
   if (/validUntil|expiry|expired|future.*timestamp/i.test(diagnostic))
     return 'Choose an expiry date in the future.';
   if (/label.*(64|length|most)/i.test(diagnostic))

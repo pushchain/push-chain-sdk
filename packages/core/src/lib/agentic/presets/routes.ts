@@ -45,7 +45,7 @@ export function presetRoutes(
       issues.push({
         code: 'BRIDGE_ASSET_UNAVAILABLE',
         token,
-        message: `No SDK PRC20 mapping for ${chain}:${token} on ${network}. Choose a supported asset. This exact token needs a verified Push PRC20 route before it can be used.`,
+        message: `No SDK PRC20 mapping for ${chain}:${token} on ${network}. This preset cannot be created with this token until its Push route is verified. Choose a routed token only if the selected app supports that exact token address.`,
       });
       return { token, status: 'unavailable' as const };
     }
