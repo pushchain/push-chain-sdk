@@ -156,6 +156,18 @@ export function wrapSendError(err: unknown): unknown {
       cause: err,
     });
   }
+  if (
+    err &&
+    typeof err === 'object' &&
+    (('code' in err && err.code === 4001) ||
+      ('name' in err && err.name === 'UserRejectedRequestError'))
+  ) {
+    return new AgenticError(
+      AGENTIC_ERROR_CODE.REQUEST_REJECTED,
+      'The wallet request was cancelled.',
+      { cause: err }
+    );
+  }
   if (decoded || err instanceof PushChainExecutionError) {
     const e = err as {
       message?: string;

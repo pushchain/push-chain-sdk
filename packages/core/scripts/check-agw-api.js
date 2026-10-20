@@ -169,6 +169,9 @@ function snapshot(entry) {
       (context) => {
         const visit = (node) => {
           node = ts.visitEachChild(node, visit, context);
+          // Source property keys can use single quotes while declarations emit
+          // double quotes. Canonicalize syntax without changing the literal value.
+          if (ts.isStringLiteral(node)) return ts.factory.createStringLiteral(node.text);
           if (ts.isUnionTypeNode(node) || ts.isIntersectionTypeNode(node)) {
             const types = [...node.types].sort((a, b) =>
               printer

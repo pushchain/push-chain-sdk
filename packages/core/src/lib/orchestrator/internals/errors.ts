@@ -31,8 +31,10 @@ export interface DecodedErrorPayload {
  * discriminator lets callers classify via `instanceof PushChainExecutionError`
  * instead of sniffing error messages.
  *
- * Carries the origin-chain gateway tx hash. There is no successful Push Chain
- * tx to reference on this path — by definition the pcTx committed `FAILED`.
+ * A failed universal execution can carry its origin-chain gateway hash. Native
+ * confirmation/indexing errors retain the submitted Push hash instead; those
+ * errors do not prove that the transaction reverted. Track a retained hash
+ * before retrying an operation with side effects.
  *
  * `decodedError`: optional structured payload that flows through to terminal
  * failure hook payloads (199-02 / 299-02 / 399-02 / 999-02). Set by the
@@ -42,16 +44,21 @@ export interface DecodedErrorPayload {
 export class PushChainExecutionError extends Error {
   readonly code = 'PUSH_CHAIN_EXECUTION_FAILED' as const;
   readonly gatewayTxHash?: string;
+  /** Native Push transaction already broadcast before confirmation/indexing failed. */
+  readonly txHash?: `0x${string}`;
+  readonly pendingTransactionHash?: `0x${string}`;
   readonly decodedError?: DecodedErrorPayload;
   /** Underlying transport/RPC error, kept so raw revert data is not lost. */
   override readonly cause?: unknown;
   constructor(
     message: string,
-    opts: { gatewayTxHash?: string; decodedError?: DecodedErrorPayload; cause?: unknown } = {}
+    opts: { gatewayTxHash?: string; txHash?: `0x${string}`; pendingTransactionHash?: `0x${string}`; decodedError?: DecodedErrorPayload; cause?: unknown } = {}
   ) {
     super(normalizePublicErrorMessage(message));
     this.name = 'PushChainExecutionError';
     this.gatewayTxHash = opts.gatewayTxHash;
+    this.txHash = opts.txHash;
+    this.pendingTransactionHash = opts.pendingTransactionHash;
     this.decodedError = opts.decodedError;
     if (opts.cause !== undefined) this.cause = opts.cause;
   }
@@ -68,7 +75,7 @@ export class AtomicBatchUnavailableError extends PushChainExecutionError {
 /** Recovery metadata for a non-atomic Push batch. A pending hash is broadcast but unconfirmed. */
 export class PushChainBatchExecutionError extends PushChainExecutionError {
   readonly transactionHashes: `0x${string}`[];
-  readonly pendingTransactionHash?: `0x${string}`;
+  override readonly pendingTransactionHash?: `0x${string}`;
 
   constructor(message: string, transactionHashes: `0x${string}`[], pendingTransactionHash?: `0x${string}`) {
     super(message);

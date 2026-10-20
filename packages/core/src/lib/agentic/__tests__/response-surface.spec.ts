@@ -228,7 +228,9 @@ describe('public surface', () => {
   it('exposes the wallet marker and preset API, keeping deployment wiring and codecs internal', () => {
     expect(CONSTANTS.AGENTIC.WALLET).toBe('agentic:wallet');
     expect(Object.keys(CONSTANTS.AGENTIC).sort()).toEqual([
+      'JOB',
       'PRESETS',
+      'PRINCIPAL',
       'WALLET',
     ]);
     expect(Object.isFrozen(CONSTANTS.AGENTIC)).toBe(true);

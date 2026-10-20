@@ -352,6 +352,7 @@ describe('v6 multi-asset SDK management and execution', () => {
         })
       ).rejects.toMatchObject({
         decodedError: { name: 'PolicyCheckReverted(ArgPinAboveMax)' },
+        userMessage: expect.stringContaining('exceeds a rule'),
       });
     }
   );

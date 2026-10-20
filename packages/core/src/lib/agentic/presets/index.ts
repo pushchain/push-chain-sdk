@@ -3,6 +3,7 @@ import {
   AgenticError,
   AGENTIC_ERROR_CODE,
   capabilityUnavailable,
+  ruleConstraintLimit,
 } from '../errors';
 import type { RuleAsset, RuleCall, Pin } from '../agentic.types';
 import type {
@@ -360,10 +361,15 @@ export function buildPresetApi(
             'presetCalls',
             'preset must contain 1..32 allowed calls including approvals'
           );
-        if (calls.reduce((n, c) => n + (c.pins?.length ?? 0), 0) > 32)
-          throw capabilityUnavailable(
-            'presetPins',
-            'preset expansion exceeds 32 pins; reduce the token list or split rules across wallets'
+        const conditionCount = calls.reduce(
+          (n, c) => n + (c.pins?.length ?? 0),
+          0
+        );
+        if (conditionCount > 32)
+          throw ruleConstraintLimit(
+            conditionCount,
+            calls.length,
+            chain.chainNamespace
           );
         const pairs = new Map<string, boolean>();
         for (const call of calls) {

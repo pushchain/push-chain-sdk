@@ -56,6 +56,8 @@ interface ReadOptionsInput {
   idl?: Idl;
   /** Typed contract call — encodes the call and decodes the result. */
   abi?: Abi;
+  /** Encoded EVM view call. The result is returned as raw consensus bytes. */
+  callData?: Hex;
   /**
    * With `abi`: the function to call (required). With `idl`: the account layout
    * (optional — inferred from the discriminator; snake_case or camelCase).
@@ -94,7 +96,7 @@ interface ReadOptionsInput {
   };
 }
 
-type NoQuery = { token?: never; tokenProgram?: never; idl?: never; accountName?: never; abi?: never; functionName?: never; args?: never; storageSlot?: never; web2?: never };
+type NoQuery = { token?: never; tokenProgram?: never; idl?: never; accountName?: never; abi?: never; callData?: never; functionName?: never; args?: never; storageSlot?: never; web2?: never };
 type Query<K extends keyof NoQuery, T> = Omit<NoQuery, K> & T;
 type EvmChain = Extract<CHAIN, `eip155:${string}`>;
 type SvmChain = Extract<CHAIN, `solana:${string}`>;
@@ -105,6 +107,7 @@ export type ReadQueryOptions =
   | ({ chain: SvmChain } & Query<'token', { token: string }>)
   | ({ chain: SvmChain } & Query<'idl' | 'functionName' | 'args', { idl: Idl; functionName?: string; args?: readonly unknown[] }>)
   | ({ chain: EvmChain } & Query<'abi' | 'functionName' | 'args', { abi: Abi; functionName: string; args?: readonly unknown[] }>)
+  | ({ chain: EvmChain } & Query<'callData', { callData: Hex }>)
   | ({ chain: EvmChain } & Query<'storageSlot', { storageSlot: Hex | bigint }>)
   | ({ chain: Web2ReadChain } & Query<'web2', { web2: ReadWeb2Options }>);
 
@@ -154,7 +157,7 @@ export type ReadValue<O> = O extends { abi: infer A extends Abi; functionName: i
   ? number extends A['length'] ? unknown : ReadCallValue<A, F, ReadFunctionArgs<O, A, F>>
   : O extends { web2: { extract: infer E extends readonly Web2Extract[] } }
     ? { readonly [K in keyof E]: Web2Value<E[K]> }
-    : O extends { storageSlot: unknown } ? Hex
+  : O extends { storageSlot: unknown } | { callData: unknown } ? Hex
     : O extends { idl: infer I extends Idl }
       ? IdlReadValue<I, O extends { functionName: infer N extends string } ? N : undefined>
       : bigint;
@@ -180,7 +183,7 @@ export const ERC20_BALANCE_OF_ABI = [
   },
 ] as const satisfies Abi;
 
-const QUERY_KEYS = ['token', 'abi', 'idl', 'storageSlot', 'web2'] as const;
+const QUERY_KEYS = ['token', 'abi', 'callData', 'idl', 'storageSlot', 'web2'] as const;
 
 function queryKind(o: ReadOptionsInput): (typeof QUERY_KEYS)[number] | 'native' {
   if ('tokenProgram' in o) throw new InvalidReadQueryError('tokenProgram is detected from the mint; remove options.tokenProgram');
@@ -225,6 +228,10 @@ export function toReadQuery(subject: string, o: ReadOptionsInput, resolvedTokenP
       case 'abi':
         if (!o.functionName) throw new InvalidReadQueryError('abi needs functionName');
         return { type: 'contractCall', target: subject, abi: o.abi as Abi, functionName: o.functionName, args: o.args };
+      case 'callData':
+        if (!/^0x(?:[\da-f]{2}){4,}$/i.test(o.callData ?? ''))
+          throw new InvalidReadQueryError('callData must contain a function selector and complete bytes');
+        return { type: 'contractCall', target: subject, callData: o.callData as Hex };
       case 'storageSlot':
         return { type: 'storageSlot', target: subject, slot: o.storageSlot as Hex | bigint };
       default:

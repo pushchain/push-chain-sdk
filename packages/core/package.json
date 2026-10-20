@@ -73,6 +73,7 @@
     "src/**/*.json",
     "README.md",
     "AGW.md",
+    "MARKETPLACE.md",
     "CHANGELOG.md"
   ],
   "devDependencies": {

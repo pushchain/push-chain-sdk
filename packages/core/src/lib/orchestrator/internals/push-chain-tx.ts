@@ -76,7 +76,7 @@ async function getIndexedPushTransaction(
         receiptWaited = true;
         if (receipt.status === 'reverted') {
           throw new PushChainExecutionError(
-            `${label} — Push Chain transaction ${txHash} reverted`
+            `${label} — Push Chain transaction ${txHash} reverted`, { txHash }
           );
         }
       }
@@ -149,6 +149,7 @@ export async function sendPushTx(
       }
     }
     if (executor && ctx.universalSigner.signAuthorization) {
+      let submittedHash: `0x${string}` | undefined;
       try {
         printLog(
           ctx,
@@ -159,6 +160,7 @@ export async function sendPushTx(
           calls,
           signer: ctx.universalSigner,
         });
+        submittedHash = txHash;
         const txResponse = await getIndexedPushTransaction(
           ctx,
           txHash,
@@ -166,6 +168,10 @@ export async function sendPushTx(
         );
         return await transformFn(txResponse, eventBuffer);
       } catch (err) {
+        if (submittedHash) {
+          if (err instanceof PushChainExecutionError && err.txHash === submittedHash) throw err;
+          throw new PushChainExecutionError(normalizePublicErrorMessage(err), { txHash: submittedHash, pendingTransactionHash: submittedHash, cause: err });
+        }
         // Only fall back when the wallet genuinely can't sign a 7702
         // authorization. This is raised before any broadcast, so falling back
         // to sequential execution cannot double-execute. Any other error
@@ -313,12 +319,17 @@ export async function sendPushTx(
     value: execute.value,
     signer: ctx.universalSigner,
   });
+  try {
   const txResponse = await getIndexedPushTransaction(
     ctx,
     txHash,
     'sendPushTx'
   );
   return await transformFn(txResponse, eventBuffer);
+  } catch (cause) {
+    if (cause instanceof PushChainExecutionError && cause.txHash === txHash) throw cause;
+    throw new PushChainExecutionError(normalizePublicErrorMessage(cause), { txHash, pendingTransactionHash: txHash, cause });
+  }
 }
 
 // ============================================================================

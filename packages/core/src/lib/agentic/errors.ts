@@ -2,6 +2,7 @@ import {
   PushChainExecutionError,
   type DecodedErrorPayload,
 } from '../orchestrator/internals/errors';
+import { agenticUserMessage, agenticRevertUserMessage } from './error-messages';
 
 /**
  * Stable AGW error codes. The first groups are specified by the AGW SDK page
@@ -15,6 +16,8 @@ export const AGENTIC_ERROR_CODE = {
   AMBIGUOUS_RULE: 'AMBIGUOUS_RULE',
   TARGET_NOT_ON_RULE_CHAIN: 'TARGET_NOT_ON_RULE_CHAIN',
   ASSET_CHAIN_MISMATCH: 'ASSET_CHAIN_MISMATCH',
+  TOKEN_ROUTE_UNAVAILABLE: 'TOKEN_ROUTE_UNAVAILABLE',
+  REQUEST_REJECTED: 'REQUEST_REJECTED',
   // initialize with agenticWallet (spec 3.f)
   NOT_OWNER_OR_AGENT: 'NOT_OWNER_OR_AGENT',
   WALLET_NOT_DEPLOYED: 'WALLET_NOT_DEPLOYED',
@@ -48,24 +51,34 @@ export type AgenticErrorCode =
  * eligibility or a read that cannot be trusted. Nothing was signed or sent
  * except receipt errors, which retain the submitted transaction hash.
  */
-export class AgenticError extends Error {
-  readonly code: AgenticErrorCode;
+export class AgenticError<
+  Code extends string = AgenticErrorCode
+> extends Error {
+  readonly code: Code;
+  /** Safe end-user copy; message/cause retain technical diagnostics. */
+  readonly userMessage: string;
   readonly hint?: string;
   readonly details?: Readonly<Record<string, unknown>>;
   override readonly cause?: unknown;
 
   constructor(
-    code: AgenticErrorCode,
+    code: Code,
     message: string,
     opts: {
       hint?: string;
       details?: Record<string, unknown>;
       cause?: unknown;
+      userMessage?: string;
     } = {}
   ) {
     super(message);
     this.name = 'AgenticError';
     this.code = code;
+    this.userMessage =
+      opts.userMessage ??
+      (Object.prototype.hasOwnProperty.call(AGENTIC_ERROR_CODE, code)
+        ? agenticUserMessage(code as AgenticErrorCode, message, opts.details)
+        : message);
     this.hint = opts.hint;
     this.details = opts.details;
     this.cause = opts.cause;
@@ -80,6 +93,7 @@ export class AgenticError extends Error {
  */
 export class AgenticRevertError extends PushChainExecutionError {
   readonly agenticCode?: string;
+  readonly userMessage: string;
 
   constructor(
     message: string,
@@ -97,7 +111,86 @@ export class AgenticRevertError extends PushChainExecutionError {
     });
     this.name = 'AgenticRevertError';
     this.agenticCode = opts.agenticCode;
+    this.userMessage = agenticRevertUserMessage(
+      opts.decodedError?.name ?? opts.agenticCode
+    );
   }
+}
+
+export function ruleConstraintLimit(
+  actual: number,
+  callCount: number,
+  chainNamespace?: string
+): AgenticError {
+  const message = `This rule has ${actual} conditions. The maximum is 32. Remove duplicate functions or select fewer tokens or functions.`;
+  return new AgenticError(AGENTIC_ERROR_CODE.INVALID_RULE, message, {
+    userMessage: message,
+    hint: 'Regenerate the preset after changing selections. Do not drop individual conditions or bypass the contract limit.',
+    details: {
+      reason: 'RULE_CONSTRAINT_LIMIT',
+      field: 'allowedCalls',
+      actual,
+      limit: 32,
+      callCount,
+      chainNamespace,
+    },
+  });
+}
+
+export function ruleErrorContext(
+  error: unknown,
+  ruleIndex: number,
+  chainNamespace?: string
+): unknown {
+  if (!(error instanceof AgenticError)) return error;
+  if (error.details?.['ruleIndex'] !== undefined) return error;
+  return new AgenticError(error.code, error.message, {
+    hint: error.hint,
+    userMessage: `Rule ${ruleIndex + 1}: ${error.userMessage}`,
+    cause: error.cause ?? error,
+    details: {
+      ...error.details,
+      ruleIndex,
+      ...(chainNamespace ? { chainNamespace } : {}),
+    },
+  });
+}
+
+export function tokenRouteUnavailable(
+  cause: unknown,
+  token: string,
+  chainNamespace: string,
+  assetIndex: number
+): AgenticError {
+  if (cause instanceof AgenticError) return cause;
+  const names: Record<string, string> = {
+    'eip155:1': 'Ethereum',
+    'eip155:11155111': 'Ethereum Sepolia',
+    'eip155:8453': 'Base',
+    'eip155:84532': 'Base Sepolia',
+    'eip155:42161': 'Arbitrum',
+    'eip155:421614': 'Arbitrum Sepolia',
+    'eip155:56': 'BNB Chain',
+    'eip155:97': 'BNB Testnet',
+  };
+  const network =
+    names[chainNamespace] ??
+    (chainNamespace.startsWith('solana:')
+      ? 'the selected Solana network'
+      : 'the selected network');
+  const message = `This token cannot be sent from Push to ${network}. Choose a supported token, or use destination funding for balances held on that network.`;
+  return new AgenticError(AGENTIC_ERROR_CODE.TOKEN_ROUTE_UNAVAILABLE, message, {
+    userMessage: message,
+    hint: "For prefunded preset destinations, use funding: 'destination' and pass the returned rules unchanged. selectedAssets is review metadata; do not copy it back into rule.assets.",
+    details: {
+      token,
+      chainNamespace,
+      assetIndex,
+      field: `assets[${assetIndex}].token`,
+      funding: 'push',
+    },
+    cause,
+  });
 }
 
 export function capabilityUnavailable(

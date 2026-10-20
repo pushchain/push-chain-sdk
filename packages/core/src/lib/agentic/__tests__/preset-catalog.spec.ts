@@ -45,7 +45,7 @@ it('rejects native-token markers and oversized pin expansion', () => {
       ...input,
       assets: [...input.assets!, { token: ADDR.owner }],
     })
-  ).toThrow(/32 pins/);
+  ).toThrow(/maximum is 32/);
   expect(() =>
     agenticPresets.get('DEXES', {
       ...input,

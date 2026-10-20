@@ -38,6 +38,7 @@ import { UINT256_MAX } from './codec/defaults';
 import { deriveAgwSvmCea, svmKey } from './codec/svm-accounts';
 import type { AgenticRuntime } from './runtime';
 import { CHAIN } from '../constants/enums';
+import { resolveRuleDestination } from './management/destination';
 
 export const WALLET = 'agentic:wallet' as const;
 const PUBLIC_INPUT = Symbol('AGW public rule');
@@ -115,6 +116,15 @@ export async function normalizePublicRule(
   const rule = input as unknown as RuleInput;
   if ('format' in rule && rule.format === 'decoded') return input;
   const r = rule as Rule;
+  if (!isAddress(r.agent, { strict: false }) || /^0x0{40}$/i.test(r.agent))
+    throw new AgenticError(
+      AGENTIC_ERROR_CODE.INVALID_RULE,
+      'Enter a valid agent wallet address.',
+      {
+        userMessage: 'Enter a valid agent wallet address.',
+        details: { field: 'agent' },
+      }
+    );
   rejectFields(
     r,
     [
@@ -196,12 +206,20 @@ export async function normalizePublicRule(
     throw invalid('native rules do not carry assets or maxGasPerCall');
   const own = native
     ? wallet
-    : getAddress(
-        (await runtime.resolveCEA(wallet, r.chainNamespace as CHAIN)).cea
-      );
+    : await resolveRuleDestination(runtime, wallet, r.chainNamespace as CHAIN);
   const nativeActions: NativeAction[] = [];
   const calls: UniversalRule['allowedCalls'] = [];
-  for (const call of r.allowedCalls) {
+  for (const [callIndex, call] of r.allowedCalls.entries()) {
+    if (!isAddress(call.target, { strict: false }))
+      throw new AgenticError(
+        AGENTIC_ERROR_CODE.INVALID_RULE,
+        'An allowed function has an invalid app address.',
+        {
+          userMessage:
+            'An allowed function has an invalid app address. Select the app again.',
+          details: { field: `allowedCalls[${callIndex}].target`, callIndex },
+        }
+      );
     const pins = call.pins ?? [];
     const wirePins: ArgPinWire[] = [];
     const occupied = new Set<number>();

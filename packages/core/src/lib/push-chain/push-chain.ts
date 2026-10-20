@@ -55,6 +55,14 @@ import { notAllowedInAgenticMode } from '../agentic/execution/guards';
 import { adaptTrackedResponse } from '../agentic/response';
 import { createAgenticRuntime, type AgenticRuntime } from '../agentic/runtime';
 import type { AgenticNamespace } from '../agentic/agentic.types';
+import { MarketNamespaceImpl } from '../market/market';
+import { JobNamespaceImpl } from '../job/job';
+import type { MarketNamespace } from '../market/types';
+import type { JobNamespace } from '../job/types';
+import type { StackRuntime } from '../market/runtime';
+import { bindJobPreviewAccounts } from '../job-spec/preview';
+import { jobReadOptions, prepareJobRead } from '../job-spec/read';
+import type { ExecuteJobReadOptions, PreparedJobRead } from '../job-spec/types';
 
 /** Options accepted by `PushChain.initialize` / `reinitialize`. */
 export interface PushChainInitializeOptions {
@@ -194,7 +202,8 @@ export class PushChain {
      * Defaults to the canonical registry on Donut. For your own application receiver,
      * pass callback.target, gasLimit, abi and functionName, plus an optional args mapper.
      */
-    read: <const O extends ReadOptions>(subject: string, options: O & ValidateReadCall<O>) => Promise<UniversalReadResponse<ReadValue<O>>>;
+    read: (<const O extends ReadOptions>(subject: string, options: O & ValidateReadCall<O>) => Promise<UniversalReadResponse<ReadValue<O>>>) &
+      ((read: PreparedJobRead, options?: ExecuteJobReadOptions) => Promise<UniversalReadResponse<`0x${string}`>>) & { prepare: typeof prepareJobRead };
     /**
      * Build a validated `ReadSpec` for `subject` on `options.chain`: preflight (oracle
      * height, protocol fee, gas price), envelope encoding, budget sizing, expiry math.
@@ -288,6 +297,8 @@ export class PushChain {
    * handles. Ownership is the connected signer's Push identity.
    */
   agentic: AgenticNamespace;
+  market: MarketNamespace;
+  job: JobNamespace;
 
   /** @internal AGW execution context when initialized with `agenticWallet`. */
   private agenticContext?: AgenticExecutionContext;
@@ -330,6 +341,17 @@ export class PushChain {
 
     this.agenticRuntime = createAgenticRuntime(orchestrator, isReadMode);
     this.agentic = new AgenticNamespaceImpl(this.agenticRuntime);
+    const stackRuntime: StackRuntime = {
+      agw: this.agenticRuntime,
+      jobBlocks: new Map(),
+      account: () => this.universal.account as `0x${string}`,
+      wallet: () => this.agenticContext?.wallet,
+      send: (params, options) => this.universal.sendTransaction(params, options),
+      signTypedData: (data) => this.universal.signTypedData(data),
+      canSignTypedData: () => typeof this.universalSigner.signTypedData === 'function',
+    };
+    this.market = new MarketNamespaceImpl(stackRuntime);
+    this.job = new JobNamespaceImpl(stackRuntime);
 
     // eslint-disable-next-line @typescript-eslint/no-this-alias -- getters below need the instance
     const self = this;
@@ -411,14 +433,16 @@ export class PushChain {
         return orchestrator.rescueFunds.bind(orchestrator)(params);
       },
       // Only read()/executeReads() send transactions; prepare/simulate/track remain read-only.
-      read: async <const O extends ReadOptions>(subject: string, options: O) => {
-        const params = await resolveReadSpecParams(subject, withReadRefund(options), orchestrator.getNetwork(), orchestrator.getRpcUrls());
+      read: Object.assign(async (subject: string | PreparedJobRead, input?: ReadOptions | ExecuteJobReadOptions) => {
+        const options = typeof subject === 'string' ? input as ReadOptions : jobReadOptions(subject, input as ExecuteJobReadOptions);
+        const target = typeof subject === 'string' ? subject : subject.target;
+        const params = await resolveReadSpecParams(target, withReadRefund(options), orchestrator.getNetwork(), orchestrator.getRpcUrls());
         assertRequestEntrypoint(params.callback, 'read');
         if (this.isReadMode) throw new Error('Read only mode cannot call read function');
         const prepared = await orchestrator.prepareRead(params, options.progressHook);
         const { reads: [response] } = await executePreparedReads(readDeps(), [prepared] as const, options);
-        return response as UniversalReadResponse<ReadValue<O>>;
-      },
+        return response;
+      }, { prepare: prepareJobRead }) as PushChain['universal']['read'],
       prepareRead: async <const O extends ReadPrepareOptions>(subject: string, options: O & ValidateReadCall<O>) => {
         const params = await resolveReadSpecParams(subject, withReadRefund(options), orchestrator.getNetwork(), orchestrator.getRpcUrls());
         return orchestrator.prepareRead(params) as Promise<PreparedRead<ReadValue<O>>>;
@@ -455,6 +479,8 @@ export class PushChain {
         return bytesToHex(signBytes);
       },
     };
+
+    bindJobPreviewAccounts(this.universal, async (wallet, chain) => (await this.agenticRuntime.resolveCEA(wallet, chain)).cea);
 
     const network =
       orchestrator.getNetwork() === PUSH_NETWORK.MAINNET
