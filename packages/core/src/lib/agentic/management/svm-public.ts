@@ -13,6 +13,7 @@ import { deriveAgwSvmAta, svmKey } from '../codec/svm-accounts';
 import { compileSvmIdlRule } from '../codec/svm-idl';
 import { svmInvalid } from '../codec/svm-terms';
 import { validateSvmTerms } from '../codec/svm-terms';
+import { tokenRouteUnavailable } from '../errors';
 
 export function svmMetadata(runtime: AgenticRuntime) {
   return (
@@ -48,7 +49,7 @@ export async function preparePublicSvmRule(
   const tokenAccounts = new Map<Hex, Hex>(),
     mints = new Set<Hex>();
   const sources: { key?: Hex; token: Address }[] = [];
-  for (const asset of requested) {
+  for (const [assetIndex, asset] of requested.entries()) {
     const source =
       typeof asset.token === 'string' ? asset.token : asset.token?.address;
     if (typeof source !== 'string')
@@ -68,9 +69,15 @@ export async function preparePublicSvmRule(
       typeof asset.token === 'string' && key
         ? new PublicKey(hexToBytes(key)).toBase58()
         : asset.token;
-    const token = native
-      ? await readGasPrc20(snap, chain)
-      : runtime.resolvePrc20(sourceToken, chain);
+    let token: Address;
+    if (native) token = await readGasPrc20(snap, chain);
+    else {
+      try {
+        token = runtime.resolvePrc20(sourceToken, chain);
+      } catch (cause) {
+        throw tokenRouteUnavailable(cause, source, chain, assetIndex);
+      }
+    }
     if (caps.some((c) => c.token === getAddress(token)))
       throw svmInvalid('duplicate SVM asset');
     caps.push({

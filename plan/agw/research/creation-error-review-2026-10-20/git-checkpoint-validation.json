@@ -1,0 +1,68 @@
+{
+  "checked_at": "2026-10-20T10:10:06.895514+00:00",
+  "focused_unit_suites": 3,
+  "focused_tests_passed": 72,
+  "spec_typecheck_exit_code": 0,
+  "files": [
+    {
+      "path": "packages/core/AGW.md",
+      "sha256": "1b5bfbacdcf80846ca7c3edec158ff785767682bdc6371e65ee18e1e57e3cd68"
+    },
+    {
+      "path": "packages/core/__agw-local__/v5-multiasset.spec.ts",
+      "sha256": "59261313ec5d99e914097f277f4dad77232a63b9a308e7af43a9942846e92c9c"
+    },
+    {
+      "path": "packages/core/src/lib/agentic/__tests__/creation-errors.spec.ts",
+      "sha256": "111ae710ae0b1096d4c696de648cb3e2443fcf75d8b6247fce21ec5b14f074b5"
+    },
+    {
+      "path": "packages/core/src/lib/agentic/__tests__/preset-catalog.spec.ts",
+      "sha256": "44ce1daa12f2760e787f2b3ed6140d87b4726dac3203e70558f1cba5559a1dac"
+    },
+    {
+      "path": "packages/core/src/lib/agentic/__tests__/preset-operation-limits.spec.ts",
+      "sha256": "357afd334f211e3383b1c82d784ef2981c0c998e10e7baca92eb931e96f39940"
+    },
+    {
+      "path": "packages/core/src/lib/agentic/codec/rules.ts",
+      "sha256": "920a5c8b09b46ac7fc927e0f8ced69340bc1c4a7a90475e5778c057a7d852e72"
+    },
+    {
+      "path": "packages/core/src/lib/agentic/codec/universal.ts",
+      "sha256": "5c7993e0e1d3284c61da8918ee1a657bac7c8ba3bd8d592033e89a65d7804f73"
+    },
+    {
+      "path": "packages/core/src/lib/agentic/error-messages.ts",
+      "sha256": "378fb0343cf468c89f2e87f472c7423fcbb3dccddc4a98cdb8ed950aadc76b28"
+    },
+    {
+      "path": "packages/core/src/lib/agentic/errors.ts",
+      "sha256": "b9b1b336f5567e12684f6f2cce7ec88ace0d627ab2788e6b06ae8b1324273246"
+    },
+    {
+      "path": "packages/core/src/lib/agentic/management/common.ts",
+      "sha256": "8131a359d19a2c08b5720caad715eac101b1f39328e22888361f9edda45aecb5"
+    },
+    {
+      "path": "packages/core/src/lib/agentic/management/destination.ts",
+      "sha256": "b48246902014735a92dfa0ea4d4a1bdfd552ab7016a25ccb07c19544653b3f32"
+    },
+    {
+      "path": "packages/core/src/lib/agentic/management/prepare.ts",
+      "sha256": "aaa21c5a29fed7d5d5191a7bfc55b1e747ea16f22f1d505c9703e56738de0b1a"
+    },
+    {
+      "path": "packages/core/src/lib/agentic/management/svm-public.ts",
+      "sha256": "fd82688de91b61f7e489751116dd1bad7f863885029624d1f3a775c844ad33b5"
+    },
+    {
+      "path": "packages/core/src/lib/agentic/presets/index.ts",
+      "sha256": "e453fa6e8523ce70490915f643b7e00541a395b9e02e313676f3a9ceec6dbe37"
+    },
+    {
+      "path": "packages/core/src/lib/agentic/public-rule.ts",
+      "sha256": "fb769f433f518a90fe7b904ad4d5cd36f6bf1dbad587087b2047fba9948c9125"
+    }
+  ]
+}

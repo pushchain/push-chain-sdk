@@ -1,7 +1,11 @@
 import { validatePins } from './pins';
 import { getAddress, isAddress, type Address } from 'viem';
 import { AgenticCapability, requireCapability } from '../capabilities';
-import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
+import {
+  AGENTIC_ERROR_CODE,
+  AgenticError,
+  ruleConstraintLimit,
+} from '../errors';
 import type { UniversalRule } from '../agentic.types';
 import type { RuleEncodeContext, PreparedRule } from './rules';
 import { argumentOffset, rawOffset } from './abi-layout';
@@ -84,11 +88,20 @@ export function validateUniversalRuleShape(
     try {
       validatePins(call.pins ?? []);
     } catch (error) {
-      throw invalid((error as Error).message);
+      throw new AgenticError(
+        AGENTIC_ERROR_CODE.INVALID_RULE,
+        (error as Error).message,
+        {
+          cause: error,
+          details: {
+            callIndex: i,
+            field: `allowedCalls[${i}].pins`,
+            chainNamespace: rule.chainNamespace,
+          },
+        }
+      );
     }
     pinCount += call.pins?.length ?? 0;
-    if (pinCount > 32)
-      throw invalid('at most 32 pins across all allowed calls');
     const key = `${call.target.toLowerCase()}:${parsed.selector}`;
     const restricted =
       !!call.pins?.length ||
@@ -100,11 +113,27 @@ export function validateUniversalRuleShape(
       );
     seen.set(key, restricted);
   });
+  if (pinCount > 32)
+    throw ruleConstraintLimit(
+      pinCount,
+      rule.allowedCalls.length,
+      rule.chainNamespace
+    );
   const tokens = new Set<string>();
   rule.assets.forEach((a, i) => {
     const address = typeof a.token === 'string' ? a.token : a.token?.address;
     if (typeof address !== 'string')
       throw invalid(`assets[${i}].token is missing an address`);
+    if (!isAddress(address, { strict: false }))
+      throw new AgenticError(
+        AGENTIC_ERROR_CODE.INVALID_RULE,
+        'The selected token has an invalid address.',
+        {
+          userMessage:
+            'The selected token has an invalid address. Select the token again.',
+          details: { assetIndex: i, field: `assets[${i}].token` },
+        }
+      );
     const key = address.toLowerCase();
     if (tokens.has(key))
       throw invalid(`assets[${i}] duplicates an earlier token`);

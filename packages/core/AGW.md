@@ -10,6 +10,7 @@ Use an application-managed key; examples do not load secrets or execute automati
 import {
   PushChain,
   AgenticError,
+  AgenticRevertError,
   type Rule,
 } from '@pushchain/core';
 import {
@@ -115,6 +116,27 @@ function evmRule(agent: Address, target: Address): Rule {
 The deployed v6 policy supports up to eight EQ/MAX pins per EVM destination call and 32 across the rule. Multiple entries for the same target/function are alternatives; every constraint in one entry must pass. The SDK rejects a bare alternative beside a pinned one because it would bypass the pins.
 
 When the caller omits destination `gasLimit`, a fresh EVM CEA gets a 2,000,000 gas default to cover first-use deployment. An existing CEA uses the normal quote default. An explicit caller value is preserved. The rule's gas/value caps still apply.
+
+## Displaying errors in the UI
+
+Use `userMessage` for `AgenticError` and `AgenticRevertError`. Keep `code`, `message`, `hint`, `details`, `decodedError` and `cause` for diagnostics or application-specific translations. Unknown exceptions should get a neutral fallback instead of raw RPC/ABI text.
+
+```ts
+function walletErrorText(error: unknown): string {
+  if (error instanceof AgenticError || error instanceof AgenticRevertError) {
+    return error.userMessage;
+  }
+  return 'The request could not be completed. Check wallet activity before trying again.';
+}
+```
+
+Creation and rule-preparation errors include a zero-based `details.ruleIndex` when a rule can be identified, with `assetIndex`, `callIndex` and `field` where available. The UI message uses a one-based rule number. Use these details to show the error on the relevant rule instead of only in a footer. Read/receipt failures preserve their causes and transaction hashes; do not automatically retry a submitted transaction whose outcome is unknown.
+
+`TOKEN_ROUTE_UNAVAILABLE` means an asset cannot be resolved for transfers from Push. It is not a token-symbol formatting request. Choose a supported source token, or regenerate the preset with `funding: 'destination'` when using assets already held by the destination account. The wallet can be created before funding; destination balances are needed before execution. Pass returned `rules` unchanged. **Do not copy `readiness.chains[].selectedAssets` back into `rules[].assets` in destination-funded mode**: selectedAssets is review metadata and doing so reintroduces unsupported bridge requirements.
+
+A DEX condition-limit failure reports `details.reason = 'RULE_CONSTRAINT_LIMIT'`, `actual`, `limit` and `callCount`. Conditions here are generated input checks (for example token, recipient and amount checks), rather than the number of visible function names. A stock two-token, single-router preset contains six allowed-call entries and twenty conditions. Appending the same call list again makes forty conditions. The SDK rejects this; it does not deduplicate, remove conditions or split authority automatically. Preserve per-chain rules and regenerate after edits rather than appending generated calls.
+
+For the review screen, show the actual network (including testnet name) and funding mode. In destination-funded mode, selectedAssets.maxTotal is not an enforced destination lifetime limit; the grant has no Push token-export budget. Label maxGasPerCall as a maximum PC gas budget, not a guaranteed fee or execution gas-unit count.
 
 ## Solana destinations
 

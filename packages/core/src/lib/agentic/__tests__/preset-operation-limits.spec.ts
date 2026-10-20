@@ -223,5 +223,5 @@ it('refuses an overlarge token expansion without dropping restrictions', () => {
         asset(getAddress('0x88541670E55cC00bEEFD87eB59EDd1b7C511AC9a')),
       ],
     })
-  ).toThrow(/32 pins/);
+  ).toThrow(/maximum is 32/);
 });
