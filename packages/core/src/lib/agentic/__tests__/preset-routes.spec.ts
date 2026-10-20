@@ -90,3 +90,57 @@ it('supports the TESTNET alias, rejects invalid modes and preserves empty select
   expect(empty.readiness.chains[0].selectedAssets).toEqual([]);
   expect(empty.readiness.ready).toBe(false);
 });
+
+it('explains empty tokens without expanding them into unrestricted permissions', () => {
+  const res = agenticPresets.get('LENDING', { ...options, assets: [] });
+  expect(res.rules[0].assets).toEqual([]);
+  expect(res.readiness.ready).toBe(false);
+  expect(res.readiness.chains[0].issues).toContainEqual(
+    expect.objectContaining({
+      code: 'ASSETS_REQUIRED',
+      message: expect.stringContaining(
+        'transfers from Push are disabled, not unrestricted'
+      ),
+    })
+  );
+});
+it('reports exact unavailable assets across all nine testnet preset combinations', () => {
+  const chains = [
+    CHAIN.ETHEREUM_SEPOLIA,
+    CHAIN.BASE_SEPOLIA,
+    CHAIN.ARBITRUM_SEPOLIA,
+    CHAIN.BNB_TESTNET,
+  ];
+  let checked = 0;
+  for (const category of ['DEXES', 'LENDING', 'STAKING'] as const) {
+    const entry = agenticPresets
+      .list()
+      .presets.find((p) => p.constant === category)!;
+    for (const chainNamespace of entry.chains.filter((c) =>
+      chains.includes(c as never)
+    )) {
+      const res = agenticPresets.get(category, {
+        agent: ADDR.agent,
+        chainNamespace,
+      });
+      expect(res.readiness.ready).toBe(false);
+      const state = res.readiness.chains[0];
+      expect(res.rules[0].assets).toEqual(state.selectedAssets);
+      for (const asset of state.bridgeAssets.filter(
+        (a) => a.status === 'unavailable'
+      )) {
+        expect(state.issues).toContainEqual(
+          expect.objectContaining({
+            code: 'BRIDGE_ASSET_UNAVAILABLE',
+            token: asset.token,
+            message: expect.stringContaining(
+              'only if the selected app supports that exact token address'
+            ),
+          })
+        );
+      }
+      checked++;
+    }
+  }
+  expect(checked).toBe(9);
+});

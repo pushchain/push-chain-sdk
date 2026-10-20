@@ -149,6 +149,17 @@ export async function normalizePublicRule(
   )
     throw invalid('validUntil must be a future uint48 timestamp');
   if (
+    r.allowedCalls === undefined ||
+    (Array.isArray(r.allowedCalls) && !r.allowedCalls.length)
+  )
+    throw new AgenticError(
+      AGENTIC_ERROR_CODE.INVALID_RULE,
+      'Add at least one allowed function. Selecting tokens and limits alone does not authorize transfers.',
+      {
+        details: { reason: 'ALLOWED_FUNCTION_REQUIRED', field: 'allowedCalls' },
+      }
+    );
+  if (
     !Array.isArray(r.allowedCalls) ||
     r.allowedCalls.length < 1 ||
     r.allowedCalls.length > 32
