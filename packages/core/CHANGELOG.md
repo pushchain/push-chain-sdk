@@ -1,3 +1,9 @@
+@pushchain/core@6.0.27-alpha.6 (2026-10-21)
+
+- fix: route exact AGW tokens and size agent gas from the pool
+
+---
+
 @pushchain/core@6.0.27-alpha.5 (2026-10-20)
 
 - fix: clarify agentic creation permissions and route guidance
