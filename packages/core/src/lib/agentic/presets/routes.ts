@@ -1,7 +1,6 @@
-import { getAddress } from 'viem';
 import { PUSH_NETWORK, type CHAIN } from '../../constants/enums';
 import { SUPPORTED_GATEWAY_CHAINS } from '../../orchestrator/internals/helpers';
-import { getPRC20Address } from '../../universal/prc20-address';
+import { resolveAgenticPrc20 } from '../token-routes';
 import { generationsFor } from '../deployments';
 import type { RuleAsset } from '../agentic.types';
 import type { PresetChainReadiness, PresetConfigurationIssue } from './types';
@@ -35,10 +34,10 @@ export function presetRoutes(
     const token = assetAddress(asset);
     try {
       if (!supported) throw new Error(`No supported gateway route to ${chain}`);
-      const prc20 = getPRC20Address({ chain, address: token }, { network });
+      const prc20 = resolveAgenticPrc20({ chain, address: token }, network);
       return {
         token,
-        prc20: getAddress(prc20.address),
+        prc20: prc20.address,
         status: 'registered' as const,
       };
     } catch {

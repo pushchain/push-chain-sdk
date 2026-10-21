@@ -346,7 +346,24 @@ function renderTable(rows: Row[]): void {
       process.exit(1);
     }
   }
-  if (scenarios.some((s) => s.group === 'agw-svm-wire' || s.file === '__e2e__/agw/svm-public.spec.ts')) {
+  const presetCases = scenarios
+    .filter((s) => s.file === '__e2e__/agw/presets-acceptance.spec.ts')
+    .map((s) => Number(/-(\d+)$/.exec(s.id)?.[1]));
+  if (presetCases.length) {
+    const { PRESET_ACCEPTANCE_CASES } = await import('../shared/agw-preset-acceptance');
+    // Only the selected cases; their ids end in the spec's case number.
+    const selected = presetCases.map((n) => {
+      const entry = PRESET_ACCEPTANCE_CASES[n - 1];
+      if (!entry) throw new Error(`Unknown preset acceptance case ${n}`);
+      return entry;
+    });
+    const blocked = selected.flatMap(([category, chainNamespace]) => {
+      const result = PushChain.utils.agentic.presets.get(category, { chainNamespace, agent: '0x0000000000000000000000000000000000005678' });
+      return result.readiness.ready ? [] : [{ category, chainNamespace, issues: result.readiness.chains[0].issues }];
+    });
+    if (blocked.length) throw new Error(`PRESET_BLOCKED_BEFORE_FUNDING: ${JSON.stringify(blocked)}`);
+  }
+  if (scenarios.some((s) => s.group === 'agw-svm-wire' || s.group === 'agw-svm-agent-spl' || s.file === '__e2e__/agw/svm-public.spec.ts')) {
     const { inspectSvmWirePrograms, svmWireConnection } = await import('../shared/agw-svm-preflight');
     await inspectSvmWirePrograms(svmWireConnection(solRpc));
     console.log('Solana wire fixture verified read-only before funding.');

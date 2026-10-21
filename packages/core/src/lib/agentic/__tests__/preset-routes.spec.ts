@@ -20,7 +20,8 @@ it('reports unmapped source tokens without silently changing the default Push gr
 });
 it('preserves assets and rejects the removed funding option instead of silently changing permissions', () => {
   const result = agenticPresets.get('DEXES', options);
-  expect(result.readiness.ready).toBe(false);
+  // WETH and Circle USDC both have exact node routes on Sepolia.
+  expect(result.readiness.ready).toBe(true);
   expect(result.rules[0].assets).toEqual(
     result.readiness.chains[0].selectedAssets
   );
@@ -111,6 +112,10 @@ it('reports exact unavailable assets across all nine testnet preset combinations
     CHAIN.ARBITRUM_SEPOLIA,
     CHAIN.BNB_TESTNET,
   ];
+  const routed = new Set([
+    `DEXES:${CHAIN.ETHEREUM_SEPOLIA}`,
+    `LENDING:${CHAIN.ARBITRUM_SEPOLIA}`,
+  ]);
   let checked = 0;
   for (const category of ['DEXES', 'LENDING', 'STAKING'] as const) {
     const entry = agenticPresets
@@ -123,7 +128,9 @@ it('reports exact unavailable assets across all nine testnet preset combinations
         agent: ADDR.agent,
         chainNamespace,
       });
-      expect(res.readiness.ready).toBe(false);
+      expect(res.readiness.ready).toBe(
+        routed.has(`${category}:${chainNamespace}`)
+      );
       const state = res.readiness.chains[0];
       expect(res.rules[0].assets).toEqual(state.selectedAssets);
       for (const asset of state.bridgeAssets.filter(

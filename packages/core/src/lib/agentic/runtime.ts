@@ -26,6 +26,12 @@ import {
 } from '../orchestrator/internals/helpers';
 import { pushChainNamespaceFor } from './chain';
 import { getPRC20Address } from '../universal/prc20-address';
+import { resolveAgenticPrc20 } from './token-routes';
+import {
+  agwGasBudget,
+  assertGasLimitAtLeastBase,
+} from './execution/gas-budget';
+import { quoteGasPoolCost } from '../orchestrator/internals/gas-pool-quote';
 import {
   chainReaderFromPublicClient,
   type ChainReader,
@@ -76,8 +82,12 @@ export interface AgenticRuntime {
     svm?: { wallet: Address; splMintBase58?: string; burnAmount: bigint }
   ): Promise<{
     protocolFee: bigint;
+    /** PC gas budget sent as maxPCForGas; protocolFee is attached separately. */
     nativeValueForGas: bigint;
     gasLimitUsed: bigint;
+    /** Diagnostics: gas-token fee and the pool's current PC cost for it. */
+    gasFee?: bigint;
+    poolPcIn?: bigint;
   }>;
   resolveCEA(
     account: Address,
@@ -139,23 +149,49 @@ export function createAgenticRuntime(
     signerBalance: () => ctx.pushClient.getBalance(computeUEAOffchain(ctx)),
     getGasPrice: () => ctx.pushClient.getGasPrice(),
     quoteOutbound: async (prc20, gasLimit, chain, svm) => {
+      await assertGasLimitAtLeastBase(ctx, chain, gasLimit);
       let q = await queryOutboundGasFee(ctx, prc20, gasLimit, chain);
       if (svm) {
-        q = await ensureSvmFinalizeGasBudgetQuote({
-          ctx,
-          ueaAddress: svm.wallet,
-          targetChain: chain,
-          prc20Token: prc20,
-          quote: q,
-          splMintBase58: svm.splMintBase58,
-          burnAmount: svm.burnAmount,
-          pathTag: 'AGW_SVM',
-        });
+        let minimum = BigInt(0);
+        const finalize = (quote: typeof q) =>
+          ensureSvmFinalizeGasBudgetQuote({
+            ctx,
+            ueaAddress: svm.wallet,
+            targetChain: chain,
+            prc20Token: prc20,
+            quote,
+            splMintBase58: svm.splMintBase58,
+            burnAmount: svm.burnAmount,
+            pathTag: 'AGW_SVM',
+            onMinimum: (m) => {
+              minimum = m;
+            },
+          });
+        q = await finalize(q);
+        // A gas-price change between quote and re-quote can leave the bump short.
+        if (q.gasFee < minimum) q = await finalize(q);
+        if (q.gasFee < minimum)
+          throw new AgenticError(
+            AGENTIC_ERROR_CODE.INCONSISTENT_READ,
+            `Solana finalize budget ${q.gasFee} is below the required ${minimum} lamports after re-quoting`,
+            {
+              userMessage:
+                'Network gas prices changed while preparing this transaction. Try again.',
+            }
+          );
       }
+      const poolPcIn = await quoteGasPoolCost(
+        ctx,
+        q.universalCoreAddress,
+        q.gasToken,
+        q.gasFee
+      );
       return {
         protocolFee: q.protocolFee,
-        nativeValueForGas: q.nativeValueForGas,
+        nativeValueForGas: agwGasBudget(q, poolPcIn),
         gasLimitUsed: q.gasLimitUsed,
+        gasFee: q.gasFee,
+        poolPcIn,
       };
     },
     resolveCEA: async (account, chain) => {
@@ -178,12 +214,10 @@ export function createAgenticRuntime(
           );
         return getAddress(getPRC20Address(token, { network }).address);
       }
-      return getAddress(
-        getPRC20Address(
-          { chain, address: typeof token === 'string' ? token : token.address },
-          { network }
-        ).address
-      );
+      return resolveAgenticPrc20(
+        { chain, address: typeof token === 'string' ? token : token.address },
+        network
+      ).address;
     },
     nowSeconds: () => Math.floor(Date.now() / 1000),
   };

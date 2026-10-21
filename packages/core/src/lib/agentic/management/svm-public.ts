@@ -37,6 +37,9 @@ export async function preparePublicSvmRule(
     throw svmInvalid('unknown Solana chain');
   if (!Array.isArray(rule.assets) || rule.assets.length > 8)
     throw svmInvalid('assets must contain at most eight entries');
+  // URP compares the attached PC to this ceiling, so zero refuses every send.
+  if (rule.maxGasPerCall === BigInt(0))
+    throw svmInvalid('maxGasPerCall must be positive');
   const raw = 'format' in rule && rule.format === 'decoded';
   const outputTokens = 'outputTokens' in rule ? rule.outputTokens : undefined;
   if (outputTokens !== undefined && !Array.isArray(outputTokens))

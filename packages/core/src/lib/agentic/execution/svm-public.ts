@@ -78,7 +78,10 @@ export async function sendPublicSvm(
     cea: Hex;
   let destinationTransfer: AgenticTxMetadata['destinationTransfer'];
   let transferValue = BigInt(0);
-  const gasLimit = p.gasLimit ?? BigInt(1_000_000);
+  // SVM gateway gasLimit is a lamport-budget conversion input, not EVM gas
+  // units. Let the live route quote and finalize-rent floor size an omitted
+  // limit; copying an EVM-style million-unit fallback can overquote 100 PC.
+  const gasLimit = p.gasLimit ?? BigInt(0);
   if (actx.door === 'agent') {
     const active = await selectRuleForSend(
       snap,

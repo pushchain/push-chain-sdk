@@ -352,7 +352,8 @@ describe('EVM outbound composition from the wallet', () => {
 
   it.each([
     [false, undefined, BigInt(2_000_000)],
-    [true, undefined, BigInt(0)],
+    // Token export plus a call: transfer + call exceed the network base.
+    [true, undefined, BigInt(1_000_000)],
     [false, BigInt(123456), BigInt(123456)],
     [true, BigInt(123456), BigInt(123456)],
     [false, BigInt(0), BigInt(0)],
@@ -377,6 +378,37 @@ describe('EVM outbound composition from the wallet', () => {
       await agenticSend(rt, s.ctx, {
         ...send(BigInt(100)),
         ...(gasLimit === undefined ? {} : { gasLimit }),
+      });
+      expect(quoteOutbound.mock.calls[0][1]).toBe(expected);
+    }
+  );
+
+  it.each([
+    ['a single call without a token export', undefined, BigInt(0)],
+    ['a native-value export with one call', BigInt(5), BigInt(0)],
+  ])(
+    'destination gas on a deployed CEA keeps the network base for %s',
+    async (_label, value, expected) => {
+      const s = universalSetup();
+      const native = getAddress('0x0000000000000000000000000000000000007171');
+      s.fake.balances.set(`balanceOf:${native.toLowerCase()}`, BigInt(10));
+      const quoteOutbound = jest.fn(async (_token: Address, _gas: bigint) => ({
+        protocolFee: BigInt(100),
+        nativeValueForGas: BigInt(1000),
+        gasLimitUsed: BigInt(200_000),
+      }));
+      const rt = mockRuntime(s.fake, {
+        signer: ADDR.agent,
+        resolvePrc20: (t: unknown) => (t === undefined ? native : token),
+        resolveCEA: async () => ({
+          cea: getAddress('0x000000000000000000000000000000000000cea1'),
+          isDeployed: true,
+        }),
+        quoteOutbound,
+      });
+      await agenticSend(rt, s.ctx, {
+        ...send(),
+        ...(value === undefined ? {} : { value }),
       });
       expect(quoteOutbound.mock.calls[0][1]).toBe(expected);
     }
