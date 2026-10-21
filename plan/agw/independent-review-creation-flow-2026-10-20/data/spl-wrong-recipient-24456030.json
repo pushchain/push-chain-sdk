@@ -1,0 +1,128 @@
+{
+  "at": "2026-10-20T17:33:05.619Z",
+  "readOnly": true,
+  "block": "24456030",
+  "wallet": "0xed6bfe825b8d84a1e6f4f7c9067398f8985cc372",
+  "rulesId": "0x91ca4f52a5e7f8a27146232cd7cc1f5d957009d1c6763c473b5d1e74b729e248",
+  "originalAccounts": [
+    {
+      "pubkey": "0x4f12fe6816ae7e33ebf7db0b154ec3b09e3bf1a7690481e8e9477d5a278ad3af",
+      "isWritable": true,
+      "writableFlag": 1
+    },
+    {
+      "pubkey": "0xec461225ee62f450765de61547c5aed0b4edb46c70da56afc5ea7cb1a2fe1ff2",
+      "isWritable": true,
+      "writableFlag": 1
+    },
+    {
+      "pubkey": "0x0be8bfa0ceae1ac81eaf3a39d5e3a144251d7eba559ac4a080d019cb2822725b",
+      "isWritable": true,
+      "writableFlag": 1
+    },
+    {
+      "pubkey": "0xb70f54b3150c7f8b8bb27e808a3b2bc7ced1bd64656bd4a5b392fd0cd27bc3ee",
+      "isWritable": false,
+      "writableFlag": 0
+    },
+    {
+      "pubkey": "0x06ddf6e1d765a193d9cbe146ceeb79ac1cb485ed5f5b37913a8cf5857eff00a9",
+      "isWritable": false,
+      "writableFlag": 0
+    }
+  ],
+  "record": {
+    "rulesId": "0x91ca4f52a5e7f8a27146232cd7cc1f5d957009d1c6763c473b5d1e74b729e248",
+    "enabled": true,
+    "agent": "0x8FB1CF80a014af564bDC12E557a3E52432F4657b",
+    "chainNamespace": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+    "validUntil": 1792513451,
+    "spent": {
+      "kind": "universal",
+      "assets": [
+        {
+          "token": "0xcbcae9e66452fe98abcf0fa51e557fc8d671c7fc6ce83c05f92992a3d2bf1932",
+          "spent": "2000"
+        }
+      ]
+    },
+    "rule": {
+      "format": "decoded",
+      "agent": "0x8FB1CF80a014af564bDC12E557a3E52432F4657b",
+      "chainNamespace": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+      "validUntil": 1792513451,
+      "expectedCEA": "0xb70f54b3150c7f8b8bb27e808a3b2bc7ced1bd64656bd4a5b392fd0cd27bc3ee",
+      "gatewayProgram": "0xa726d940296890606ae77be948a7726799b7e19076ced8c14c6ed43e98b7a6e5",
+      "maxGasPerCall": "20000000000000000000",
+      "assets": [
+        {
+          "token": "0xcbcae9e66452fe98abcf0fa51e557fc8d671c7fc6ce83c05f92992a3d2bf1932",
+          "maxPerCall": "1000",
+          "maxTotal": "2000"
+        }
+      ],
+      "ceaAccounts": [
+        "0xb70f54b3150c7f8b8bb27e808a3b2bc7ced1bd64656bd4a5b392fd0cd27bc3ee",
+        "0xec461225ee62f450765de61547c5aed0b4edb46c70da56afc5ea7cb1a2fe1ff2"
+      ],
+      "programs": [
+        {
+          "program": "0x7673075a980bfd5d6b1dffe99c31f63e8938519cc1c2af009dda5e568a94460d",
+          "discriminator": "0xb654fa2e8aa449c4",
+          "discriminatorLen": 8,
+          "dataless": false,
+          "maxAccounts": 255
+        }
+      ],
+      "pins": [
+        {
+          "ruleIndex": 0,
+          "accountIndex": 0,
+          "expected": "0x4f12fe6816ae7e33ebf7db0b154ec3b09e3bf1a7690481e8e9477d5a278ad3af"
+        },
+        {
+          "ruleIndex": 0,
+          "accountIndex": 1,
+          "expected": "0xec461225ee62f450765de61547c5aed0b4edb46c70da56afc5ea7cb1a2fe1ff2"
+        },
+        {
+          "ruleIndex": 0,
+          "accountIndex": 2,
+          "expected": "0x0be8bfa0ceae1ac81eaf3a39d5e3a144251d7eba559ac4a080d019cb2822725b"
+        },
+        {
+          "ruleIndex": 0,
+          "accountIndex": 3,
+          "expected": "0xb70f54b3150c7f8b8bb27e808a3b2bc7ced1bd64656bd4a5b392fd0cd27bc3ee"
+        },
+        {
+          "ruleIndex": 0,
+          "accountIndex": 4,
+          "expected": "0x06ddf6e1d765a193d9cbe146ceeb79ac1cb485ed5f5b37913a8cf5857eff00a9"
+        }
+      ],
+      "dataPins": [
+        {
+          "ruleIndex": 0,
+          "fromEnd": false,
+          "offset": 8,
+          "offsetB": 0,
+          "len": 8,
+          "mode": 2,
+          "expected": "0x00000000000000000000000000000000000000000000000000000000000003e8",
+          "num": "0",
+          "den": "0"
+        }
+      ]
+    }
+  },
+  "wrongRecipient": {
+    "ata": "7PKuD1YUQxRuEE3qZVxUL8D1vaifMzWFSAeRhZ7dtFK6",
+    "refusal": {
+      "name": "PolicyCheckReverted(SvmAccountPinMismatch)",
+      "selector": "0xf4270752",
+      "decoded": "0xff3dafe500000000000000000000000000000000000000000000000000000000",
+      "hint": "URP rejected the action (truncated through the session engine). The inner selector names the gate; arguments are truncated to 28 bytes."
+    }
+  }
+}

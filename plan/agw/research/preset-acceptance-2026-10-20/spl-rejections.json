@@ -1,0 +1,28 @@
+{
+  "at": "2026-10-20T15:40:20.540Z",
+  "readOnly": true,
+  "chainId": 42101,
+  "block": "24456030",
+  "originalHash": "0x119c89e9ff7c7cccdfc8c071fade2488aa28b0eff7d9b71f7f0cf247c958bbf5",
+  "note": "Zero burn on the already-spent rule isolates instruction/data checks; no transactions sent.",
+  "results": [
+    {
+      "mode": "amount",
+      "decoded": {
+        "name": "PolicyCheckReverted(SvmDataCeilingExceeded)",
+        "selector": "0xf4270752",
+        "decoded": "0x94de1ef800000000000000000000000000000000000000000000000000000000",
+        "hint": "URP rejected the action (truncated through the session engine). The inner selector names the gate; arguments are truncated to 28 bytes."
+      }
+    },
+    {
+      "mode": "account",
+      "decoded": {
+        "name": "PolicyCheckReverted(SvmAccountPinMismatch)",
+        "selector": "0xf4270752",
+        "decoded": "0xff3dafe500000000000000000000000000000000000000000000000000000000",
+        "hint": "URP rejected the action (truncated through the session engine). The inner selector names the gate; arguments are truncated to 28 bytes."
+      }
+    }
+  ]
+}

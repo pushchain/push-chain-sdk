@@ -1,0 +1,152 @@
+FAIL core-e2e packages/core/__e2e__/agw/presets-acceptance.spec.ts
+  agw unchanged preset acceptance
+    ✕ 1. DEXES Sepolia (2 ms)
+    ✕ 2. DEXES Base Sepolia
+    ✕ 3. DEXES Arbitrum Sepolia (1 ms)
+    ✕ 4. DEXES BNB testnet
+    ✕ 5. LENDING Sepolia (1 ms)
+    ✕ 6. LENDING Base Sepolia (1 ms)
+    ✕ 7. LENDING Arbitrum Sepolia (1 ms)
+    ✕ 8. LENDING BNB testnet
+    ✕ 9. STAKING Sepolia
+
+  ● agw unchanged preset acceptance › 1. DEXES Sepolia
+
+    PRESET_BLOCKED_BEFORE_FUNDING DEXES eip155:11155111: [{"code":"BRIDGE_ASSET_UNAVAILABLE","token":"0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238","message":"No SDK PRC20 mapping for eip155:11155111:0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238 on TESTNET_DONUT. This preset cannot be created with this token until its Push route is verified. Choose a routed token only if the selected app supports that exact token address."}]
+
+      198 |     });
+      199 |     if (!preview.readiness.ready)
+    > 200 |       throw new Error(
+          |             ^
+      201 |         `PRESET_BLOCKED_BEFORE_FUNDING ${category} ${chainNamespace}: ${JSON.stringify(
+      202 |           preview.readiness.chains[0].issues
+      203 |         )}`
+
+      at run (__e2e__/agw/presets-acceptance.spec.ts:200:13)
+      at Object.<anonymous> (__e2e__/agw/presets-acceptance.spec.ts:331:32)
+
+  ● agw unchanged preset acceptance › 2. DEXES Base Sepolia
+
+    PRESET_BLOCKED_BEFORE_FUNDING DEXES eip155:84532: [{"code":"BRIDGE_ASSET_UNAVAILABLE","token":"0x4200000000000000000000000000000000000006","message":"No SDK PRC20 mapping for eip155:84532:0x4200000000000000000000000000000000000006 on TESTNET_DONUT. This preset cannot be created with this token until its Push route is verified. Choose a routed token only if the selected app supports that exact token address."},{"code":"BRIDGE_ASSET_UNAVAILABLE","token":"0x036CbD53842c5426634e7929541eC2318f3dCF7e","message":"No SDK PRC20 mapping for eip155:84532:0x036CbD53842c5426634e7929541eC2318f3dCF7e on TESTNET_DONUT. This preset cannot be created with this token until its Push route is verified. Choose a routed token only if the selected app supports that exact token address."}]
+
+      198 |     });
+      199 |     if (!preview.readiness.ready)
+    > 200 |       throw new Error(
+          |             ^
+      201 |         `PRESET_BLOCKED_BEFORE_FUNDING ${category} ${chainNamespace}: ${JSON.stringify(
+      202 |           preview.readiness.chains[0].issues
+      203 |         )}`
+
+      at run (__e2e__/agw/presets-acceptance.spec.ts:200:13)
+      at Object.<anonymous> (__e2e__/agw/presets-acceptance.spec.ts:332:37)
+
+  ● agw unchanged preset acceptance › 3. DEXES Arbitrum Sepolia
+
+    PRESET_BLOCKED_BEFORE_FUNDING DEXES eip155:421614: [{"code":"BRIDGE_ASSET_UNAVAILABLE","token":"0x980B62Da83eFf3D4576C647993b0c1D7faf17c73","message":"No SDK PRC20 mapping for eip155:421614:0x980B62Da83eFf3D4576C647993b0c1D7faf17c73 on TESTNET_DONUT. This preset cannot be created with this token until its Push route is verified. Choose a routed token only if the selected app supports that exact token address."},{"code":"BRIDGE_ASSET_UNAVAILABLE","token":"0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d","message":"No SDK PRC20 mapping for eip155:421614:0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d on TESTNET_DONUT. This preset cannot be created with this token until its Push route is verified. Choose a routed token only if the selected app supports that exact token address."}]
+
+      198 |     });
+      199 |     if (!preview.readiness.ready)
+    > 200 |       throw new Error(
+          |             ^
+      201 |         `PRESET_BLOCKED_BEFORE_FUNDING ${category} ${chainNamespace}: ${JSON.stringify(
+      202 |           preview.readiness.chains[0].issues
+      203 |         )}`
+
+      at run (__e2e__/agw/presets-acceptance.spec.ts:200:13)
+      at Object.<anonymous> (__e2e__/agw/presets-acceptance.spec.ts:335:11)
+
+  ● agw unchanged preset acceptance › 4. DEXES BNB testnet
+
+    PRESET_BLOCKED_BEFORE_FUNDING DEXES eip155:97: [{"code":"BRIDGE_ASSET_UNAVAILABLE","token":"0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd","message":"No SDK PRC20 mapping for eip155:97:0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd on TESTNET_DONUT. This preset cannot be created with this token until its Push route is verified. Choose a routed token only if the selected app supports that exact token address."},{"code":"BRIDGE_ASSET_UNAVAILABLE","token":"0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c","message":"No SDK PRC20 mapping for eip155:97:0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c on TESTNET_DONUT. This preset cannot be created with this token until its Push route is verified. Choose a routed token only if the selected app supports that exact token address."}]
+
+      198 |     });
+      199 |     if (!preview.readiness.ready)
+    > 200 |       throw new Error(
+          |             ^
+      201 |         `PRESET_BLOCKED_BEFORE_FUNDING ${category} ${chainNamespace}: ${JSON.stringify(
+      202 |           preview.readiness.chains[0].issues
+      203 |         )}`
+
+      at run (__e2e__/agw/presets-acceptance.spec.ts:200:13)
+      at Object.<anonymous> (__e2e__/agw/presets-acceptance.spec.ts:338:36)
+
+  ● agw unchanged preset acceptance › 5. LENDING Sepolia
+
+    PRESET_BLOCKED_BEFORE_FUNDING LENDING eip155:11155111: [{"code":"BRIDGE_ASSET_UNAVAILABLE","token":"0xf8Fb3713D459D7C1018BD0A49D19b4C44290EBE5","message":"No SDK PRC20 mapping for eip155:11155111:0xf8Fb3713D459D7C1018BD0A49D19b4C44290EBE5 on TESTNET_DONUT. This preset cannot be created with this token until its Push route is verified. Choose a routed token only if the selected app supports that exact token address."}]
+
+      198 |     });
+      199 |     if (!preview.readiness.ready)
+    > 200 |       throw new Error(
+          |             ^
+      201 |         `PRESET_BLOCKED_BEFORE_FUNDING ${category} ${chainNamespace}: ${JSON.stringify(
+      202 |           preview.readiness.chains[0].issues
+      203 |         )}`
+
+      at run (__e2e__/agw/presets-acceptance.spec.ts:200:13)
+      at Object.<anonymous> (__e2e__/agw/presets-acceptance.spec.ts:339:34)
+
+  ● agw unchanged preset acceptance › 6. LENDING Base Sepolia
+
+    PRESET_BLOCKED_BEFORE_FUNDING LENDING eip155:84532: [{"code":"BRIDGE_ASSET_UNAVAILABLE","token":"0x810D46F9a9027E28F9B01F75E2bdde839dA61115","message":"No SDK PRC20 mapping for eip155:84532:0x810D46F9a9027E28F9B01F75E2bdde839dA61115 on TESTNET_DONUT. This preset cannot be created with this token until its Push route is verified. Choose a routed token only if the selected app supports that exact token address."},{"code":"BRIDGE_ASSET_UNAVAILABLE","token":"0x4616975f7E6045FD9737e95bC527e9e14c727BD2","message":"No SDK PRC20 mapping for eip155:84532:0x4616975f7E6045FD9737e95bC527e9e14c727BD2 on TESTNET_DONUT. This preset cannot be created with this token until its Push route is verified. Choose a routed token only if the selected app supports that exact token address."},{"code":"BRIDGE_ASSET_UNAVAILABLE","token":"0x663A6F02d547dFd639BF689FED298712f2FB69Fb","message":"No SDK PRC20 mapping for eip155:84532:0x663A6F02d547dFd639BF689FED298712f2FB69Fb on TESTNET_DONUT. This preset cannot be created with this token until its Push route is verified. Choose a routed token only if the selected app supports that exact token address."}]
+
+      198 |     });
+      199 |     if (!preview.readiness.ready)
+    > 200 |       throw new Error(
+          |             ^
+      201 |         `PRESET_BLOCKED_BEFORE_FUNDING ${category} ${chainNamespace}: ${JSON.stringify(
+      202 |           preview.readiness.chains[0].issues
+      203 |         )}`
+
+      at run (__e2e__/agw/presets-acceptance.spec.ts:200:13)
+      at Object.<anonymous> (__e2e__/agw/presets-acceptance.spec.ts:342:11)
+
+  ● agw unchanged preset acceptance › 7. LENDING Arbitrum Sepolia
+
+    PRESET_BLOCKED_BEFORE_FUNDING LENDING eip155:421614: [{"code":"BRIDGE_ASSET_UNAVAILABLE","token":"0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d","message":"No SDK PRC20 mapping for eip155:421614:0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d on TESTNET_DONUT. This preset cannot be created with this token until its Push route is verified. Choose a routed token only if the selected app supports that exact token address."}]
+
+      198 |     });
+      199 |     if (!preview.readiness.ready)
+    > 200 |       throw new Error(
+          |             ^
+      201 |         `PRESET_BLOCKED_BEFORE_FUNDING ${category} ${chainNamespace}: ${JSON.stringify(
+      202 |           preview.readiness.chains[0].issues
+      203 |         )}`
+
+      at run (__e2e__/agw/presets-acceptance.spec.ts:200:13)
+      at Object.<anonymous> (__e2e__/agw/presets-acceptance.spec.ts:347:11)
+
+  ● agw unchanged preset acceptance › 8. LENDING BNB testnet
+
+    PRESET_BLOCKED_BEFORE_FUNDING LENDING eip155:97: [{"code":"BRIDGE_ASSET_UNAVAILABLE","token":"0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c","message":"No SDK PRC20 mapping for eip155:97:0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c on TESTNET_DONUT. This preset cannot be created with this token until its Push route is verified. Choose a routed token only if the selected app supports that exact token address."},{"code":"BRIDGE_ASSET_UNAVAILABLE","token":"0x16227D60f7a0e586C66B005219dfc887D13C9531","message":"No SDK PRC20 mapping for eip155:97:0x16227D60f7a0e586C66B005219dfc887D13C9531 on TESTNET_DONUT. This preset cannot be created with this token until its Push route is verified. Choose a routed token only if the selected app supports that exact token address."}]
+
+      198 |     });
+      199 |     if (!preview.readiness.ready)
+    > 200 |       throw new Error(
+          |             ^
+      201 |         `PRESET_BLOCKED_BEFORE_FUNDING ${category} ${chainNamespace}: ${JSON.stringify(
+      202 |           preview.readiness.chains[0].issues
+      203 |         )}`
+
+      at run (__e2e__/agw/presets-acceptance.spec.ts:200:13)
+      at Object.<anonymous> (__e2e__/agw/presets-acceptance.spec.ts:352:11)
+
+  ● agw unchanged preset acceptance › 9. STAKING Sepolia
+
+    PRESET_BLOCKED_BEFORE_FUNDING STAKING eip155:11155111: [{"code":"BRIDGE_ASSET_UNAVAILABLE","token":"0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9","message":"No SDK PRC20 mapping for eip155:11155111:0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9 on TESTNET_DONUT. This preset cannot be created with this token until its Push route is verified. Choose a routed token only if the selected app supports that exact token address."}]
+
+      198 |     });
+      199 |     if (!preview.readiness.ready)
+    > 200 |       throw new Error(
+          |             ^
+      201 |         `PRESET_BLOCKED_BEFORE_FUNDING ${category} ${chainNamespace}: ${JSON.stringify(
+      202 |           preview.readiness.chains[0].issues
+      203 |         )}`
+
+      at run (__e2e__/agw/presets-acceptance.spec.ts:200:13)
+      at Object.<anonymous> (__e2e__/agw/presets-acceptance.spec.ts:355:34)
+
+Test Suites: 1 failed, 1 total
+Tests:       9 failed, 9 total
+Snapshots:   0 total
+Time:        3.914 s
+Ran all test suites within paths "packages/core/__e2e__/agw/presets-acceptance.spec.ts".

@@ -1,5 +1,32 @@
 # AGW SDK implementation status
 
+**October 20 — SDK fixes from the independent review (local v4, uncommitted):**
+- **Routes:** exact node-registered Circle USDC routes on Sepolia, Base Sepolia and Arbitrum Sepolia are now resolved by address for AGW only. DEXES Sepolia and LENDING Arbitrum Sepolia are route-ready; the other seven presets remain blocked.
+- **Gas:** the AGW gas budget never attaches less than the current Push pool cost plus 20%, keeps the over-$10 share, and no longer counts protocolFee twice.
+- **Validation:** Solana rules reject a zero gas ceiling.
+- **Data fix:** the Base Sepolia WETH address is corrected.
+- **Tests:** the live preset suite funds the agent only after its prerequisites pass. A new opt-in `agw-presets-routed` group covers the two ready presets. The scripts record pool cost and signer origin.
+- **Validation results:** 2,267 units pass, 9/9 local v6 preset cases, lib/spec/local typechecks and the core build.
+- **Not yet done:** core confirmation of the `.old` routes and funded runs. [Review](independent-review-creation-flow-2026-10-20/review.md).
+- **Follow-up:**
+  - An explicit gasLimit below the chain base is refused before quoting.
+  - A Solana budget still short after one re-quote is refused before signing.
+  - BNB testnet gas is valued at the Push pool rate, because no BNB/USD feed exists. Route 2 and Route 3 already floor at the pool cost.
+  - New `check-agw-route-registry.js` drift check against uregistry: 20 routes match, 0 mismatches. It found the SDK cannot resolve DAI.sol.
+  - Tests: the agent-door omitted-gas unit; the local suite checks the stored destination; the SPL live test compares every pin and rejects a wrong recipient. That rejection was confirmed read-only at block 24,456,030.
+  - Question drafts and the October 20 README corrections are updated.
+- **Live, 21 October:** the funded `agw-svm-agent-spl` (1/1, with the tightened assertions) and `agw-gas` (4/4, eight deliveries) runs pass on the changed code. `agw-presets-routed`: both route-ready presets pass live. DEXES Sepolia needed a new 1,000,000 multi-step default gas limit, because its subsequent swap ran out of gas at the 500,000 base; LENDING Arbitrum passed. This is the first live outbound over the Circle USDC `.old` routes.
+- **Pre-question findings, 21 October** ([findings](research/pre-question-findings-2026-10-21/README.md)):
+  - Deployed sources identified: node `testnet/donut` `ca3b8d4e`, UniversalCore `core-testnet` `8bc60ae`, Solana gateway built from `pc20-3rd-iteration`.
+  - Live: all three Circle USDC routes deliver (new `agw-exact-routes`, 3/3); SPL Memo v2 works by owner and agent door (new `agw-svm-memo`, 2/2).
+  - Unused destination gas is refunded to the wallet (verified on-chain).
+  - `creditRevert` is not wired anywhere.
+  - The 8-action Push limit is deliberate.
+  - The `fromEnd` pin gap is confirmed.
+- **Question drafts** are split four ways: `questions-harsh.md` (product only, no recommendations), `questions-aman.md` (presets), `questions-zaryab.md` (AGW contracts) and `questions-core-gateway.md` (core and Solana gateway).
+
+**October 20 — exact preset acceptance and Solana gas:** 9 unchanged default payloads pass real-contract creation/readback with local provisioned routes; all 9 live preset cases are explicitly blocked before funding. No compatible routed-token replacements were found in the queried protocols. Fixed omitted Solana gas sizing (legacy million-unit fallback quoted 100 PC); public agent SPL first/subsequent delivery with omitted gas passes on devnet, including ATA/cap refusals. 405 AGW units pass; four EVM first/subsequent scenarios also pass (eight destination deliveries), making ten fresh deliveries including SPL. [Current evidence and limits](research/preset-acceptance-2026-10-20/README.md).
+
 **October 20 — creation error fixes:** typed token-route failures and per-rule details, actual constraint counts, UI-safe userMessage on SDK/revert errors, preserved diagnostics and clearer receipt/cancellation handling. **2,181 units**, **21 local v6 tests**, build/type/package checks pass. DEX UI overflow source remains pending the actual create payload; stock presets stay at 20 conditions. [Review and UI handoff](research/creation-error-review-2026-10-20/README.md). [Git delivery and continuing history](../SDK-CHANGELOG.md); package publication is separate.
 
 **October 18 — lighter CI requested:** PR checks now run SDK-only validation (421 focused units, spec types, build and package checks); contract checkout/Foundry/full API checks are manual opt-in. Local fast checks pass. Release branch v5 `b291b873` is pushed; package publication remains manual. **2,142 full units**, **107 local contract tests** and **9/9 read-only factory simulations** remain the release evidence. The optional fresh-run full CI preparation failure is documented, not reported as passing.
