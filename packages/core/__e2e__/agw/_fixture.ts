@@ -34,6 +34,8 @@ export interface AgwFixture {
   agentAddress: Address;
   agent(wallet: Address, progressHook?: (e: unknown) => void): Promise<PushChain>;
   fundPC(to: Address, amount: bigint): Promise<void>;
+  /** Funds the generated agent; already done unless setup deferred it. */
+  fundAgent(): Promise<void>;
   evidence(name: string, data: Record<string, unknown>): void;
   teardown(): void;
 }
@@ -46,7 +48,9 @@ const pushChainFor = (network: PUSH_NETWORK) =>
  * the manifest, keys or wiring are missing. A selected agw run can never pass
  * without exercising a verified deployment.
  */
-export async function setupAgw(): Promise<AgwFixture> {
+export async function setupAgw(
+  options: { deferAgentFunding?: boolean } = {}
+): Promise<AgwFixture> {
   const manifest = loadAgwManifest();
   if (manifest.network !== PUSH_NETWORK.TESTNET_DONUT) {
     throw new AgwPrerequisiteError('live AGW fixtures require Donut');
@@ -85,7 +89,9 @@ export async function setupAgw(): Promise<AgwFixture> {
     const r = await tx.wait();
     if (r.status !== 1) throw new Error(`funding ${to} failed`);
   };
-  await fundPC(agentAddress, parseEther(process.env['AGW_E2E_AGENT_PC'] ?? '0.5'));
+  const fundAgent = () => fundPC(agentAddress, parseEther(process.env['AGW_E2E_AGENT_PC'] ?? '0.5'));
+  // Deferred callers check their prerequisites first, so a blocked case spends nothing.
+  if (!options.deferAgentFunding) await fundAgent();
 
   const logDir = join(__dirname, '..', '..', 'e2e-logs');
   mkdirSync(logDir, { recursive: true });
@@ -107,6 +113,7 @@ export async function setupAgw(): Promise<AgwFixture> {
     agentAddress,
     agent: (wallet, progressHook) => evmClient(agentKey, chain, manifest.network, wallet, progressHook),
     fundPC,
+    fundAgent,
     evidence,
     teardown: () => resetAgenticGenerations(),
   };

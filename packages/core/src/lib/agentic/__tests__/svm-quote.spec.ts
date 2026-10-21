@@ -249,3 +249,16 @@ describe('AGW Solana finalization quote context', () => {
     expect(rt.resolvePrc20).toHaveBeenCalledWith(expected, CHAIN.SOLANA_DEVNET);
   });
 });
+it('refuses a zero Solana gas ceiling, which would reject every agent send', async () => {
+  const f = fixture();
+  await expect(
+    preparePublicSvmRule(f.rt, f.snap, ADDR.owner, {
+      agent: ADDR.agent,
+      chainNamespace: CHAIN.SOLANA_DEVNET,
+      assets: [],
+      validUntil: f.rt.nowSeconds() + 3600,
+      maxGasPerCall: BigInt(0),
+      allowedInstructions: [],
+    })
+  ).rejects.toThrow('maxGasPerCall must be positive');
+});

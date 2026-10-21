@@ -235,7 +235,7 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
     WETH: {
       symbol: 'WETH',
       decimals: 18,
-      address: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+      address: '0x4200000000000000000000000000000000000006',
       mechanism: 'approve',
     },
   },

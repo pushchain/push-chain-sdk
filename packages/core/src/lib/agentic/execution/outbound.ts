@@ -30,6 +30,10 @@ import type { AgenticRuntime } from '../runtime';
 /** Includes first-use CEA deployment; explicit caller gas always takes precedence. */
 const FIRST_USE_EVM_GAS_LIMIT = BigInt(2_000_000);
 
+/** Token exports and multi-call payloads can exceed the 500k network base: a
+ * Sepolia Circle USDC export with approve + Uniswap swap ran out of gas on it. */
+const MULTI_STEP_EVM_GAS_LIMIT = BigInt(1_000_000);
+
 /** URP MAX_ACTIONS_PER_REQUEST at v6. */
 export const MAX_DESTINATION_CALLS = 10;
 
@@ -220,10 +224,18 @@ export async function composeOutbound(
     }
   }
 
+  const multiStep =
+    calls.length > 1 ||
+    (amount > BigInt(0) &&
+      getAddress(token) !== getAddress(runtime.resolvePrc20(undefined, chain)));
   const quote = await runtime.quoteOutbound(
     token,
     params.gasLimit ??
-      (resolved.isDeployed ? BigInt(0) : FIRST_USE_EVM_GAS_LIMIT),
+      (!resolved.isDeployed
+        ? FIRST_USE_EVM_GAS_LIMIT
+        : multiStep
+        ? MULTI_STEP_EVM_GAS_LIMIT
+        : BigInt(0)),
     chain
   );
   if (quote.nativeValueForGas <= BigInt(0)) {
