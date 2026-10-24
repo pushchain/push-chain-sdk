@@ -1,8 +1,8 @@
 /** Exact default preset output -> real AGW/URP -> exact public readback.
- * Source-token PRC20 metadata and gateway are local stand-ins. This proves SDK
- * preservation with provisioned routes, not live route availability or delivery.
+ * The gas PRC20 and gateway are local stand-ins. This proves SDK preservation,
+ * not live route availability or delivery.
  */
-import { getAddress, parseAbi, type Address } from 'viem';
+import { getAddress, parseAbi, zeroAddress } from 'viem';
 import { startHarness, type Harness } from './harness';
 import { PushChain } from '../src';
 import type { AgenticRuntime } from '../src/lib/agentic/runtime';
@@ -12,14 +12,17 @@ import {
   PRESET_ACCEPTANCE_CASES,
   expectStoredPreset,
 } from '../__e2e__/shared/agw-preset-acceptance';
-const sourceABI = parseAbi(['function setSourceTokenAddress(string)']);
+const CORE = parseAbi([
+  'function setGasToken(string,address)',
+  'function setSourceTokenAddress(string)',
+]);
 const CEA = getAddress('0x000000000000000000000000000000000000cea1');
 const runtime = (c: PushChain) =>
   (c as unknown as { agenticRuntime: AgenticRuntime }).agenticRuntime;
 
 describe('unchanged default preset contract acceptance', () => {
   let h: Harness, owner: PushChain, lookup: jest.SpyInstance;
-  const routes = new Map<string, Address>();
+  const gasTokens = new Set<string>();
   beforeAll(async () => {
     lookup = jest
       .spyOn(accountLookup, 'convertExecutorToOrigin')
@@ -30,11 +33,8 @@ describe('unchanged default preset contract acceptance', () => {
       cea: CEA,
       isDeployed: false,
     });
-    runtime(owner).resolvePrc20 = (token, chain) => {
-      const source = typeof token === 'string' ? token : token?.address;
-      const mapped = routes.get(`${chain}:${source?.toLowerCase()}`);
-      if (!mapped) throw new Error('Fixture route not provisioned');
-      return mapped;
+    runtime(owner).resolvePrc20 = () => {
+      throw new Error('Presets must not resolve a non-native route');
     };
   });
   afterAll(async () => {
@@ -54,22 +54,26 @@ describe('unchanged default preset contract acceptance', () => {
       const before = JSON.stringify(generated.rules, (_k, v) =>
         typeof v === 'bigint' ? String(v) : v
       );
+      // Presets send only native ETH, which resolves to the chain's gas PRC20.
       for (const asset of generated.rules[0].assets!) {
         const source = getAddress(
           typeof asset.token === 'string' ? asset.token : asset.token.address
         );
-        const key = `${chainNamespace}:${source.toLowerCase()}`;
-        if (!routes.has(key)) {
+        expect(source).toBe(zeroAddress);
+        if (!gasTokens.has(chainNamespace)) {
           const mapped = await h.deploy(
             0,
             'HarnessPRC20',
             'HarnessFixtures.sol',
             [chainNamespace, 18]
           );
-          await h.write(0, mapped, sourceABI, 'setSourceTokenAddress', [
-            source,
+          // Live gas PRC20s report an empty or zero source token.
+          await h.write(0, mapped, CORE, 'setSourceTokenAddress', ['']);
+          await h.write(0, h.addresses.universalCore, CORE, 'setGasToken', [
+            chainNamespace,
+            mapped,
           ]);
-          routes.set(key, mapped);
+          gasTokens.add(chainNamespace);
         }
       }
       const made = await owner.agentic.create('preset-exact', {

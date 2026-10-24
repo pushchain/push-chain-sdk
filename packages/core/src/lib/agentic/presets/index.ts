@@ -10,14 +10,10 @@ import type {
   AgenticPresets,
   PresetOptions,
   PresetRuleTemplate,
-  PresetChainReadiness,
-  PresetConfigurationIssue,
 } from './types';
 import { parseSelector } from '../codec/selectors';
 import { PRESET_CATALOG, type PresetDefinition } from './catalog';
-import { applyOperationLimits, assetAddress } from './operation-limits';
-import { PUSH_NETWORK } from '../../constants/enums';
-import { presetRoutes } from './routes';
+import { applyOperationLimits, nativeAsset } from './operation-limits';
 import {
   defaultPresetAsset,
   PRESET_GAS_BUDGETS,
@@ -28,7 +24,6 @@ const MAX_UINT256 = (BigInt(1) << BigInt(256)) - BigInt(1);
 const invalid = (message: string) =>
   new AgenticError(AGENTIC_ERROR_CODE.INVALID_RULE, message);
 function cap(value: unknown, name: string): bigint {
-  if (value === undefined) return BigInt(0);
   if (typeof value !== 'bigint' || value < BigInt(0) || value > MAX_UINT256)
     throw invalid(`${name} must be a uint256 bigint`);
   return value;
@@ -55,12 +50,6 @@ function copyCall(call: RuleCall): RuleCall {
       : {}),
   };
 }
-function tokenAddress(token: RuleAsset['token']): string {
-  const address = typeof token === 'string' ? token : token?.address;
-  if (typeof address !== 'string' || !address.trim())
-    throw invalid('preset asset requires a token address');
-  return address;
-}
 /** Not a public registration API. Tests inject fixtures; production uses the bundled catalog. */
 export function buildPresetApi(
   catalog: readonly PresetDefinition[]
@@ -70,25 +59,18 @@ export function buildPresetApi(
     ...p,
     chains: p.chains.map((c) => ({
       ...c,
-      ...(c.defaultTokens ? { defaultTokens: [...c.defaultTokens] } : {}),
       allowedCalls: c.allowedCalls.map((call) => ({
         ...copyCall(call),
         ...(call.budget
           ? {
-              budget: {
-                ...call.budget,
-                ...(call.budget.kind === 'token-argument' && call.budget.tokens
-                  ? { tokens: [...call.budget.tokens] }
-                  : {}),
-              },
+              budget:
+                call.budget.kind === 'native-amount' &&
+                typeof call.budget.amountArg !== 'number'
+                  ? { ...call.budget, amountArg: [...call.budget.amountArg] }
+                  : { ...call.budget },
             }
           : {}),
       })),
-      approvals: c.approvals?.map((a) => ({
-        ...a,
-        ...(a.tokens ? { tokens: [...a.tokens] } : {}),
-      })),
-      swapRouters: c.swapRouters?.map((r) => ({ ...r })),
     })),
   }));
   if (
@@ -118,9 +100,6 @@ export function buildPresetApi(
       if (!options || typeof options !== 'object' || Array.isArray(options))
         throw invalid('preset options must be an object');
       const now = Math.floor(Date.now() / 1000);
-      const network = options.network ?? PUSH_NETWORK.TESTNET_DONUT;
-      if (!Object.values(PUSH_NETWORK).includes(network))
-        throw invalid('unknown preset Push network');
       if ('funding' in options)
         throw invalid(
           'The preset funding option is no longer supported. Remove it; preset assets and limits are always preserved.'
@@ -159,18 +138,9 @@ export function buildPresetApi(
           'presetCatalog',
           `preset ${preset} has no approved app entries`
         );
-      const assets = new Map<string, RuleAsset[]>();
-      // An explicit array (including []) replaces the defaults for all selected
-      // chains. Never add permissions on chains the caller left unconfigured.
-      if (options.assets === undefined)
-        for (const chain of chains)
-          if (chain.defaultTokens)
-            assets.set(
-              chain.chainNamespace,
-              chain.defaultTokens.map((token) =>
-                defaultPresetAsset(chain.chainNamespace, token)
-              )
-            );
+      // Presets move native ETH from Push only; the app tokens are wrapped or
+      // swapped on the destination chain.
+      const assets = new Map<string, RuleAsset>();
       for (const asset of options.assets ?? []) {
         if (!asset || typeof asset !== 'object')
           throw invalid('preset asset must be an object');
@@ -181,186 +151,51 @@ export function buildPresetApi(
           );
         if (!chains.some((c) => c.chainNamespace === chain))
           throw invalid(`asset chain ${chain} is outside the selected preset`);
-        const address = tokenAddress(asset.token);
         if (
-          chain.startsWith('eip155:') &&
-          !isAddress(address, { strict: false })
+          !asset.token ||
+          !nativeAsset({ token: asset.token, maxPerCall: BigInt(0) })
         )
-          throw invalid('EVM preset asset requires an EVM address');
-        const group = assets.get(chain) ?? [];
-        const key = chain.startsWith('eip155:')
-          ? address.toLowerCase()
-          : address;
-        if (
-          group.some(
-            (a) =>
-              (chain.startsWith('eip155:')
-                ? tokenAddress(a.token).toLowerCase()
-                : tokenAddress(a.token)) === key
-          )
-        )
+          throw invalid(
+            "Presets send only ETH from Push. Use the zero address or the chain's ETH moveable token."
+          );
+        if (assets.has(chain))
           throw invalid('duplicate preset asset on the same chain');
-        group.push({
+        const maxPerCall = cap(asset.maxPerCall, 'maxPerCall');
+        const maxTotal = cap(asset.maxTotal, 'maxTotal');
+        if (maxPerCall === BigInt(0) || maxTotal === BigInt(0))
+          throw invalid(
+            'Set a positive maxPerCall and maxTotal for ETH. A missing or zero limit lets the agent spend nothing.'
+          );
+        assets.set(chain, {
           token:
             typeof asset.token === 'string' ? asset.token : { ...asset.token },
-          maxPerCall: cap(asset.maxPerCall, 'maxPerCall'),
-          maxTotal: cap(asset.maxTotal, 'maxTotal'),
+          maxPerCall,
+          maxTotal,
         });
-        assets.set(chain, group);
       }
-      const readiness: PresetChainReadiness[] = [];
+      if (options.assets !== undefined)
+        for (const chain of chains)
+          if (!assets.has(chain.chainNamespace))
+            throw invalid(
+              `Add an ETH asset for ${chain.chainNamespace}, or pass chainNamespace to configure one chain.`
+            );
       const rules: PresetRuleTemplate[] = chains.map((chain) => {
+        const asset = assets.get(chain.chainNamespace) ?? defaultPresetAsset();
         const maxGasPerCall =
           options.maxGasPerCall ??
           chain.maxGasPerCall ??
-          (chain.defaultTokens
-            ? PRESET_GAS_BUDGETS[chain.chainNamespace]
-            : undefined);
-        const selectedAssets = assets.get(chain.chainNamespace) ?? [];
-        const limits = applyOperationLimits(
+          PRESET_GAS_BUDGETS[chain.chainNamespace];
+        const calls = applyOperationLimits(
           chain.allowedCalls.map((c) => ({
             ...copyCall(c),
             ...(c.budget ? { budget: c.budget } : {}),
           })),
-          selectedAssets
+          asset.maxPerCall
         );
-        const calls = limits.calls;
-        if (chain.swapRouters?.length) {
-          const tokens = assets.get(chain.chainNamespace) ?? [];
-          if (
-            tokens.some(
-              (a) =>
-                tokenAddress(a.token) === zeroAddress ||
-                (typeof a.token !== 'string' && a.token.mechanism === 'native')
-            )
-          )
-            throw invalid(
-              'DEX token pins require explicit ERC20 addresses; use wrapped-native tokens instead of the native marker'
-            );
-          // Keep discovery useful before a swap pair is selected. These review
-          // calls cannot spend input tokens: the amount maximum is explicitly zero.
-          // Re-run get with both tokens to generate the executable pair pins.
-          if (tokens.length < 2)
-            for (const router of chain.swapRouters)
-              for (const exactInput of [true, false])
-                calls.push({
-                  target: router.address,
-                  selector: `${
-                    exactInput ? 'exactInputSingle' : 'exactOutputSingle'
-                  }((address,address,uint24,address,uint256,uint256,uint160))`,
-                  pins: [
-                    ...(tokens.length
-                      ? [
-                          {
-                            arg: [0, 0],
-                            expected: getAddress(tokenAddress(tokens[0].token)),
-                          },
-                        ]
-                      : []),
-                    { arg: [0, 3], expected: 'agentic:wallet' },
-                    { arg: [0, exactInput ? 4 : 5], max: BigInt(0) },
-                  ],
-                  app: router.app,
-                  label: `${
-                    exactInput ? 'Swap exact input' : 'Swap exact output'
-                  } (select two tokens to enable)`,
-                });
-          for (const router of chain.swapRouters)
-            for (const input of tokens)
-              for (const output of tokens) {
-                if (
-                  tokenAddress(input.token).toLowerCase() ===
-                  tokenAddress(output.token).toLowerCase()
-                )
-                  continue;
-                for (const exactInput of [true, false])
-                  calls.push({
-                    target: router.address,
-                    selector: `${
-                      exactInput ? 'exactInputSingle' : 'exactOutputSingle'
-                    }((address,address,uint24,address,uint256,uint256,uint160))`,
-                    pins: [
-                      {
-                        arg: [0, 0],
-                        expected: getAddress(tokenAddress(input.token)),
-                      },
-                      {
-                        arg: [0, 1],
-                        expected: getAddress(tokenAddress(output.token)),
-                      },
-                      { arg: [0, 3], expected: 'agentic:wallet' },
-                      { arg: [0, exactInput ? 4 : 5], max: input.maxPerCall },
-                    ],
-                    app: router.app,
-                    label: exactInput
-                      ? 'Swap exact input'
-                      : 'Swap exact output',
-                  });
-              }
-        }
-        if (chain.swapRouters?.length) {
-          const swaps = calls.filter((c) => c.selector.startsWith('exact'));
-          for (const c of swaps) {
-            const positive = c.pins?.some(
-              (p) => 'max' in p && p.max !== undefined && p.max > BigInt(0)
-            );
-            if (positive) limits.enabled = true;
-            else
-              limits.disabledCalls.push({
-                target: c.target,
-                selector: c.selector,
-                app: c.app,
-                reason:
-                  selectedAssets.length < 2 ? 'TOKEN_REQUIRED' : 'ZERO_CAP',
-              });
-          }
-        }
-        const approvals = new Set<string>();
-        for (const asset of assets.get(chain.chainNamespace) ?? []) {
-          const token = tokenAddress(asset.token);
-          if (
-            token === zeroAddress ||
-            (typeof asset.token !== 'string' &&
-              asset.token.mechanism === 'native')
-          )
-            continue;
-          for (const approval of chain.approvals ?? []) {
-            if (!chain.chainNamespace.startsWith('eip155:'))
-              throw capabilityUnavailable(
-                'presetApproval',
-                'Solana approvals require a separately reviewed instruction template'
-              );
-            if (
-              approval.token &&
-              getAddress(token) !== getAddress(approval.token)
-            )
-              continue;
-            if (
-              approval.tokens &&
-              !approval.tokens.some((t) => getAddress(t) === getAddress(token))
-            )
-              continue;
-            const spender = getAddress(approval.spender);
-            const target = getAddress(token);
-            const approvalKey = `${target}:${spender}`;
-            if (approvals.has(approvalKey)) continue;
-            approvals.add(approvalKey);
-            calls.push({
-              target,
-              selector: 'approve(address,uint256)',
-              pins: [
-                { arg: 0, expected: spender },
-                { arg: 1, max: asset.maxPerCall },
-              ],
-              app: approval.app,
-              label: 'Approve token spending',
-            });
-          }
-        }
         if (!calls.length || calls.length > 32)
           throw capabilityUnavailable(
             'presetCalls',
-            'preset must contain 1..32 allowed calls including approvals'
+            'preset must contain 1..32 allowed calls'
           );
         const conditionCount = calls.reduce(
           (n, c) => n + (c.pins?.length ?? 0),
@@ -396,62 +231,6 @@ export function buildPresetApi(
             );
           pairs.set(pair, !!call.pins?.length);
         }
-        const issues: PresetConfigurationIssue[] = [];
-        if (!options.agent)
-          issues.push({
-            code: 'AGENT_REQUIRED',
-            message: 'Choose the agent Push address.',
-          });
-        if ((maxGasPerCall ?? BigInt(0)) === BigInt(0))
-          issues.push({
-            code: 'GAS_BUDGET_REQUIRED',
-            message: 'Set a positive PC gas budget per outbound.',
-          });
-        if (!selectedAssets.length)
-          issues.push({
-            code: 'ASSETS_REQUIRED',
-            message:
-              'No tokens selected: transfers from Push are disabled, not unrestricted. Choose explicit tokens and limits, then regenerate this preset.',
-          });
-        if (chain.swapRouters?.length && selectedAssets.length < 2)
-          issues.push({
-            code: 'TOKEN_PAIR_REQUIRED',
-            message: 'Choose both swap tokens, then regenerate this preset.',
-          });
-        if (!limits.enabled)
-          issues.push({
-            code: 'NO_ENABLED_OPERATION',
-            message: 'No asset operation has a positive per-call limit.',
-          });
-        const configurationReady = issues.length === 0;
-        const routes = presetRoutes(
-          chain.chainNamespace,
-          selectedAssets,
-          network
-        );
-        issues.push(...routes.issues);
-        const bridgeAssets = selectedAssets;
-        readiness.push({
-          chainNamespace: chain.chainNamespace,
-          ready: issues.length === 0,
-          configurationReady,
-          selectedAssets: selectedAssets.map((a) => ({
-            ...a,
-            token: typeof a.token === 'string' ? a.token : { ...a.token },
-          })),
-          bridgeAssets: routes.bridgeAssets,
-          issues,
-          disabledCalls: limits.disabledCalls,
-          excludedCalls: limits.excludedCalls,
-          knownTokens: [
-            ...new Set([...limits.knownTokens, ...(chain.defaultTokens ?? [])]),
-          ],
-          zeroBridgeLimits: bridgeAssets
-            .filter(
-              (a) => a.maxPerCall === BigInt(0) || a.maxTotal === BigInt(0)
-            )
-            .map(assetAddress),
-        });
         return {
           chainNamespace: chain.chainNamespace,
           allowedCalls: calls,
@@ -459,21 +238,13 @@ export function buildPresetApi(
             ? { agent: getAddress(options.agent) }
             : {}),
           validUntil,
-          ...(options.assets !== undefined || chain.defaultTokens
-            ? { assets: bridgeAssets }
-            : {}),
+          assets: [asset],
           ...(maxGasPerCall !== undefined
             ? { maxGasPerCall: cap(maxGasPerCall, 'maxGasPerCall') }
             : {}),
         };
       });
-      return {
-        rules,
-        readiness: {
-          ready: readiness.length > 0 && readiness.every((c) => c.ready),
-          chains: readiness,
-        },
-      };
+      return { rules };
     },
   };
   // Expiry is generated; the overload narrows templates when the agent is supplied.

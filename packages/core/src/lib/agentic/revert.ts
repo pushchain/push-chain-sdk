@@ -1,5 +1,6 @@
 import {
   decodeErrorResult,
+  parseAbi,
   toFunctionSelector,
   type Abi,
   type Hex,
@@ -16,9 +17,17 @@ import {
 /** URP reverts reached through the engine are truncated to this wrapper. */
 export const POLICY_CHECK_REVERTED_SELECTOR = '0xf4270752';
 
+/** URP builds these with abi.encodeWithSelector (any-match over allowed calls),
+ * so the compiled ABI omits them. Signatures from src/libraries/Errors.sol at ffd567d. */
+const URP_ENCODED_ERRORS = parseAbi([
+  'error BeneficiaryMismatch(address expected, address actual)',
+  'error InnerValueExceedsAllowance(uint256 index, uint256 value, uint256 maxValue)',
+]);
+
 const ERROR_ABIS: readonly Abi[] = [
   AGW_ABI as unknown as Abi,
   UNIVERSAL_RULES_POLICY_ABI as unknown as Abi,
+  URP_ENCODED_ERRORS,
   AGW_FACTORY_ABI as unknown as Abi,
   SMART_SESSION_ABI as unknown as Abi,
 ];

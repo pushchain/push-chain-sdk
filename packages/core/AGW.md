@@ -11,6 +11,7 @@ import {
   PushChain,
   AgenticError,
   AgenticRevertError,
+  type AuthoredRule,
   type Rule,
 } from '@pushchain/core';
 import {
@@ -132,9 +133,9 @@ function walletErrorText(error: unknown): string {
 
 Creation and rule-preparation errors include a zero-based `details.ruleIndex` when a rule can be identified, with `assetIndex`, `callIndex` and `field` where available. The UI message uses a one-based rule number. Use these details to show the error on the relevant rule instead of only in a footer. Read/receipt failures preserve their causes and transaction hashes; do not automatically retry a submitted transaction whose outcome is unknown.
 
-`TOKEN_ROUTE_UNAVAILABLE` means an asset cannot be resolved for transfers from Push. Choose a token with a supported route on this network, or wait for a verified PRC20 route for that exact token address. Changing a symbol does not create a route. Display `error.userMessage` and check preset readiness before creation.
+`TOKEN_ROUTE_UNAVAILABLE` means an asset cannot be resolved for transfers from Push. Choose a token with a supported route on this network, or wait for a verified PRC20 route for that exact token address. Changing a symbol does not create a route. Display `error.userMessage`.
 
-A DEX condition-limit failure reports `details.reason = 'RULE_CONSTRAINT_LIMIT'`, `actual`, `limit` and `callCount`. Conditions here are generated input checks (for example token, recipient and amount checks), rather than the number of visible function names. A stock two-token, single-router preset contains six allowed-call entries and twenty conditions. Appending the same call list again makes forty conditions. The SDK rejects this; it does not deduplicate, remove conditions or split authority automatically. Preserve per-chain rules and regenerate after edits rather than appending generated calls.
+A DEX condition-limit failure reports `details.reason = 'RULE_CONSTRAINT_LIMIT'`, `actual`, `limit` and `callCount`. Conditions here are generated input checks (for example token, recipient and amount checks), rather than the number of visible function names. A stock DEX preset contains eight allowed-call entries and twenty-one conditions. Appending the same call list again makes forty-two conditions. The SDK rejects this; it does not deduplicate, remove conditions or split authority automatically. Preserve per-chain rules and regenerate after edits rather than appending generated calls.
 
 For the review screen, show the actual network (including testnet name), selected token addresses and limits. Label maxGasPerCall as a maximum PC gas budget, not a guaranteed fee or execution gas-unit count. maxTotal meters cumulative Push outbounds, including outbounds whose destination execution later fails; it is not a lifetime destination-spend limit. Destination pins and maxValue limit each call separately.
 
@@ -163,7 +164,7 @@ function solanaRule(agent: Address, program: string): Rule {
 
 Use the program's actual account positions. `{ account, expected: WALLET, token: mint }` pins the wallet's ATA, using the verified mint/token-program context. Fixed integer, bool, pubkey and fixed-array layouts are supported; dynamic or undefined layouts fail before signing. Raw eight-byte discriminators support account pins; argument pins also need argument types. A nonzero per-call EVM `maxValue` has no Solana encoding.
 
-Solana reads return `format: 'decoded'` with exact stored discriminators, offsets and constraints. This raw form is accepted by `rules.update`, preserving restrictions without inventing an IDL. Reusing it for another wallet/gateway is rejected. Send-data encoding still uses the existing `utils.helpers.encodeTxData` IDL helper; rule authoring and transaction encoding are separate operations.
+Solana reads return `format: 'decoded'` with exact stored discriminators, offsets and constraints. This raw form is accepted by `rules.update`, preserving restrictions without inventing an IDL. Reusing it for another wallet/gateway is rejected. A decoded rule with a data pin counted from the end of the instruction data (`fromEnd: true`) is refused on create/add/update (`INVALID_RULE`, `details.reason = 'FROM_END_PIN_UNSUPPORTED'`): the deployed SvmRulebook does not tie the instruction-data length to the rule, so appended bytes could shift such a pin. Existing rules with these pins still read normally. Send-data encoding still uses the existing `utils.helpers.encodeTxData` IDL helper; rule authoring and transaction encoding are separate operations.
 
 ## Spend, checkpoints and execution
 
@@ -189,12 +190,13 @@ The wire encoder uses uint32 maximum for unlimited native calls and 255 for unsp
 
 ## Preset discovery and templates (section 7)
 
-`PushChain.utils.agentic` contains `presets.list/get`. The categories are `AGENTIC.PRESETS.CATEGORY.DEXES`, `LENDING`, `STAKING` and `PREDICTION`. The catalog includes mainnet and testnet templates. Discovery is network-independent: pass `chainNamespace` to select the intended chain. A mainnet template does not imply that the connected Push network supports execution to it:
+`PushChain.utils.agentic` contains `presets.list/get`. The categories are `AGENTIC.PRESETS.CATEGORY.DEXES`, `LENDING` and `STAKING`. The catalog contains only presets that ran live on the Donut testnets:
 
-- DEXES: Uniswap V3 on Ethereum, Base and Arbitrum (mainnet and their Sepolia testnets); PancakeSwap V3 on BNB mainnet and BSC testnet.
-- LENDING: Aave on Ethereum, Base, Arbitrum and BNB mainnets, plus Sepolia/Base Sepolia/Arbitrum Sepolia; Moonwell on Base mainnet/testnet and Venus on BNB mainnet/testnet.
-- STAKING: EigenLayer deposits on Ethereum mainnet and Sepolia; Lido stake and wrap/unwrap on Ethereum mainnet. Withdrawal requests with dynamic amounts, claims with position-derived amounts and EigenLayer withdrawals are excluded from these bounded presets. A selected native asset supplies the Lido `submit` value cap; omitted caps in explicitly supplied assets remain zero.
-- PREDICTION: no entries yet. Hide categories with empty `chains` lists.
+- DEXES: Uniswap V3 on Sepolia, Base Sepolia and Arbitrum Sepolia.
+- LENDING: Aave V3 on Sepolia, Base Sepolia and Arbitrum Sepolia.
+- STAKING: no entries yet. Hide categories with empty `chains` lists.
+
+Every preset sends only native ETH from Push. The agent wraps it into WETH on the destination chain as the first call of the same transaction, then uses the app. Because native ETH is routed to every listed chain, every listed preset can be created; there is no readiness report to check.
 
 ```ts
 const { presets } = PushChain.utils.agentic.presets.list({ type: 'CATEGORY' });
@@ -202,141 +204,91 @@ const availablePresets = presets.filter(preset => preset.chains.length > 0);
 const { rules: reviewTemplates } = PushChain.utils.agentic.presets.get(
   PushChain.CONSTANTS.AGENTIC.PRESETS.CATEGORY.DEXES,
 );
-// Every populated chain includes curated destination tokens in rule.assets.
-// The SDK supplies spending limits, a PC budget and a seven-day expiry.
-// Supply the agent to get complete Rule[] configuration.
+// Each rule sends native ETH from Push with the SDK's limits, a 20 PC gas
+// ceiling and a seven-day expiry. Supply the agent to get complete Rule[].
 const configuredPreset = PushChain.utils.agentic.presets.get(
   PushChain.CONSTANTS.AGENTIC.PRESETS.CATEGORY.LENDING,
   { chainNamespace: 'eip155:11155111', agent: '0x0000000000000000000000000000000000001234' },
 );
-// Destination assets must already be funded; no Push token exports are granted.
-// Show configuredPreset.readiness.chains[0].selectedAssets in the review UI.
-// Pass configuredPreset.rules directly to create after checking readiness.
-// The helper below illustrates explicit overrides, rather than required UI input.
+// Pass configuredPreset.rules directly to create.
 
-function filledPreset(agent: Address, tokenIn: Address, tokenOut: Address) {
+function filledPreset(agent: Address, maxPerCall: bigint, maxTotal: bigint) {
   return PushChain.utils.agentic.presets.get(
     PushChain.CONSTANTS.AGENTIC.PRESETS.CATEGORY.DEXES,
     {
-      chainNamespace: 'eip155:11155111',
+      chainNamespace: 'eip155:84532',
       agent,
       validUntil: Math.floor(Date.now() / 1000) + 3600,
-      maxGasPerCall: BigInt(10) ** BigInt(18),
       assets: [
-        { token: tokenIn, maxPerCall: BigInt(100), maxTotal: BigInt(1000) },
-        { token: tokenOut, maxPerCall: BigInt(100), maxTotal: BigInt(1000) },
+        { token: PushChain.CONSTANTS.MOVEABLE.TOKEN.BASE_SEPOLIA.ETH, maxPerCall, maxTotal },
       ],
     },
   );
 }
 ```
 
-The example caps are illustrative raw units; choose caps for the actual token decimals and gas requirements. `get` groups calls into one rule per chain. The result is `{ rules, readiness }`. With an agent supplied, `rules` is typed as `Rule[]`; otherwise it is `PresetRuleTemplate[]` with a generated expiry and missing agent. This type distinction alone does not establish readiness. When `assets` is omitted, each chain includes its curated destination tokens with the explicit spending limits below. An explicit `assets` array replaces the defaults for every returned chain; `[]` selects no tokens. Assets in an explicit list must name their chain unless a single chain filter is supplied. For an explicit asset list, omitted caps still default to zero. An omitted gas budget uses the preset policy; an explicit zero remains zero.
+`get` returns `{ rules }`, one rule per chain, in the shape `create` takes. With an agent supplied, `rules` is typed as `Rule[]`; otherwise it is `PresetRuleTemplate[]` with a generated expiry and missing agent. An omitted gas budget uses the preset policy; an explicit zero remains zero.
 
-DEX discovery without `assets` includes a curated wrapped-native/stablecoin pair per chain, with both swap directions, exact-input/output functions and the token-specific input caps below. It does not require the UI to select tokens separately for every network. DEX discovery also works with an explicit empty asset list or with assets for only some chains. A chain with fewer than two explicitly supplied tokens returns full-signature review calls with wallet-recipient pins and an explicit zero input-amount maximum. A single supplied token is also pinned as the input. These calls cannot spend swap input tokens, even if asset budgets are filled later. Call `get` again after selecting both tokens to replace the review calls with the complete token-pinned rules; merely assigning `rule.assets` is insufficient.
+### What each preset allows
 
-With two ERC20 tokens, `get` expands ordered pairs into exact-input and exact-output calls with token, wallet-recipient and input-amount pins. Native markers and expansions exceeding the policy's 32-pin limit are rejected. Two tokens fit the shipped router template; three do not. Static tuple fields use paths such as `[0, 3]`.
+Caps marked "ETH cap" equal the ETH asset's `maxPerCall`, in wei.
 
-Reviewed EVM spenders generate approvals pinned to that spender and bounded by the asset's per-call cap. Money-market approvals are restricted to the market's underlying token. Distinct spenders become separate pinned alternatives under v6. These destination approvals are ordinary ERC20 allowances; the wallet's automatic Push-side gateway approval is separate.
+| Preset | Allowed calls |
+| --- | --- |
+| DEXES | `WETH.deposit()` with `maxValue` = ETH cap; `WETH.approve(router, ≤ ETH cap)`; `exactInputSingle`/`exactOutputSingle` WETH → USDC with WETH and USDC pinned, recipient = wallet and input ≤ ETH cap; `USDC.approve(router, ≤ 10 USDC)`; the same two swaps USDC → WETH with input ≤ 10 USDC; `WETH.withdraw(≤ ETH cap)` to unwrap |
+| LENDING | `WETH.deposit()` with `maxValue` = ETH cap; `WETH.approve(pool, ≤ ETH cap)`; Aave `supply`, `withdraw`, `borrow`, `repay` with the asset pinned to the reserve WETH, the beneficiary pinned to the wallet and the amount ≤ ETH cap; `WETH.withdraw(≤ ETH cap)` |
 
-Templates describe permissions, not available liquidity or guaranteed execution. Verify destination token balances, supported reserves and source PRC20 routes before use: protocol testnet mock tokens may differ from MOVEABLE tokens. Presets do not sign, fetch app ABIs or modify wallets. Dynamic-path swaps, Solana protocol templates and unconfirmed deployments are excluded. Mainnet addresses were checked read-only; no mainnet transactions were executed. Other mainnet protocols in the proposal remain excluded until their deployment and permission constraints are verified. Local policy tests do not execute the destination protocols.
+| Network | Uniswap router | DEX WETH / USDC | Aave pool | Aave WETH reserve |
+| --- | --- | --- | --- | --- |
+| Sepolia | `0x3bFA…Ae48E` | canonical WETH `0xfff9…6B14` / Circle USDC `0x1c7D…7238` | `0x6Ae4…8951` | Aave WETH `0xC558…9c3c` |
+| Base Sepolia | `0x94cC…2bc4` | WETH `0x4200…0006` / Circle USDC `0x036C…CF7e` | `0x8bAB…aE27` | WETH `0x4200…0006` |
+| Arbitrum Sepolia | `0x101F…663E` | WETH `0x980B…7c73` / Circle USDC `0x75fa…AA4d` | `0xBfC9…2Eff` | Aave WETH `0x1dF4…053D` |
 
-### Curated token defaults
+Each router's `WETH9()` is the DEX WETH it pins. Circle USDC is the only token with WETH liquidity on these Uniswap deployments; it is used only on the destination chain and is never sent from Push. The fee tier is not pinned: testnet pools are thin and often mispriced (on Arbitrum Sepolia the 0.05% pool returns nothing for small swaps), so an agent should pick the tier from a QuoterV2 quote. Testnet tokens with similar names can have different addresses; the returned addresses are authoritative. Templates describe permissions, not available liquidity or guaranteed execution. Presets do not sign, fetch app ABIs or modify wallets.
 
-These are small, protocol-specific subsets chosen to fit the 32-call/32-pin ceilings. The full reserve catalog is not automatically granted.
+### Limits and overrides
 
-| Network | DEX pair | Lending tokens |
-| --- | --- | --- |
-| Ethereum | WETH / USDC | WETH, USDC |
-| Base | WETH / USDC | USDC (Aave and Moonwell) |
-| Arbitrum | WETH / native USDC | WETH, native USDC |
-| BNB | WBNB / USDT | USDT (Aave and Venus) |
-| Sepolia | DEX WETH / Circle USDC | Aave faucet LINK |
-| Base Sepolia | WETH / Circle USDC | Aave faucet LINK, Moonwell mock USDbC and WETH |
-| Arbitrum Sepolia | WETH / Circle USDC | Aave USDC |
-| BSC testnet | WBNB / Venus USDT | Venus USDT, USDC |
+| Setting | Default |
+| --- | --- |
+| ETH per Push outbound and per allowed call | 0.001 ETH |
+| ETH sent from Push in total | 0.01 ETH |
+| USDC per swap on the destination chain | 10 USDC (fixed in the returned rule) |
+| Gas ceiling | 20 PC per outbound |
+| Expiry | seven days from the get call |
 
-Staking defaults are ETH/stETH/wstETH on Ethereum and the reviewed EigenLayer strategy's WETH on Sepolia. Testnet tokens with similar names can have different addresses; the returned addresses are authoritative. Defaults do not guarantee active reserves, liquidity or a Push PRC20 route. An unmodified preset cannot be granted when its assets lack matching PRC20 routes. The SDK preserves the selected tokens and caps and reports unavailable routes; it never removes assets to bypass this check. On Donut, every default asset of DEXES Sepolia and LENDING Arbitrum Sepolia currently has a registered route; the other testnet combinations do not. No runtime metadata/price fetch is added to get.
+Pass `assets` to set the ETH limits. Each selected chain needs exactly one native ETH asset, written as the zero address or the chain's `MOVEABLE.TOKEN.<CHAIN>.ETH`, with positive `maxPerCall` and `maxTotal`. A non-ETH token, a missing or zero limit, an empty array or a selected chain without an asset throws `INVALID_RULE`. Assets must name their chain unless a single chain filter is supplied. Call `get` again after changing a limit: the wrap value, approvals and operation pins all follow `maxPerCall`. To change the 10 USDC swap limit, edit the returned rule before `create`.
 
-### Funding and release-network checks
+The 20 PC gas ceiling is not a flat fee or a reservation. Actual sends obtain a fresh quote and remain subject to the rule cap; unused destination gas is refunded.
 
-Missing PRC20 registry entries produce `BRIDGE_ASSET_UNAVAILABLE`, and readiness is false while the returned rule retains all requested assets. No address or cap is silently replaced. `network` defaults to `TESTNET_DONUT` (`TESTNET` is accepted as an alias). Networks without a verified AGW deployment report `AGW_NETWORK_UNAVAILABLE`.
-
-The public preset API has no `funding` option. Remove it from existing integrations; supplying it now produces `INVALID_RULE` rather than silently changing permissions. Internal prefunded CEA test fixtures explicitly clear bridge assets to isolate protocol constraints. Those fixtures do not demonstrate that an unsupported preset route is executable.
-
-Existing mappings distinguish token identity by chain and address, including address casing for EVM. WETH/stETH Sepolia mappings and string/address-word source metadata are supported; mainnet or other-chain WETH is never aliased to them. Exact routes enabled in the Push node registry are also resolved by address: Circle testnet USDC on Sepolia, Base Sepolia and Arbitrum Sepolia maps to its own PRC20, separate from the routed mock USDC. Grant preparation still verifies each PRC20 source on chain. Protocol mock LINK, Moonwell/Venus tokens, Base/Arbitrum WETH, BNB testnet WBNB and the EigenLayer WETH remain unavailable for bridge funding until matching routes exist.
-
-### Default permission policy
-
-Only preset-generated assets receive these positive values. Direct rules, unknown tokens and explicit asset lists do not acquire guessed limits.
-
-| Selected token | Per allowed call / Push outbound | Cumulative Push-outbound total |
-| --- | --- | --- |
-| USDC / USDT / mock USDbC | 10 tokens | 100 tokens |
-| ETH / WETH / stETH / wstETH | 0.001 token | 0.01 token |
-| WBNB | 0.01 token | 0.1 token |
-| LINK | 1 token | 10 tokens |
-
-Amounts use verified token decimals, keyed by chain and address, rather than symbol or live prices. For example, the USDT per-call limit is `10 * 10^18` on BNB mainnet and `10 * 10^6` on BSC testnet. These are fixed token quantities, not USD budgets.
-
-The default expiry is seven days from each get call, computed once for all returned rules. The default gas ceiling is **20 PC per outbound**, including the value checked by URP; it is not a flat fee or a reservation. Actual sends obtain a fresh quote and remain subject to the rule cap. This ceiling has testnet protocol-flow coverage; mainnet templates do not have funded execution acceptance. Quotes may exceed the cap, requiring an explicit higher budget.
-
-Explicit `validUntil` and `maxGasPerCall` override policy values; zero gas is preserved and reports incomplete readiness. An explicit `assets` array replaces all default tokens and limits, and omitted caps inside it remain zero. To change a preset cap while retaining its token set, take the returned assets, replace the caps and pass them back to get. Do not just edit the returned rule assets: the allowed-call pins and approvals also need regeneration.
-
-`maxPerCall` applies to each allowed destination call; multiple calls may each consume that amount. `maxTotal` meters assets sent from Push, not aggregate destination activity. No destination lifetime limit is implied by these defaults. The general rules API continues to treat omitted caps as zero.
-
-### Configure, inspect and regenerate
-
-`readiness.ready` requires complete configuration plus offline SDK deployment, destination and bridge-registry support. Per-chain `configurationReady` reports input completeness separately. These checks do not verify live balances, reserve flags, liquidity or deployed bytecode. Grant preparation verifies wiring and token metadata on-chain before signing. Per-chain `selectedAssets` mirrors the selected rule assets; `bridgeAssets` reports registry presence, not verified live deployment. Mainnet templates remain discoverable but report `DESTINATION_UNAVAILABLE` on Donut. Check readiness before passing `rules` to create/update.
-
-Tokens and permission defaults come directly from the SDK: omitted `assets` populates the curated subset and its caps in every returned `rule.assets`. Omitted gas and expiry use the policy below. The caller supplies the agent and can filter chains; no per-network token selection is required. Show the generated permissions for owner review and allow explicit overrides. Regenerate via get after an edit so operation pins/approvals match the new caps. Show explicitly zero-cap calls as disabled and present excluded calls clearly. A zero bridge limit can be intentional when assets are already at the destination; it is reported separately from operation readiness.
+### Configure and regenerate
 
 ```ts
 async function createConfiguredDex(
-  client: PushChain, agent: Address, tokenIn: Address, tokenOut: Address,
+  client: PushChain, agent: Address, maxPerCall: bigint, maxTotal: bigint,
 ) {
-  const configured = filledPreset(agent, tokenIn, tokenOut);
-  if (!configured.readiness.ready) {
-    // Render these issues in the configuration screen; do not present it as ready.
-    return { issues: configured.readiness.chains };
-  }
+  const configured = filledPreset(agent, maxPerCall, maxTotal);
   return client.agentic.create('My DEX agent', { rules: configured.rules });
 }
 
 async function replaceConfiguredDex(
   client: PushChain, wallet: Address, rulesId: Hex,
-  agent: Address, tokenIn: Address, tokenOut: Address,
+  agent: Address, maxPerCall: bigint, maxTotal: bigint,
 ) {
-  // Re-run get after editing tokens or limits. Changing rule.assets alone
-  // does not regenerate allowedCalls, token pins or approvals.
-  const configured = filledPreset(agent, tokenIn, tokenOut);
-  if (!configured.readiness.ready) throw new Error('Complete the preset inputs');
+  // Re-run get after editing limits so every cap in allowedCalls follows them.
+  const configured = filledPreset(agent, maxPerCall, maxTotal);
   return client.agentic.wallet(wallet).rules.update({
     rules: [{ rulesId, rule: configured.rules[0] }],
   });
 }
 ```
 
-Save the preset category and editable inputs in the UI if subsequent edits should regenerate the preset. On-chain rules do not retain preset provenance or display metadata. A regenerated result is a replacement: do not append it to the old allowedCalls or keep the old token approvals. An update creates a new rulesId and resets counters, as documented above.
+Save the preset category and editable inputs in the UI if subsequent edits should regenerate the preset. On-chain rules do not retain preset provenance or display metadata. A regenerated result is a replacement: do not append it to the old allowedCalls. An update creates a new rulesId and resets counters, as documented above.
 
-### Amount units and enforcement scope
+### Enforcement scope
 
-| Preset operation | Generated restriction |
-| --- | --- |
-| DEX swap | Selected input/output token equality, wallet recipient, maximum input amount |
-| Aave supply/withdraw/borrow/repay | Listed reserve token equality, wallet beneficiary, amount maximum |
-| Moonwell/Venus mint/redeemUnderlying/borrow/repayBorrow | Maximum in the market's underlying-token units |
-| EigenLayer deposit | Selected token equality and deposit amount maximum |
-| Lido wrap/unwrap | stETH/wstETH input limits respectively; their units are not interchangeable |
-| Lido submit | Native-value cap from the selected native asset's maxPerCall |
+**A per-call limit applies to each allowed contract call, not the sum of several calls in one transaction. `maxTotal` is the cumulative Push-outbound amount, including outbounds whose destination execution later fails; it is not lifetime turnover on the destination.** These statements also hold for tokens already in the wallet's destination account, such as USDC from an earlier swap. Destination lifetime or batch-total accounting requires contract support.
 
-Aave reserve choices come from the reviewed official address book; fixed-token markets only enable for their actual underlying. Unknown assets do not receive an Aave approval or a positive Aave operation cap. A reserve listing is not a guarantee that its current supply cap, pause state or liquidity allows a transaction.
-
-Market `redeem(uint256)` takes shares: it is excluded and `redeemUnderlying(uint256)` is provided instead. Lido's dynamic withdrawal arrays and position-based claims are also excluded because an underlying amount cap cannot safely be converted into those arguments by this pure helper. Custom rules remain possible through the normal rule API.
-
-**A per-call limit applies to each allowed contract call, not the sum of several calls in one transaction. `maxTotal` is the cumulative Push-outbound amount, not lifetime turnover on the destination.** These statements also hold when a call's tokens are already in the CEA. Destination lifetime or batch-total accounting requires contract support. Bounded approvals do not supply such accounting.
-
-The contract allows at most 32 pins across a universal rule. Expansion fails explicitly if the selected assets/apps exceed that ceiling; no restrictions are silently dropped. Two Aave reserves fit its four-operation template; three do not. Blank/incomplete inputs return zero-cap review calls, and regeneration replaces them with the selected token-specific calls.
+The contract allows at most 32 pins across a universal rule. A DEX preset uses 8 calls and 21 pins, and a LENDING preset 7 calls and 15 pins. Expansion fails explicitly if an edited rule exceeds the ceiling; no restrictions are silently dropped. Custom rules remain possible through the normal rule API.
 
 ## Validation
 
@@ -345,28 +297,49 @@ Run `node packages/core/scripts/check-agw-docs.js` to typecheck these examples. 
 
 ### Live preset acceptance
 
-The opt-in `agw-presets` E2E group exercises real Donut-to-Sepolia protocol calls. From `packages/core`, run `npm run e2e:preflight -- --group agw-presets --dry-run`, then `npm run e2e:ci -- --group agw-presets`. It uses the existing E2E credentials in memory. Each scenario funds a fresh wallet with at most 65 PC plus a fresh agent's configured gas allocation; the Uniswap case also uses 0.000002 pETH. No mainnet transaction is part of this group.
-
-Uniswap uses destination WETH/Circle USDC; Aave uses its faucet LINK. Their generated preset calls and pins are retained, but bridge `assets` are set to `[]` because these destination tokens are not a supported SDK PRC20 pair. The owner funds the CEA separately. These tests establish swaps and lending against actual protocols, not the ability to bridge arbitrary assets. Missing liquidity, exhausted reserve caps or an unavailable faucet fail as prerequisites rather than silently skipping. Results are specific to Sepolia and do not certify the other catalog chains.
-
-
-The additional opt-in group `agw-presets-expanded` covers EigenLayer deposits on Sepolia; Uniswap swaps on Base/Arbitrum Sepolia; PancakeSwap plus Venus on BNB testnet; and Aave plus Moonwell on Base Sepolia. Use the same preflight/run commands with `--group agw-presets-expanded`. Each scenario funds a fresh wallet with at most 100 PC and checks any required destination-native PRC20 before transfer. Native-wrap cases use 10^12 raw native-token units. These are deposit/swap/redemption checks, not borrow/repay or every-market coverage.
+The opt-in `agw-presets-acceptance` group runs all six shipped presets on Donut. From `packages/core`, run `npm run e2e:preflight -- --group agw-presets-acceptance --dry-run`, then `npm run e2e:ci -- --group agw-presets-acceptance`. Each case passes the returned `rules` unchanged to `create`, reads back every asset, cap, function and pin, then has the agent send ETH twice (first use and subsequent) with `[deposit, approve, swap or supply]`. It checks destination success, the resulting USDC or aToken balance and the recorded ETH spend. The owner needs the chain's gas PRC20 (pETH, pETH_BASE or pETH_ARB) for two bounded sends; each case funds a fresh wallet with 50 PC. No mainnet transaction is part of this group.
 
 AGW token resolution uses the destination chain for ordinary token objects: an explicit Base or Arbitrum ETH token must not select Sepolia's PRC20 merely because its symbol/address is identical. An explicit Push PRC20 reference must name the same source chain as the destination; a mismatch fails before signing.
 
 ### Creation UI: apps, tokens and preset availability
 
-A rule requires at least one allowed function, even when tokens and limits are selected. A tokens-only rule returns `INVALID_RULE`, with `details.reason = 'ALLOWED_FUNCTION_REQUIRED'` and actionable `userMessage`. App selection can only be hidden if the application explicitly supplies the intended function permissions; the SDK does not invent transfer recipients or permissions.
+**Tokens without an app.** On an EVM network, a rule with ERC20 assets and no `allowedCalls` (omitted or `[]`) lets the agent transfer each token only back to the owner. The SDK adds one `transfer(address,uint256)` call per token, pinned to the owner's own EVM address and capped at that asset's `maxPerCall`. The owner's address is the Push EOA, or the EVM address the owner's account comes from. `transferTo` names more recipients, one more call per token each; the owner stays included.
 
-`assets: []` remains valid for a universal rule with allowed calls. It grants no token transfers from Push; it never means all tokens. Allowed calls may still interact with destination-held assets under their configured constraints. There is no all-token wildcard. List each permitted token and cap explicitly (at most eight assets).
+```ts
+const tokensOnly: AuthoredRule = {
+  agent: '0x0000000000000000000000000000000000001234',
+  chainNamespace: 'eip155:11155111',
+  validUntil: Math.floor(Date.now() / 1000) + 7 * 86400,
+  assets: [
+    {
+      token: PushChain.CONSTANTS.MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.USDC,
+      maxPerCall: BigInt(10_000_000),
+      maxTotal: BigInt(100_000_000),
+    },
+  ],
+  // Optional: also allow transfers to this address.
+  transferTo: ['0x0000000000000000000000000000000000005678'],
+};
+```
 
-For presets, check `readiness.ready` before enabling Create. Display the per-chain issues and the affected token address. Empty selections explain that transfers from Push are disabled. `BRIDGE_ASSET_UNAVAILABLE` identifies an unverified SDK route, not proof that no deployment exists anywhere. Do not substitute a routed token solely because its symbol matches: the protocol must support that exact address, and swaps need compatible liquidity. A transfer-only helper is not included. An ERC20 transfer can be authorized explicitly with a `transfer(address,uint256)` allowed call pinned to a recipient and a per-transfer maximum; it also applies to that token already held in the wallet's destination account.
+The per-transfer limit can be repeated until the rule expires, so the agent can move the token's whole balance in the destination account, including tokens already there, but only to these recipients. Refused with `INVALID_RULE` and a `details.reason`:
+
+- `TOKENS_ONLY_NATIVE`: native ETH or BNB in such a rule (a rule cannot allow a plain coin transfer).
+- `TOKENS_ONLY_UNSUPPORTED`: a Solana rule without an app, or `transferTo` outside EVM.
+- `TRANSFER_RECIPIENT_REQUIRED`: an owner whose account comes from Solana and no `transferTo`.
+- `TRANSFER_TO_WITH_CALLS`: `transferTo` together with allowed functions; add the transfer as an allowed function instead.
+
+A Push-chain rule, or an EVM rule with neither assets nor functions, still returns `ALLOWED_FUNCTION_REQUIRED`. A Push-chain rule allows at most eight functions; other networks allow 32.
+
+**All supported tokens.** `assets: [{ token: PushChain.CONSTANTS.MOVEABLE.TOKEN.<CHAIN>.ALL }]` expands, when the rule is prepared, to every token Push can send to that chain, each with its default limit (10 per send and 100 in total for USDC, USDT and DAI; 0.001 and 0.01 for ETH, WETH and stETH; 0.01 and 0.1 for BNB and SOL). The Circle USDC route and the routed mock USDC are separate tokens and are both listed. Tokens added to Push later are not included in an existing rule. `ALL` takes no limits (`ALL_WITH_LIMITS`); a token listed next to it replaces its default entry. Without an app, `ALL` leaves native ETH/BNB out, so the rule transfers every routable ERC20 back to the owner. Use `PushChain.utils.agentic.assets.all(chainNamespace)` to show the expanded list and its limits before signing.
+
+`assets: []` still grants no transfers from Push; it never means all tokens. Allowed calls may still interact with destination-held assets under their configured constraints. A rule holds at most eight assets.
+
+Every listed preset can be created; there is no readiness check. Do not substitute a routed token solely because its symbol matches: the protocol must support that exact address, and swaps need compatible liquidity.
 
 ### Exact-preset acceptance and gas evidence
 
-The opt-in `agw-presets-acceptance` group exercises all nine shipped testnet category/network combinations. It passes the returned `rules` unchanged to `create`, reads back every asset/cap/function/pin, and performs first-use and subsequent agent operations. Missing routes, protocols or exact PRC20 balances fail before funding; they do not count as passing acceptance. The opt-in `agw-presets-routed` group runs only the cases whose default assets are all routed (DEXES Sepolia and LENDING Arbitrum Sepolia); preflight checks readiness for the selected cases only. The earlier `agw-presets` and `agw-presets-expanded` protocol fixtures use prefunded destination assets and remain separate coverage.
-
-Read-only compatibility checks are available with `node packages/core/scripts/check-agw-preset-compatibility.js /tmp/compatibility.json` after building core. The check verifies known routed source identities (registry and exact node routes), live Aave reserves, Moonwell/Venus underlyings, the reviewed EigenLayer strategy and pools at the preset routers' factories, including each DEX preset's own default pair. A matching symbol alone is insufficient. RPC and read errors are recorded as unknown checks, never as compatibility or as missing routes. No default assets were changed. `node packages/core/scripts/check-agw-route-registry.js /tmp/registry.json` compares the SDK's routes with the Push node's token registry (uregistry): it fails on a mismatched or SDK-only route and lists enabled node routes the SDK does not resolve.
+Read-only compatibility checks are available with `node packages/core/scripts/check-agw-preset-compatibility.js /tmp/compatibility.json` after building core. For every preset chain it simulates `deposit()` on the wrap target with native value, checks that the router wraps into that WETH and that Uniswap's QuoterV2 returns USDC for a dust swap at some fee tier, and that the Aave pool lists the WETH reserve. RPC and read errors are recorded and fail the check; they are never reported as compatibility. `node packages/core/scripts/check-agw-route-registry.js /tmp/registry.json` compares the SDK's routes with the Push node's token registry (uregistry): it fails on a mismatched or SDK-only route and lists enabled node routes the SDK does not resolve.
 
 `maxGasPerCall` is an owner-authorized ceiling on the PC attached to each outbound. The send-time `gasLimit` is a different field: the multiplier for the destination gas price. Omitted or zero uses the network base (500,000 on the EVM testnets, 960 on Solana devnet). Agent EVM sends without an explicit gasLimit instead use 2,000,000 on first use (the destination account is deployed), and 1,000,000 when they export a non-native token or make more than one destination call. A Sepolia Circle USDC export with approve and a Uniswap swap ran out of gas at the 500,000 base. An explicit value below the base is refused before quoting with `INVALID_RULE` and `details.minimum`. When omitted on Solana, the SDK raises the limit to cover finalization rent instead of using an EVM-style million-unit fallback. If a gas-price change leaves that budget short even after one re-quote, the send is refused before signing (`INCONSISTENT_READ`).
 

@@ -163,7 +163,8 @@ async function main() {
   for (const preset of PRESET_CATALOG)
     for (const chain of preset.chains) {
       if (!enabled.some((c) => c.chain === chain.chainNamespace)) continue;
-      for (const token of chain.defaultTokens || []) {
+      // Presets send only native ETH; its route is the chain's gas token config.
+      for (const token of ['0x0000000000000000000000000000000000000000']) {
         const route = enabled.find(
           (c) =>
             c.chain === chain.chainNamespace &&

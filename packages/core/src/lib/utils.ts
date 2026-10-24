@@ -1,4 +1,5 @@
 import { agenticPresets } from './agentic/presets';
+import { allRoutableAssets } from './agentic/management/rule-inputs';
 import { jobSpecUtils } from './job-spec';
 import { validateAgentCardRules, encodeAgentCardRules, decodeAgentCardRules } from './market/rules';
 import {
@@ -875,7 +876,11 @@ export class Utils {
   };
 
   /** Pure preset discovery/templates; internal encoders and identifiers stay private. */
-  static readonly agentic = Object.freeze({ presets: agenticPresets });
+  static readonly agentic = Object.freeze({
+    presets: agenticPresets,
+    /** Every token Push can send to a chain, with default limits (MOVEABLE ALL). */
+    assets: Object.freeze({ all: allRoutableAssets }),
+  });
   static readonly job = jobSpecUtils;
   static readonly market = Object.freeze({ validateAgentCardRules, encodeAgentCardRules, decodeAgentCardRules });
 

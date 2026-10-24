@@ -160,6 +160,19 @@ function offsetValid(fromEnd: boolean, offset: number, len: number): boolean {
     : offset + len <= SVM_LIMITS.ixData;
 }
 
+/** Write-path only. The deployed SvmRulebook doesn't bind instruction-data
+ * length to a rule, so appended bytes can shift a `fromEnd` pin onto
+ * attacker-chosen data (Zaryab, 2026-10-23). Refused until the policy fix;
+ * decoding and reading existing rules still accept it. */
+export function refuseFromEndPins(t: SvmTermsWire): void {
+  if (t.dataPins.some((p) => p.fromEnd))
+    throw new AgenticError(
+      AGENTIC_ERROR_CODE.INVALID_RULE,
+      'Solana data pins counted from the end of the instruction data are not supported yet',
+      { details: { reason: 'FROM_END_PIN_UNSUPPORTED', field: 'dataPins' } }
+    );
+}
+
 /** Grant-time structural rules. Chain/token/mint correctness requires resolved on-chain inputs. */
 export function validateSvmTerms(t: SvmTermsWire, nowSeconds: number): void {
   integer(t.validUntil, 2 ** 48 - 1, 'validUntil');

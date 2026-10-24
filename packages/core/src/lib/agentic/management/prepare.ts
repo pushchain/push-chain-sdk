@@ -1,4 +1,5 @@
 import { isPublicRule, normalizePublicRule } from '../public-rule';
+import { prepareRuleInput } from './rule-inputs';
 import { preparePublicSvmRule } from './svm-public';
 import type { SvmTermsWire } from '../codec/svm-terms';
 import { getAddress, zeroAddress, type Address } from 'viem';
@@ -46,7 +47,11 @@ export async function prepareWalletRules(
     inputs.map(async (rule, ruleIndex) => {
       try {
         return isPublicRule(rule)
-          ? await normalizePublicRule(rule, wallet, runtime)
+          ? await normalizePublicRule(
+              await prepareRuleInput(rule, runtime, owner, snap),
+              wallet,
+              runtime
+            )
           : rule;
       } catch (error) {
         throw ruleErrorContext(error, ruleIndex, rule?.chainNamespace);

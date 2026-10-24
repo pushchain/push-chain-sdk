@@ -19,6 +19,7 @@ import {
 } from 'viem';
 import type {
   Rule,
+  RuleAsset,
   RuleInput,
   InternalRule,
   NativeAction,
@@ -38,6 +39,7 @@ import { UINT256_MAX } from './codec/defaults';
 import { deriveAgwSvmCea, svmKey } from './codec/svm-accounts';
 import type { AgenticRuntime } from './runtime';
 import { CHAIN } from '../constants/enums';
+import { isMoveableTokenSet } from '../constants/tokens';
 import { resolveRuleDestination } from './management/destination';
 
 export const WALLET = 'agentic:wallet' as const;
@@ -63,6 +65,13 @@ function rejectFields(obj: object, fields: string[], where: string) {
       throw invalid(
         `${where}.${field} is not supported by the current rule shape`
       );
+}
+/** Preparation expands MOVEABLE ALL markers before normalization. */
+function authoredAssets(rule: Rule): RuleAsset[] {
+  const assets = rule.assets ?? [];
+  if (assets.some((a) => isMoveableTokenSet(a?.token)))
+    throw invalid('expand MOVEABLE ALL assets before normalizing a rule');
+  return assets;
 }
 function uint(value: unknown, name: string): bigint {
   if (typeof value !== 'bigint' || value < BigInt(0) || value > UINT256_MAX)
@@ -139,6 +148,8 @@ export async function normalizePublicRule(
       'ref',
       'allowedInstructions',
       'outputTokens',
+      // Expanded into transfer calls during preparation (management/rule-inputs).
+      'transferTo',
     ],
     'rule'
   );
@@ -154,10 +165,20 @@ export async function normalizePublicRule(
   )
     throw new AgenticError(
       AGENTIC_ERROR_CODE.INVALID_RULE,
-      'Add at least one allowed function. Selecting tokens and limits alone does not authorize transfers.',
+      'Add at least one allowed function, or select tokens on an EVM network to allow transfers back to the owner.',
       {
         details: { reason: 'ALLOWED_FUNCTION_REQUIRED', field: 'allowedCalls' },
       }
+    );
+  // Push-chain rules have the smaller limit; report it before the generic one.
+  if (
+    r.chainNamespace === undefined &&
+    Array.isArray(r.allowedCalls) &&
+    r.allowedCalls.length > 8
+  )
+    throw capabilityUnavailable(
+      'nativeActions',
+      'the deployed v6 wallet permits at most eight native actions'
     );
   if (
     !Array.isArray(r.allowedCalls) ||
@@ -208,11 +229,6 @@ export async function normalizePublicRule(
   const native = r.chainNamespace === undefined;
   if (r.chainNamespace === runtime.pushChainNamespace)
     throw invalid('omit chainNamespace for Push rules');
-  if (native && r.allowedCalls.length > 8)
-    throw capabilityUnavailable(
-      'nativeActions',
-      'the deployed v6 wallet permits at most eight native actions'
-    );
   if (native && (r.assets !== undefined || r.maxGasPerCall !== undefined))
     throw invalid('native rules do not carry assets or maxGasPerCall');
   const own = native
@@ -276,7 +292,7 @@ export async function normalizePublicRule(
     agent: r.agent,
     validUntil: r.validUntil,
     chainNamespace: r.chainNamespace as `eip155:${string}`,
-    assets: (r.assets ?? []).map((a) => ({
+    assets: authoredAssets(r).map((a) => ({
       ...a,
       token: a.token as Address,
       maxTotal: a.maxTotal ?? BigInt(0),
@@ -333,7 +349,7 @@ function svmRule(rule: Rule, cea: Hex): SolanaRule {
         )
       ),
     ],
-    assets: (rule.assets ?? []).map((asset) => ({
+    assets: authoredAssets(rule).map((asset) => ({
       ...asset,
       maxTotal: asset.maxTotal ?? BigInt(0),
     })),

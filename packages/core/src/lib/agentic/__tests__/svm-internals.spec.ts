@@ -3,6 +3,7 @@ import { bytesToHex, hexToBytes, numberToHex, type Hex } from 'viem';
 import {
   decodeSvmTerms,
   encodeSvmTerms,
+  refuseFromEndPins,
   validateSvmTerms,
   SvmDataPinMode,
   type SvmTermsWire,
@@ -112,6 +113,19 @@ describe('v5 internal SVM wire codec', () => {
       { token: ADDR.other, maxPerCall: BigInt(0), maxTotal: BigInt(0) },
     ];
     expect(decodeSvmTerms(encodeSvmTerms(t, NOW))).toEqual(t);
+    // Existing fromEnd rules stay readable, but new grants refuse them.
+    expect(() => refuseFromEndPins(t)).toThrow(
+      expect.objectContaining({
+        code: 'INVALID_RULE',
+        details: { reason: 'FROM_END_PIN_UNSUPPORTED', field: 'dataPins' },
+      })
+    );
+    expect(() =>
+      refuseFromEndPins({
+        ...t,
+        dataPins: t.dataPins.filter((p) => !p.fromEnd),
+      })
+    ).not.toThrow();
   });
   it.each([
     [

@@ -1,7 +1,6 @@
 /** Release acceptance: EXACT shipped preset -> create -> readback -> two agent sends.
- * Missing routes, protocols or exact PRC20 balances fail before any funding. This is
- * deliberately separate from
- * the prefunded protocol fixtures; no asset, cap, call or pin is removed here.
+ * Every preset sends native ETH from Push; the agent wraps it on arrival and uses
+ * the app. No asset, cap, call or pin is removed or substituted here.
  */
 import '@e2e/shared/setup';
 import {
@@ -11,6 +10,8 @@ import {
   erc20Abi,
   parseAbi,
   parseEther,
+  getAddress,
+  zeroAddress,
   type ContractFunctionReturnType,
   type Address,
   type Hex,
@@ -32,34 +33,42 @@ const endpoints: Record<string, string> = {
   'eip155:11155111': 'https://ethereum-sepolia-rpc.publicnode.com',
   'eip155:84532': 'https://base-sepolia-rpc.publicnode.com',
   'eip155:421614': 'https://arbitrum-sepolia-rpc.publicnode.com',
-  'eip155:97': 'https://bsc-testnet-rpc.publicnode.com',
 };
 const ABI = parseAbi([
+  'function deposit() payable',
   'function factory() view returns(address)',
   'function getPool(address,address,uint24) view returns(address)',
   'function liquidity() view returns(uint128)',
   'function supply(address,uint256,address,uint16)',
-  'function mint(uint256) returns(uint256)',
   'function balanceOf(address) view returns(uint256)',
   'function getReserveData(address) view returns ((uint256 configuration,uint128 liquidityIndex,uint128 currentLiquidityRate,uint128 variableBorrowIndex,uint128 currentVariableBorrowRate,uint128 currentStableBorrowRate,uint40 lastUpdateTimestamp,uint16 id,address aTokenAddress,address stableDebtTokenAddress,address variableDebtTokenAddress,address interestRateStrategyAddress,uint128 accruedToTreasury,uint128 unbacked,uint128 isolationModeTotalDebt))',
-  'function depositIntoStrategy(address,address,uint256) returns(uint256)',
-  'function stakerDepositShares(address,address) view returns(uint256)',
   'function exactInputSingle((address tokenIn,address tokenOut,uint24 fee,address recipient,uint256 amountIn,uint256 amountOutMinimum,uint160 sqrtPriceLimitX96)) returns(uint256)',
 ]);
-// Concrete calls supported by the current catalog. A newly introduced protocol
-// requires its own operation/receipt assertion rather than a false generic pass.
-// `input` selects which preset asset funds the operation; swaps can trade either way.
-async function operation(rule: Rule, cea: Address, input = 0) {
+// Uniswap V3 QuoterV2 on each testnet. Declared view so eth_call returns its quote.
+const QUOTERS: Record<string, Address> = {
+  'eip155:11155111': '0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3',
+  'eip155:84532': '0xC5290058841028F1614F3A6F0F5816cAd0df5E27',
+  'eip155:421614': '0x2779a0CC1c3e0E44D2542EC3e79e3864Ae93Ef0B',
+};
+const QUOTER_ABI = parseAbi([
+  'function quoteExactInputSingle((address tokenIn,address tokenOut,uint256 amountIn,uint24 fee,uint160 sqrtPriceLimitX96)) view returns (uint256 amountOut,uint160 sqrtPriceX96After,uint32 initializedTicksCrossed,uint256 gasEstimate)',
+]);
+// Concrete operations for the shipped catalog: a WETH -> USDC swap or an Aave
+// WETH supply. A new protocol needs its own receipt assertion, not a generic pass.
+async function operation(rule: Rule, cea: Address) {
   const rpc = createPublicClient({
     transport: http(endpoints[rule.chainNamespace!], {
       timeout: 15000,
-      retryCount: 1,
+      // Public testnet RPCs drop requests; a dropped receipt read is not a failure.
+      retryCount: 3,
     }),
   });
-  const asset = rule.assets![input],
-    token = (
-      typeof asset.token === 'string' ? asset.token : asset.token.address
-    ) as Address;
+  const asset = rule.assets![0];
+  if (
+    (typeof asset.token === 'string' ? asset.token : asset.token.address) !==
+    zeroAddress
+  )
+    throw new Error('Presets must send only native ETH');
   const amount = asset.maxPerCall / BigInt(1000);
   if (amount <= BigInt(0) || (asset.maxTotal ?? BigInt(0)) < amount * BigInt(2))
     throw new Error('Default caps cannot cover two bounded acceptance sends');
@@ -70,7 +79,6 @@ async function operation(rule: Rule, cea: Address, input = 0) {
       | 'liquidity'
       | 'getReserveData'
       | 'balanceOf'
-      | 'stakerDepositShares'
   >(
     address: Address,
     functionName: F,
@@ -82,43 +90,62 @@ async function operation(rule: Rule, cea: Address, input = 0) {
       functionName: functionName as never,
       args: args as never,
     }) as Promise<ContractFunctionReturnType<typeof ABI, 'view', F>>;
-  const swap = rule.allowedCalls.find((c) =>
-    c.selector.toString().startsWith('exactInputSingle(')
+  const wrap = rule.allowedCalls.find((c) => c.selector === 'deposit()');
+  if (!wrap || wrap.maxValue !== asset.maxPerCall)
+    throw new Error('Preset must wrap ETH up to its per-call cap');
+  const weth = getAddress(wrap.target);
+  const swap = rule.allowedCalls.find(
+    (c) =>
+      c.selector.toString().startsWith('exactInputSingle(') &&
+      c.pins?.some(
+        (p) =>
+          'expected' in p && p.expected === weth && p.arg?.toString() === '0,0'
+      )
   );
-  let target: Address,
-    data: Hex,
-    outputToken: Address | undefined,
-    shares: (() => Promise<bigint>) | undefined;
+  let target: Address, data: Hex, resultBalance: () => Promise<bigint>;
   if (swap) {
-    target = swap.target as Address;
-    const output = rule.assets![input === 0 ? 1 : 0];
-    outputToken = (
-      typeof output.token === 'string' ? output.token : output.token.address
-    ) as Address;
-    const factory = await read(target, 'factory');
-    let fee: number | undefined;
-    for (const tier of [100, 500, 2500, 3000, 10000]) {
-      const pool: Address = await read(factory, 'getPool', [
-        token,
-        outputToken,
-        tier,
-      ]);
-      if (!/^0x0+$/.test(pool) && (await read(pool, 'liquidity')) > BigInt(0)) {
+    target = getAddress(swap.target);
+    const usdc = getAddress(
+      swap.pins!.find((p) => p.arg?.toString() === '0,1')!.expected as Address
+    );
+    // Testnet pools are thin and often mispriced, so the first tier with
+    // liquidity can return nothing. Uniswap's quoter simulates each swap.
+    let fee: number | undefined,
+      best = BigInt(0);
+    for (const tier of [100, 500, 3000, 10000]) {
+      let quoted: bigint;
+      try {
+        [quoted] = await rpc.readContract({
+          address: QUOTERS[rule.chainNamespace!],
+          abi: QUOTER_ABI,
+          functionName: 'quoteExactInputSingle',
+          args: [
+            {
+              tokenIn: weth,
+              tokenOut: usdc,
+              amountIn: amount,
+              fee: tier,
+              sqrtPriceLimitX96: BigInt(0),
+            },
+          ],
+        });
+      } catch {
+        continue; // no pool at this tier
+      }
+      if (quoted > best) {
+        best = quoted;
         fee = tier;
-        break;
       }
     }
     if (!fee)
-      throw new Error(
-        'PRESET_PROTOCOL_UNAVAILABLE: routed default pair has no active pool'
-      );
+      throw new Error('PRESET_PROTOCOL_UNAVAILABLE: no active WETH/USDC pool');
     data = encodeFunctionData({
       abi: ABI,
       functionName: 'exactInputSingle',
       args: [
         {
-          tokenIn: token,
-          tokenOut: outputToken,
+          tokenIn: weth,
+          tokenOut: usdc,
           fee,
           recipient: cea,
           amountIn: amount,
@@ -127,65 +154,41 @@ async function operation(rule: Rule, cea: Address, input = 0) {
         },
       ],
     });
+    resultBalance = () => read(usdc, 'balanceOf', [cea]);
   } else {
-    const call = rule.allowedCalls.find(
-      (c) =>
-        c.selector === 'supply(address,uint256,address,uint16)' ||
-        c.selector === 'mint(uint256)' ||
-        c.selector === 'depositIntoStrategy(address,address,uint256)'
+    const supply = rule.allowedCalls.find(
+      (c) => c.selector === 'supply(address,uint256,address,uint16)'
     );
-    if (!call)
+    if (!supply)
       throw new Error(
         'PRESET_ACCEPTANCE_UNIMPLEMENTED: no verified operation for this catalog entry'
       );
-    target = call.target as Address;
-    if (call.selector === 'supply(address,uint256,address,uint16)') {
-      const reserve = await read(target, 'getReserveData', [token]);
-      if (/^0x0+$/.test(reserve.aTokenAddress))
-        throw new Error(
-          'PRESET_PROTOCOL_UNAVAILABLE: token is not an Aave reserve'
-        );
-      shares = () => read(reserve.aTokenAddress, 'balanceOf', [cea]);
-      data = encodeFunctionData({
-        abi: ABI,
-        functionName: 'supply',
-        args: [token, amount, cea, 0],
-      });
-    } else if (call.selector === 'mint(uint256)') {
-      shares = () => read(target, 'balanceOf', [cea]);
-      data = encodeFunctionData({
-        abi: ABI,
-        functionName: 'mint',
-        args: [amount],
-      });
-    } else {
-      const strategy = '0x424246eF71b01ee33aA33aC590fd9a0855F5eFbc' as Address;
-      shares = () => read(target, 'stakerDepositShares', [cea, strategy]);
-      data = encodeFunctionData({
-        abi: ABI,
-        functionName: 'depositIntoStrategy',
-        args: [strategy, token, amount],
-      });
-    }
+    target = getAddress(supply.target);
+    const reserve = await read(target, 'getReserveData', [weth]);
+    if (/^0x0+$/.test(reserve.aTokenAddress))
+      throw new Error(
+        'PRESET_PROTOCOL_UNAVAILABLE: WETH is not an Aave reserve'
+      );
+    data = encodeFunctionData({
+      abi: ABI,
+      functionName: 'supply',
+      args: [weth, amount, cea, 0],
+    });
+    resultBalance = () => read(reserve.aTokenAddress, 'balanceOf', [cea]);
   }
-  const resultBalance =
-    shares ??
-    (() =>
-      rpc.readContract({
-        address: outputToken!,
-        abi: erc20Abi,
-        functionName: 'balanceOf',
-        args: [cea],
-      }));
   return {
     rpc,
-    token,
     amount,
     target,
     resultBalance,
     calls: [
       {
-        to: token,
+        to: weth,
+        value: amount,
+        data: encodeFunctionData({ abi: ABI, functionName: 'deposit' }),
+      },
+      {
+        to: weth,
         value: BigInt(0),
         data: encodeFunctionData({
           abi: erc20Abi,
@@ -199,21 +202,11 @@ async function operation(rule: Rule, cea: Address, input = 0) {
 }
 
 d('agw unchanged preset acceptance', () => {
-  // Explicit titles also allow CI's scenario selector to enumerate all nine.
+  // Explicit titles also allow CI's scenario selector to enumerate every case.
   const run = async (
-    category: 'DEXES' | 'LENDING' | 'STAKING',
+    category: 'DEXES' | 'LENDING',
     chainNamespace: `eip155:${string}`
   ) => {
-    const preview = PushChain.utils.agentic.presets.get(category, {
-      chainNamespace,
-      agent: '0x0000000000000000000000000000000000005678',
-    });
-    if (!preview.readiness.ready)
-      throw new Error(
-        `PRESET_BLOCKED_BEFORE_FUNDING ${category} ${chainNamespace}: ${JSON.stringify(
-          preview.readiness.chains[0].issues
-        )}`
-      );
     const f = await setupAgw({ deferAgentFunding: true });
     try {
       const generated = PushChain.utils.agentic.presets.get(category, {
@@ -231,34 +224,10 @@ d('agw unchanged preset acceptance', () => {
           endpoints[chainNamespace]
         )
       ).cea as Address;
-      // A swap may start from whichever default asset the owner holds as a PRC20.
-      const swapPreset = generated.rules[0].allowedCalls.some((c) =>
-        c.selector.toString().startsWith('exactInputSingle(')
-      );
-      let input = 0;
-      if (swapPreset)
-        for (const [i, a] of generated.rules[0].assets!.entries()) {
-          const prc20 = resolveAgenticPrc20(
-            {
-              chain: chainNamespace,
-              address: typeof a.token === 'string' ? a.token : a.token.address,
-            },
-            f.manifest.network
-          ).address;
-          const held = await f.push.readContract({
-            address: prc20,
-            abi: erc20Abi,
-            functionName: 'balanceOf',
-            args: [f.ownerAddress],
-          });
-          if (held >= (a.maxPerCall / BigInt(1000)) * BigInt(2)) {
-            input = i;
-            break;
-          }
-        }
-      const op = await operation(generated.rules[0], cea, input);
+      const op = await operation(generated.rules[0], cea);
+      // Native ETH leaves Push as the chain's gas PRC20 (pETH, pETH_BASE, pETH_ARB).
       const mapped = resolveAgenticPrc20(
-        { chain: chainNamespace, address: op.token },
+        { chain: chainNamespace, address: zeroAddress },
         f.manifest.network
       );
       if (
@@ -270,7 +239,9 @@ d('agw unchanged preset acceptance', () => {
         })) <
         op.amount * BigInt(2)
       )
-        throw new Error('PRESET_PREREQUISITE: owner lacks exact default PRC20');
+        throw new Error(
+          `PRESET_PREREQUISITE: owner lacks ${mapped.symbol} for two sends`
+        );
       await f.fundAgent();
       const made = await f.owner.agentic.create('preset-acceptance', {
         rules: generated.rules,
@@ -329,15 +300,7 @@ d('agw unchanged preset acceptance', () => {
           const tx = await agent.universal.sendTransaction({
             to: { address: op.target, chain: chainNamespace as CHAIN },
             data: op.calls,
-            funds: {
-              amount: op.amount,
-              token: {
-                symbol: mapped.symbol,
-                decimals: mapped.decimals,
-                address: op.token,
-                mechanism: 'approve',
-              },
-            },
+            funds: { amount: op.amount },
           });
           f.evidence('unchanged-preset-submitted', {
             category,
@@ -369,7 +332,7 @@ d('agw unchanged preset acceptance', () => {
             .rules.get(made.rulesIds[0]);
           if (stored.spent?.kind !== 'universal')
             throw new Error('Missing universal spend');
-          expect(stored.spent.assets[input].spent).toBe(
+          expect(stored.spent.assets[0].spent).toBe(
             op.amount * BigInt(stage === 'first-use' ? 1 : 2)
           );
         } finally {
@@ -387,22 +350,15 @@ d('agw unchanged preset acceptance', () => {
     () => run(...PRESET_ACCEPTANCE_CASES[2]),
     600000
   );
-  it('4. DEXES BNB testnet', () => run(...PRESET_ACCEPTANCE_CASES[3]), 600000);
-  it('5. LENDING Sepolia', () => run(...PRESET_ACCEPTANCE_CASES[4]), 600000);
+  it('4. LENDING Sepolia', () => run(...PRESET_ACCEPTANCE_CASES[3]), 600000);
   it(
-    '6. LENDING Base Sepolia',
+    '5. LENDING Base Sepolia',
+    () => run(...PRESET_ACCEPTANCE_CASES[4]),
+    600000
+  );
+  it(
+    '6. LENDING Arbitrum Sepolia',
     () => run(...PRESET_ACCEPTANCE_CASES[5]),
     600000
   );
-  it(
-    '7. LENDING Arbitrum Sepolia',
-    () => run(...PRESET_ACCEPTANCE_CASES[6]),
-    600000
-  );
-  it(
-    '8. LENDING BNB testnet',
-    () => run(...PRESET_ACCEPTANCE_CASES[7]),
-    600000
-  );
-  it('9. STAKING Sepolia', () => run(...PRESET_ACCEPTANCE_CASES[8]), 600000);
 });

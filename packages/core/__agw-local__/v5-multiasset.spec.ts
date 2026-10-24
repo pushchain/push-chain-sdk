@@ -7,6 +7,7 @@ import {
   encodeFunctionData,
   getAddress,
   parseAbi,
+  zeroAddress,
   type Address,
   type Hex,
 } from 'viem';
@@ -240,260 +241,180 @@ describe('v6 multi-asset SDK management and execution', () => {
     expect(await owner.agentic.derive()).toEqual(before);
   });
 
-  it('the shipped DEX catalog enforces tuple receiver/token/amount pins on actual v6 URP', async () => {
-    const { rules } = agenticPresets.get('DEXES', {
-      chainNamespace: CHAIN_NS,
-      agent: h.wallets[1].account!.address,
-      validUntil: Math.floor(Date.now() / 1000) + 3600,
-      maxGasPerCall: BigInt(10) ** BigInt(16),
-      assets: [
-        { token: a, maxPerCall: BigInt(5), maxTotal: BigInt(20) },
-        { token: b, maxPerCall: BigInt(7), maxTotal: BigInt(20) },
-      ],
-    });
+  const presetOptions = (maxPerCall: bigint) => ({
+    chainNamespace: CHAIN_NS,
+    agent: h.wallets[1].account!.address,
+    validUntil: Math.floor(Date.now() / 1000) + 3600,
+    maxGasPerCall: BigInt(10) ** BigInt(16),
+    assets: [{ token: zeroAddress, maxPerCall, maxTotal: BigInt(40) }],
+  });
+  const PRESET_ABI = parseAbi([
+    'function deposit() payable',
+    'function approve(address,uint256) returns (bool)',
+    'function exactInputSingle((address tokenIn,address tokenOut,uint24 fee,address recipient,uint256 amountIn,uint256 amountOutMinimum,uint160 sqrtPriceLimitX96)) returns (uint256)',
+    'function supply(address,uint256,address,uint16)',
+  ]);
+  // Native ETH funds the wallet's destination account; the rule caps the wrap value.
+  const wrapCall = (weth: Address, value: bigint) => ({
+    to: weth,
+    value,
+    data: encodeFunctionData({ abi: PRESET_ABI, functionName: 'deposit' }),
+  });
+  const approveCall = (token: Address, spender: Address, amount: bigint) => ({
+    to: token,
+    value: BigInt(0),
+    data: encodeFunctionData({
+      abi: PRESET_ABI,
+      functionName: 'approve',
+      args: [spender, amount],
+    }),
+  });
+  it('the shipped DEX catalog enforces the wrap value, tuple receiver/token and amount pins on actual v6 URP', async () => {
+    const { rules } = agenticPresets.get('DEXES', presetOptions(BigInt(5)));
     const { wallet, id, agent } = await setup(rules[0]);
-    const router = rules[0].allowedCalls[0].target as Address;
-    const abi = parseAbi([
-      'function exactInputSingle((address tokenIn,address tokenOut,uint24 fee,address recipient,uint256 amountIn,uint256 amountOutMinimum,uint160 sqrtPriceLimitX96)) returns (uint256)',
-    ]);
-    const send = (recipient = CEA, input = a, amount = BigInt(5)) =>
-      agent.universal.sendTransaction({
-        to: { address: router, chain: CHAIN_NS },
-        data: [
+    expect((await stored(wallet, id)).assets[0]).toMatchObject({
+      token: a,
+      maxPerCall: BigInt(5),
+    });
+    const weth = getAddress(rules[0].allowedCalls[0].target);
+    const router = getAddress(rules[0].allowedCalls[2].target);
+    const usdc = getAddress(rules[0].allowedCalls[4].target);
+    const swap = (
+      tokenIn: Address,
+      tokenOut: Address,
+      amountIn: bigint,
+      recipient = CEA
+    ) => ({
+      to: router,
+      value: BigInt(0),
+      data: encodeFunctionData({
+        abi: PRESET_ABI,
+        functionName: 'exactInputSingle',
+        args: [
           {
-            to: router,
-            value: BigInt(0),
-            data: encodeFunctionData({
-              abi,
-              functionName: 'exactInputSingle',
-              args: [
-                {
-                  tokenIn: input,
-                  tokenOut: b,
-                  fee: 3000,
-                  recipient,
-                  amountIn: amount,
-                  amountOutMinimum: BigInt(0),
-                  sqrtPriceLimitX96: BigInt(0),
-                },
-              ],
-            }),
+            tokenIn,
+            tokenOut,
+            fee: 3000,
+            recipient,
+            amountIn,
+            amountOutMinimum: BigInt(0),
+            sqrtPriceLimitX96: BigInt(0),
           },
         ],
+      }),
+    });
+    const send = (data: ReturnType<typeof swap>[], amount = BigInt(5)) =>
+      agent.universal.sendTransaction({
+        to: { address: router, chain: CHAIN_NS },
+        funds: { amount },
+        data,
       });
-    await waitPush(send());
-    await expect(send(DEST)).rejects.toMatchObject({
+    const sell = (amount: bigint, recipient = CEA) => [
+      wrapCall(weth, amount),
+      approveCall(weth, router, amount),
+      swap(weth, usdc, amount, recipient),
+    ];
+    await waitPush(send(sell(BigInt(5))));
+    expect((await stored(wallet, id)).assets[0].spent).toBe(BigInt(5));
+    await expect(
+      send([wrapCall(weth, BigInt(6)), ...sell(BigInt(5)).slice(1)])
+    ).rejects.toMatchObject({
+      decodedError: {
+        name: 'PolicyCheckReverted(InnerValueExceedsAllowance)',
+      },
+    });
+    await expect(send(sell(BigInt(5), DEST))).rejects.toMatchObject({
       decodedError: { name: 'PolicyCheckReverted(ArgPinMismatch)' },
     });
-    await expect(send(CEA, DEST)).rejects.toMatchObject({
+    await expect(
+      send([...sell(BigInt(5)).slice(0, 2), swap(DEST, usdc, BigInt(5))])
+    ).rejects.toMatchObject({
       decodedError: { name: 'PolicyCheckReverted(ArgPinMismatch)' },
     });
-    await expect(send(CEA, a, BigInt(6))).rejects.toMatchObject({
+    await expect(
+      send([...sell(BigInt(5)).slice(0, 2), swap(weth, usdc, BigInt(6))])
+    ).rejects.toMatchObject({
       decodedError: { name: 'PolicyCheckReverted(ArgPinAboveMax)' },
     });
-    const handle = owner.agentic.wallet(wallet),
-      record = await handle.rules.get(id);
-    const changed = await handle.rules.update({
-      rules: [
-        {
-          rulesId: id,
-          rule: { ...record.rule, validUntil: record.validUntil + 60 },
-        },
-      ],
+    // Destination-held USDC swaps back under the fixed 10 USDC per-swap pin.
+    const usdcCap = BigInt(10_000_000);
+    await waitPush(
+      send(
+        [approveCall(usdc, router, usdcCap), swap(usdc, weth, usdcCap)],
+        BigInt(0)
+      )
+    );
+    // The policy reports the first matching entry's failure: the WETH-in swap's token pin.
+    await expect(
+      send([swap(usdc, weth, usdcCap + BigInt(1))], BigInt(0))
+    ).rejects.toMatchObject({
+      decodedError: { name: 'PolicyCheckReverted(ArgPinMismatch)' },
     });
-    expect((await handle.rules.get(changed.rules[0].rulesId)).rule).toEqual({
-      ...record.rule,
-      validUntil: record.validUntil + 60,
-    });
+    // Calls using destination-held capital do not consume the Push bridge counter.
+    expect((await stored(wallet, id)).assets[0].spent).toBe(BigInt(5));
   });
 
-  it.each(['exactInputSingle', 'exactOutputSingle'] as const)(
-    'a default-token DEX %s call rejects spending above its policy cap despite edited bridge budgets',
-    async (functionName) => {
-      const preview = agenticPresets.get('DEXES', {
-        chainNamespace: CHAIN_NS,
-        agent: h.wallets[1].account!.address,
-      }).rules[0];
-      const { wallet, id, agent } = await setup({
-        ...preview,
-        assets: [{ token: a, maxPerCall: BigInt(5), maxTotal: BigInt(20) }],
+  it('the shipped LENDING catalog pins Aave supply to WETH and the wallet, and a regenerated cap applies through rules.update', async () => {
+    const first = agenticPresets.get('LENDING', presetOptions(BigInt(5)));
+    const { wallet, id, agent } = await setup(first.rules[0]);
+    const weth = getAddress(first.rules[0].allowedCalls[0].target);
+    const pool = getAddress(first.rules[0].allowedCalls[2].target);
+    const supply = (amount: bigint, asset = weth, onBehalfOf = CEA) => [
+      wrapCall(weth, amount),
+      approveCall(weth, pool, amount),
+      {
+        to: pool,
+        value: BigInt(0),
+        data: encodeFunctionData({
+          abi: PRESET_ABI,
+          functionName: 'supply',
+          args: [asset, amount, onBehalfOf, 0],
+        }),
+      },
+    ];
+    const send = (data: ReturnType<typeof supply>, amount: bigint) =>
+      agent.universal.sendTransaction({
+        to: { address: pool, chain: CHAIN_NS },
+        funds: { amount },
+        data,
       });
-      const stored = await owner.agentic.wallet(wallet).rules.get(id);
-      expect(stored.rule.validUntil).toBe(preview.validUntil);
-      expect(stored.rule.maxGasPerCall).toBe(preview.maxGasPerCall);
-      const router = preview.allowedCalls[0].target as Address;
-      const abi = parseAbi([
-        `function ${functionName}((address,address,uint24,address,uint256,uint256,uint160))`,
-      ]);
-      await expect(
-        agent.universal.sendTransaction({
-          to: { address: router, chain: CHAIN_NS },
-          data: [
-            {
-              to: router,
-              value: BigInt(0),
-              data: encodeFunctionData({
-                abi,
-                functionName,
-                args: [
-                  [
-                    preview.assets![0].token as Address,
-                    preview.assets![1].token as Address,
-                    3000,
-                    CEA,
-                    preview.assets![0].maxPerCall + BigInt(1),
-                    preview.assets![0].maxPerCall + BigInt(1),
-                    BigInt(0),
-                  ],
-                ],
-              }),
-            },
-          ],
-        })
-      ).rejects.toMatchObject({
-        decodedError: { name: 'PolicyCheckReverted(ArgPinAboveMax)' },
-        userMessage: expect.stringContaining('exceeds a rule'),
-      });
-    }
-  );
-
-  it.each(['DEXES', 'LENDING', 'STAKING'] as const)(
-    '%s constraints work in an explicit prefunded contract fixture',
-    async (category) => {
-      const generated = agenticPresets.get(category, {
-        chainNamespace: CHAIN_NS,
-        agent: h.wallets[1].account!.address,
-      });
-      expect(generated.readiness.chains[0].configurationReady).toBe(true);
-      expect(
-        generated.readiness.chains[0].selectedAssets.length
-      ).toBeGreaterThan(0);
-      expect(generated.rules[0].assets!.length).toBeGreaterThan(0);
-      const { wallet, id } = await setup({ ...generated.rules[0], assets: [] });
-      const actual = await stored(wallet, id);
-      expect(actual.assets).toEqual([
-        {
-          token: a,
-          maxPerCall: BigInt(0),
-          maxTotal: BigInt(0),
-          spent: BigInt(0),
-        },
-      ]);
-      const record = await owner.agentic.wallet(wallet).rules.get(id);
-      expect(record.rule.maxGasPerCall).toBe(generated.rules[0].maxGasPerCall);
-      expect(record.rule.validUntil).toBe(generated.rules[0].validUntil);
-    }
-  );
-
-  it.each(['LENDING', 'STAKING'] as const)(
-    'regenerated %s presets enforce new token/amount pins through atomic rules.update',
-    async (category) => {
-      const firstToken = getAddress(
-        '0xf8Fb3713D459D7C1018BD0A49D19b4C44290EBE5'
-      );
-      const nextToken = getAddress(
-        '0x29f2D40B0605204364af54EC677bD022dA425d03'
-      );
-      const opts = {
-        chainNamespace: CHAIN_NS,
-        agent: h.wallets[1].account!.address,
-        validUntil: Math.floor(Date.now() / 1000) + 3600,
-        maxGasPerCall: BigInt(10) ** BigInt(16),
-      };
-      const preview = agenticPresets.get(category, { ...opts, assets: [] });
-      expect(preview.readiness.ready).toBe(false);
-      const { wallet, id, agent } = await setup({
-        ...preview.rules[0],
-        assets: [],
-      });
-      const target = preview.rules[0].allowedCalls[0].target as Address;
-      const abi = parseAbi([
-        'function supply(address,uint256,address,uint16)',
-        'function depositIntoStrategy(address,address,uint256)',
-      ]);
-      const send = (token: Address, amount: bigint, count = 1) =>
-        agent.universal.sendTransaction({
-          to: { address: target, chain: CHAIN_NS },
-          data: Array.from({ length: count }, () => ({
-            to: target,
-            value: BigInt(0),
-            data:
-              category === 'LENDING'
-                ? encodeFunctionData({
-                    abi,
-                    functionName: 'supply',
-                    args: [token, amount, CEA, 0],
-                  })
-                : encodeFunctionData({
-                    abi,
-                    functionName: 'depositIntoStrategy',
-                    args: [DEST, token, amount],
-                  }),
-          })),
-        });
-      await expect(send(firstToken, BigInt(1))).rejects.toMatchObject({
-        decodedError: { name: 'PolicyCheckReverted(ArgPinAboveMax)' },
-      });
-      const w = owner.agentic.wallet(wallet);
-      const first = agenticPresets.get(category, {
-        ...opts,
-        assets: [
-          { token: firstToken, maxPerCall: BigInt(5), maxTotal: BigInt(10) },
-        ],
-      });
-      expect(first.readiness.chains[0].configurationReady).toBe(true);
-      const before = await h.publicClient.readContract({
+    await waitPush(send(supply(BigInt(5)), BigInt(5)));
+    await expect(
+      send(supply(BigInt(5), DEST), BigInt(5))
+    ).rejects.toMatchObject({
+      decodedError: { name: 'PolicyCheckReverted(ArgPinMismatch)' },
+    });
+    await expect(
+      send(supply(BigInt(5), weth, DEST), BigInt(5))
+    ).rejects.toMatchObject({
+      decodedError: { name: 'PolicyCheckReverted(ArgPinMismatch)' },
+    });
+    const w = owner.agentic.wallet(wallet);
+    const changed = agenticPresets.get('LENDING', presetOptions(BigInt(2)));
+    const before = await h.publicClient.readContract({
+      address: wallet,
+      abi: h.generation.contracts.abis.wallet,
+      functionName: 'checkpointCount',
+    });
+    const replaced = await w.rules.update({
+      rules: [{ rulesId: id, rule: changed.rules[0] }],
+    });
+    expect(
+      await h.publicClient.readContract({
         address: wallet,
         abi: h.generation.contracts.abis.wallet,
         functionName: 'checkpointCount',
-      });
-      const added = await w.rules.update({
-        rules: [{ rulesId: id, rule: { ...first.rules[0], assets: [] } }],
-      });
-      expect(
-        await h.publicClient.readContract({
-          address: wallet,
-          abi: h.generation.contracts.abis.wallet,
-          functionName: 'checkpointCount',
-        })
-      ).toBe(before + BigInt(5));
-      await waitPush(send(firstToken, BigInt(5)));
-      // Per-call MAX permits two calls of 5 in one outbound; it is not a batch-total cap.
-      await waitPush(send(firstToken, BigInt(5), 2));
-      await expect(send(firstToken, BigInt(6))).rejects.toMatchObject({
-        decodedError: { name: 'PolicyCheckReverted(ArgPinAboveMax)' },
-      });
-      await expect(send(nextToken, BigInt(1))).rejects.toMatchObject({
-        decodedError: { name: 'PolicyCheckReverted(ArgPinMismatch)' },
-      });
-      const changed = agenticPresets.get(category, {
-        ...opts,
-        assets: [
-          { token: nextToken, maxPerCall: BigInt(2), maxTotal: BigInt(10) },
-        ],
-      });
-      const replaced = await w.rules.update({
-        rules: [
-          {
-            rulesId: added.rules[0].rulesId,
-            rule: { ...changed.rules[0], assets: [] },
-          },
-        ],
-      });
-      expect(replaced.rules[0].rulesId).not.toBe(added.rules[0].rulesId);
-      await expect(send(firstToken, BigInt(1))).rejects.toMatchObject({
-        decodedError: { name: 'PolicyCheckReverted(ArgPinMismatch)' },
-      });
-      await expect(send(nextToken, BigInt(3))).rejects.toMatchObject({
-        decodedError: { name: 'PolicyCheckReverted(ArgPinAboveMax)' },
-      });
-      await waitPush(send(nextToken, BigInt(2)));
-      // Calls using destination-held capital do not consume the Push bridge counter.
-      expect(
-        (await stored(wallet, replaced.rules[0].rulesId)).assets[0].spent
-      ).toBe(BigInt(0));
-    }
-  );
+      })
+    ).toBe(before + BigInt(5));
+    expect(replaced.rules[0].rulesId).not.toBe(id);
+    await expect(send(supply(BigInt(3)), BigInt(3))).rejects.toMatchObject({
+      decodedError: { name: 'PolicyCheckReverted(AmountExceedsCap)' },
+    });
+    await waitPush(send(supply(BigInt(2)), BigInt(2)));
+    expect(
+      (await stored(wallet, replaced.rules[0].rulesId)).assets[0].spent
+    ).toBe(BigInt(2));
+  });
 
   it('a fixture preset produces rules accepted by public create and enforced by real contracts', async () => {
     const presets = buildPresetApi([
@@ -517,7 +438,7 @@ describe('v6 multi-asset SDK management and execution', () => {
       assets: [
         {
           chainNamespace: CHAIN_NS,
-          token: a,
+          token: zeroAddress,
           maxPerCall: BigInt(5),
           maxTotal: BigInt(7),
         },
@@ -528,6 +449,55 @@ describe('v6 multi-asset SDK management and execution', () => {
     expect((await stored(wallet, id)).assets[0].spent).toBe(BigInt(5));
     await expect(send(a, BigInt(3))).rejects.toMatchObject({
       decodedError: { name: 'PolicyCheckReverted(TotalSpendCapExceeded)' },
+    });
+  });
+
+  it('a tokens-only rule lets the agent transfer each token only back to the owner, capped per transfer', async () => {
+    const ownerAddress = h.wallets[0].account!.address;
+    const { wallet, id, agent } = await setup({
+      agent: h.wallets[1].account!.address,
+      chainNamespace: CHAIN_NS,
+      assets: [{ token: a, maxPerCall: BigInt(5), maxTotal: BigInt(20) }],
+      validUntil: Math.floor(Date.now() / 1000) + 3600,
+      maxGasPerCall: BigInt(10) ** BigInt(16),
+    } as unknown as Rule);
+    const record = await owner.agentic.wallet(wallet).rules.get(id);
+    if (!('allowedCalls' in record.rule)) throw new Error('Expected EVM rule');
+    expect(record.rule.allowedCalls).toHaveLength(1);
+    const ERC20 = parseAbi([
+      'function transfer(address,uint256) returns (bool)',
+    ]);
+    const send = (to: Address, amount: bigint, funded = BigInt(5)) =>
+      agent.universal.sendTransaction({
+        to: { address: a, chain: CHAIN_NS },
+        funds: {
+          amount: funded,
+          token: {
+            symbol: 'fixture',
+            decimals: 6,
+            address: a,
+            mechanism: 'approve',
+          },
+        },
+        data: [
+          {
+            to: a,
+            value: BigInt(0),
+            data: encodeFunctionData({
+              abi: ERC20,
+              functionName: 'transfer',
+              args: [to, amount],
+            }),
+          },
+        ],
+      });
+    await waitPush(send(ownerAddress, BigInt(5)));
+    expect((await stored(wallet, id)).assets[0].spent).toBe(BigInt(5));
+    await expect(send(DEST, BigInt(5))).rejects.toMatchObject({
+      decodedError: { name: 'PolicyCheckReverted(ArgPinMismatch)' },
+    });
+    await expect(send(ownerAddress, BigInt(6))).rejects.toMatchObject({
+      decodedError: { name: 'PolicyCheckReverted(ArgPinAboveMax)' },
     });
   });
 

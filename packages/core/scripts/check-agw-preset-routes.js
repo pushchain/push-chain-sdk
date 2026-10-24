@@ -123,9 +123,7 @@ async function main() {
           agent,
           chainNamespace,
         });
-        result.pushReadiness = push.readiness;
         // Explicit prefunded fixture, not public preset acceptance or bridge proof.
-        assert.equal(push.readiness.chains[0].configurationReady, true);
         const fixtureRules = push.rules.map((rule) => ({
           ...rule,
           assets: [],
@@ -154,21 +152,17 @@ async function main() {
         });
         assert(simulated.data && simulated.data !== '0x');
         result.prefundedFixtureFactorySimulation = 'passed';
-        result.selectedAssets = push.readiness.chains[0].selectedAssets;
-        // If static registry support is advertised, verify preparation against real metadata too.
-        if (push.readiness.ready) {
-          await prepareWalletRules(
-            runtime,
-            gen,
-            owner,
-            wallet,
-            publicRules(push.rules),
-            snap
-          );
-          result.pushPreparation = 'passed';
-        } else {
-          result.pushPreparation = 'unavailable-in-registry';
-        }
+        result.selectedAssets = push.rules[0].assets;
+        // Every shipped preset is routable, so preparation must verify against real metadata.
+        await prepareWalletRules(
+          runtime,
+          gen,
+          owner,
+          wallet,
+          publicRules(push.rules),
+          snap
+        );
+        result.pushPreparation = 'passed';
         console.log(
           `${category} ${chainNamespace}: destination factory eth_call passed; Push ${result.pushPreparation}`
         );
