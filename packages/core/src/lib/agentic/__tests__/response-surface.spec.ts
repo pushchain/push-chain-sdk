@@ -2,6 +2,7 @@ import {
   encodeErrorResult,
   encodeFunctionData,
   getAddress,
+  toFunctionSelector,
   type Hex,
 } from 'viem';
 import * as core from '../../index';
@@ -189,6 +190,22 @@ describe('revert decoding', () => {
     });
   });
 
+  it.each([
+    [
+      'InnerValueExceedsAllowance',
+      'InnerValueExceedsAllowance(uint256,uint256,uint256)',
+    ],
+    ['BeneficiaryMismatch', 'BeneficiaryMismatch(address,address)'],
+  ])(
+    'names %s, which URP encodes by selector and its ABI omits',
+    (name, signature) => {
+      const inner = toFunctionSelector(`function ${signature}`).slice(2);
+      expect(
+        decodeAgwErrorData(`0xf4270752${inner.padEnd(64, '0')}`)
+      ).toMatchObject({ name: `PolicyCheckReverted(${name})` });
+    }
+  );
+
   it('finds revert data through error causes and viem-style messages', () => {
     const inner = new Error('outer', {
       cause: {
@@ -225,7 +242,7 @@ describe('public surface', () => {
     expect(new AgenticRevertError('x', { cause: 'c' }).cause).toBe('c');
   });
 
-  it('exposes the wallet marker and preset API, keeping deployment wiring and codecs internal', () => {
+  it('exposes the wallet marker, preset API and ALL asset helper, keeping deployment wiring and codecs internal', () => {
     expect(CONSTANTS.AGENTIC.WALLET).toBe('agentic:wallet');
     expect(Object.keys(CONSTANTS.AGENTIC).sort()).toEqual([
       'JOB',
@@ -234,7 +251,9 @@ describe('public surface', () => {
       'WALLET',
     ]);
     expect(Object.isFrozen(CONSTANTS.AGENTIC)).toBe(true);
-    expect(Object.keys(Utils.agentic)).toEqual(['presets']);
+    expect(Object.keys(Utils.agentic)).toEqual(['presets', 'assets']);
     expect(Object.keys(Utils.agentic.presets).sort()).toEqual(['get', 'list']);
+    expect(Object.keys(Utils.agentic.assets)).toEqual(['all']);
+    expect(Object.isFrozen(Utils.agentic.assets)).toBe(true);
   });
 });

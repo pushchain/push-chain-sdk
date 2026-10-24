@@ -49,6 +49,23 @@ const MESSAGES: Record<AgenticErrorCode, string> = {
     'The agentic wallet does not have enough funds for this action.',
 };
 
+/** Tokens-only rules and MOVEABLE ALL (management/rule-inputs). */
+const REASON_MESSAGES: Readonly<Record<string, string>> = {
+  TOKENS_ONLY_NATIVE:
+    'Native ETH and BNB cannot be transferred by a rule. Remove them, or add an app.',
+  TOKENS_ONLY_UNSUPPORTED:
+    'Tokens alone can only be allowed on EVM networks. Add an app for this network.',
+  TRANSFER_RECIPIENT_REQUIRED:
+    'Name at least one recipient: the owner has no address on this network.',
+  TRANSFER_RECIPIENT_INVALID: 'Enter a valid recipient address.',
+  TRANSFER_TO_WITH_CALLS:
+    'Recipients apply only to rules without apps. Add the transfer as an allowed function instead.',
+  ALL_WITH_LIMITS:
+    'All tokens uses each token’s default limits. Remove the limits, or select the tokens individually.',
+  ALL_TOO_MANY: 'A rule can include at most eight tokens. Select fewer tokens.',
+  ALL_UNAVAILABLE: 'No token can be sent from Push to this network yet.',
+};
+
 export function agenticUserMessage(
   code: AgenticErrorCode,
   diagnostic: string,
@@ -67,7 +84,9 @@ export function agenticUserMessage(
   }
   if (code !== 'INVALID_RULE') return MESSAGES[code];
   if (details?.['reason'] === 'ALLOWED_FUNCTION_REQUIRED')
-    return 'Add at least one allowed function. Selecting tokens and limits alone does not authorize transfers.';
+    return 'Add at least one allowed function, or select tokens on an EVM network to allow transfers back to the owner.';
+  const reasonMessage = REASON_MESSAGES[String(details?.['reason'])];
+  if (reasonMessage) return reasonMessage;
   if (/validUntil|expiry|expired|future.*timestamp/i.test(diagnostic))
     return 'Choose an expiry date in the future.';
   if (/label.*(64|length|most)/i.test(diagnostic))
@@ -146,7 +165,7 @@ export function agenticRevertUserMessage(name?: string): string {
   if (/PCValueExceedsCap|Gas.*Cap/.test(name ?? ''))
     return 'The required gas exceeds this rule’s gas budget. Review the budget before trying again.';
   if (
-    /ArgPinAboveMax|AmountExceedsCap|TotalSpendCapExceeded|Value.*Cap|MaxCalls|CallLimitReached|TotalNativeAmountExceeded|TotalValueExceeded/.test(
+    /ArgPinAboveMax|AmountExceedsCap|TotalSpendCapExceeded|Value.*Cap|InnerValueExceedsAllowance|MaxCalls|CallLimitReached|TotalNativeAmountExceeded|TotalValueExceeded/.test(
       name ?? ''
     )
   )

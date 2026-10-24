@@ -21,7 +21,11 @@ import {
 } from './native';
 import { buildSession, encodeEnvelope, type SessionWire } from './session';
 import { encodeUniversalRule, type ResolvedUniversalRule } from './universal';
-import { encodeSvmTerms, type SvmTermsWire } from './svm-terms';
+import {
+  encodeSvmTerms,
+  refuseFromEndPins,
+  type SvmTermsWire,
+} from './svm-terms';
 import { SEND_OUTBOUND_SELECTOR } from '../contracts/v6';
 import type { UniversalTermsWire } from './universal-terms';
 
@@ -147,6 +151,7 @@ export function prepareRules(
             AGENTIC_ERROR_CODE.INVALID_RULE,
             'SVM rules require resolved wallet context and validated instruction layouts'
           );
+        refuseFromEndPins(terms);
         return {
           rule,
           agent,

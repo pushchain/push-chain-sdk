@@ -352,16 +352,12 @@ function renderTable(rows: Row[]): void {
   if (presetCases.length) {
     const { PRESET_ACCEPTANCE_CASES } = await import('../shared/agw-preset-acceptance');
     // Only the selected cases; their ids end in the spec's case number.
-    const selected = presetCases.map((n) => {
+    for (const n of presetCases) {
       const entry = PRESET_ACCEPTANCE_CASES[n - 1];
       if (!entry) throw new Error(`Unknown preset acceptance case ${n}`);
-      return entry;
-    });
-    const blocked = selected.flatMap(([category, chainNamespace]) => {
-      const result = PushChain.utils.agentic.presets.get(category, { chainNamespace, agent: '0x0000000000000000000000000000000000005678' });
-      return result.readiness.ready ? [] : [{ category, chainNamespace, issues: result.readiness.chains[0].issues }];
-    });
-    if (blocked.length) throw new Error(`PRESET_BLOCKED_BEFORE_FUNDING: ${JSON.stringify(blocked)}`);
+      // Every shipped preset is routable; get throws if its catalog entry is gone.
+      PushChain.utils.agentic.presets.get(entry[0], { chainNamespace: entry[1] });
+    }
   }
   if (scenarios.some((s) => s.group === 'agw-svm-wire' || s.group === 'agw-svm-agent-spl' || s.file === '__e2e__/agw/svm-public.spec.ts')) {
     const { inspectSvmWirePrograms, svmWireConnection } = await import('../shared/agw-svm-preflight');

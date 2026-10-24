@@ -12,7 +12,7 @@ import { createSvmMetadataProvider } from './svm-metadata';
 import { deriveAgwSvmAta, svmKey } from '../codec/svm-accounts';
 import { compileSvmIdlRule } from '../codec/svm-idl';
 import { svmInvalid } from '../codec/svm-terms';
-import { validateSvmTerms } from '../codec/svm-terms';
+import { refuseFromEndPins, validateSvmTerms } from '../codec/svm-terms';
 import { tokenRouteUnavailable } from '../errors';
 
 export function svmMetadata(runtime: AgenticRuntime) {
@@ -140,6 +140,7 @@ export async function preparePublicSvmRule(
       throw svmInvalid('decoded rule omits a required wallet value account');
     const terms = { ...stored, assets: caps };
     validateSvmTerms(terms, runtime.nowSeconds());
+    refuseFromEndPins(terms);
     return terms;
   }
   return compileSvmIdlRule(

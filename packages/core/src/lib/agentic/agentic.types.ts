@@ -4,7 +4,7 @@ import type { ArgPinWire } from './codec/pins';
  */
 import type { Idl } from '@coral-xyz/anchor';
 import type { SvmTermsWire } from './codec/svm-terms';
-import type { MoveableToken } from '../constants/tokens';
+import type { MoveableToken, MoveableTokenSet } from '../constants/tokens';
 import type { UniversalTxResponse } from '../orchestrator/orchestrator.types';
 import type { ProgressEvent } from '../progress-hook/progress-hook.types';
 
@@ -214,6 +214,11 @@ export interface RuleAsset {
   maxPerCall: bigint;
   maxTotal?: bigint;
 }
+/** Authoring form of a rule asset: `CONSTANTS.MOVEABLE.TOKEN.<CHAIN>.ALL`
+ * expands to every routable token with its default limits, so it takes no caps. */
+export type RuleAssetInput =
+  | RuleAsset
+  | { token: MoveableTokenSet; maxPerCall?: never; maxTotal?: never };
 export interface Rule {
   agent: AgenticAddress;
   chainNamespace?: ForeignChainNamespace;
@@ -222,7 +227,18 @@ export interface Rule {
   maxGasPerCall?: bigint;
   allowedCalls: RuleCall[];
 }
-export type RuleInput = Rule | DecodedSolanaRule;
+/** What create, rules.add and rules.update accept. Every Rule is valid input. */
+export interface AuthoredRule extends Omit<Rule, 'assets' | 'allowedCalls'> {
+  assets?: RuleAssetInput[];
+  /** 1..8 for Push-chain rules, 1..32 for other chains. Omit (or leave empty)
+   * on an EVM rule with ERC20 assets to allow only transfers of those tokens
+   * back to the owner, plus any `transferTo` recipients. */
+  allowedCalls?: RuleCall[];
+  /** Tokens-only EVM rules: extra recipients the agent may transfer each asset
+   * to, besides the owner. Refused together with allowedCalls. */
+  transferTo?: AgenticAddress[];
+}
+export type RuleInput = AuthoredRule | DecodedSolanaRule;
 export type Spent =
   | {
       kind: 'native';
@@ -242,7 +258,7 @@ export type Spent =
     }
   | { kind: 'universal'; assets: { token: string; spent: bigint }[] };
 export interface RulesRecord extends Omit<InternalRulesRecord, 'rule'> {
-  rule: RuleInput;
+  rule: Rule | DecodedSolanaRule;
   spent: Spent;
 }
 export interface InternalCreateOptions {

@@ -1,4 +1,10 @@
-import { encodeFunctionData, parseAbi, getAddress, type Address } from 'viem';
+import {
+  encodeFunctionData,
+  parseAbi,
+  parseUnits,
+  getAddress,
+  zeroAddress,
+} from 'viem';
 import { agenticPresets } from '../presets';
 import { AGENTIC } from '../constants';
 import { evmPinOffset, normalizePublicRule, publicRules } from '../public-rule';
@@ -6,99 +12,188 @@ import { parseSelector } from '../codec/selectors';
 import type { Rule, UniversalRule } from '../agentic.types';
 import { FakeChain, ADDR } from './fake-chain';
 import { mockRuntime } from './mock-runtime';
-const tokenA = ADDR.target,
-  tokenB = ADDR.other;
-const chain = 'eip155:11155111';
-const input: import('../presets/types').ReadyPresetOptions = {
-  chainNamespace: chain,
+
+const TESTNETS = ['eip155:11155111', 'eip155:84532', 'eip155:421614'] as const;
+const DEX = {
+  'eip155:11155111': {
+    router: '0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E',
+    weth: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+    usdc: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
+  },
+  'eip155:84532': {
+    router: '0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4',
+    weth: '0x4200000000000000000000000000000000000006',
+    usdc: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
+  },
+  'eip155:421614': {
+    router: '0x101F443B4d1b059569D643917553c771E1b9663E',
+    weth: '0x980B62Da83eFf3D4576C647993b0c1D7faf17c73',
+    usdc: '0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d',
+  },
+} as const;
+const AAVE = {
+  'eip155:11155111': {
+    pool: '0x6Ae43d3271ff6888e7Fc43Fd7321a503ff738951',
+    weth: '0xC558DBdd856501FCd9aaF1E62eae57A9F0629a3c',
+  },
+  'eip155:84532': {
+    pool: '0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27',
+    weth: '0x4200000000000000000000000000000000000006',
+  },
+  'eip155:421614': {
+    pool: '0xBfC91D59fdAA134A4ED45f7B584cAf96D7792Eff',
+    weth: '0x1dF462e2712496373A347f8ad10802a5E95f053D',
+  },
+} as const;
+const cap = parseUnits('0.002', 18);
+const input = (chainNamespace: (typeof TESTNETS)[number]) => ({
+  chainNamespace,
   agent: ADDR.agent,
   validUntil: 2_000_000_000,
-  maxGasPerCall: BigInt(1),
-  assets: [
-    { token: tokenA, maxPerCall: BigInt(5), maxTotal: BigInt(10) },
-    { token: tokenB, maxPerCall: BigInt(7), maxTotal: BigInt(14) },
-  ],
-};
-it('expands both token directions and exact-input/output with wallet and amount pins', () => {
-  const { rules } = agenticPresets.get('DEXES', input);
-  expect(rules).toHaveLength(1);
-  expect(rules[0].allowedCalls).toHaveLength(6);
-  const swaps = rules[0].allowedCalls.filter((c) =>
-    c.selector.startsWith('exact')
-  );
-  expect(swaps).toHaveLength(4);
-  expect(swaps[0].pins).toEqual([
-    { arg: [0, 0], expected: tokenA },
-    { arg: [0, 1], expected: tokenB },
-    { arg: [0, 3], expected: AGENTIC.WALLET },
-    { arg: [0, 4], max: BigInt(5) },
+  assets: [{ token: zeroAddress, maxPerCall: cap, maxTotal: cap * BigInt(5) }],
+});
+const pinTotal = (r: { allowedCalls: { pins?: unknown[] }[] }) =>
+  r.allowedCalls.reduce((n, c) => n + (c.pins?.length ?? 0), 0);
+
+it('ships only the testnet presets that ran live: Uniswap V3 and Aave V3 on three chains', () => {
+  expect(Object.values(AGENTIC.PRESETS.CATEGORY)).toEqual([
+    'DEXES',
+    'LENDING',
+    'STAKING',
   ]);
-  expect(swaps[1].pins?.at(-1)).toEqual({ arg: [0, 5], max: BigInt(5) });
-  expect(swaps[2].pins?.at(-1)).toEqual({ arg: [0, 4], max: BigInt(7) });
   expect(
-    rules[0].allowedCalls.reduce((n, c) => n + (c.pins?.length ?? 0), 0)
-  ).toBe(20);
+    agenticPresets.list().presets.map((p) => [p.constant, p.chains])
+  ).toEqual([
+    ['DEXES', [...TESTNETS]],
+    ['LENDING', [...TESTNETS]],
+    ['STAKING', []],
+  ]);
+  expect(agenticPresets.get('STAKING')).toEqual({ rules: [] });
+  for (const category of ['DEXES', 'LENDING'] as const)
+    for (const rule of agenticPresets.get(category).rules) {
+      expect(rule.assets).toEqual([
+        {
+          token: zeroAddress,
+          maxPerCall: parseUnits('0.001', 18),
+          maxTotal: parseUnits('0.01', 18),
+        },
+      ]);
+      expect(rule.maxGasPerCall).toBe(parseUnits('20', 18));
+      expect(rule).not.toHaveProperty('readiness');
+    }
 });
-it('rejects native-token markers and oversized pin expansion', () => {
-  expect(() =>
-    agenticPresets.get('DEXES', {
-      ...input,
-      assets: [...input.assets!, { token: ADDR.owner }],
-    })
-  ).toThrow(/maximum is 32/);
-  expect(() =>
-    agenticPresets.get('DEXES', {
-      ...input,
-      assets: [
-        { token: '0x0000000000000000000000000000000000000000' },
-        input.assets![1],
+it.each(TESTNETS)(
+  'DEXES %s wraps ETH and swaps WETH and Circle USDC with wallet-pinned recipients',
+  (chainNamespace) => {
+    const { router, weth, usdc } = DEX[chainNamespace];
+    const r = agenticPresets.get('DEXES', input(chainNamespace)).rules[0];
+    const W = getAddress(weth),
+      U = getAddress(usdc),
+      R = getAddress(router);
+    expect(
+      r.allowedCalls.map((c) => [getAddress(c.target), c.selector])
+    ).toEqual([
+      [W, 'deposit()'],
+      [W, 'approve(address,uint256)'],
+      [R, expect.stringMatching(/^exactInputSingle\(/)],
+      [R, expect.stringMatching(/^exactOutputSingle\(/)],
+      [U, 'approve(address,uint256)'],
+      [R, expect.stringMatching(/^exactInputSingle\(/)],
+      [R, expect.stringMatching(/^exactOutputSingle\(/)],
+      [W, 'withdraw(uint256)'],
+    ]);
+    const [wrap, approveWeth, sellIn, sellOut, approveUsdc, buyIn, buyOut] =
+      r.allowedCalls;
+    expect(wrap.maxValue).toBe(cap);
+    expect(approveWeth.pins).toEqual([
+      { arg: 0, expected: R },
+      { arg: 1, max: cap },
+    ]);
+    expect(sellIn.pins).toEqual([
+      { arg: [0, 0], expected: W },
+      { arg: [0, 1], expected: U },
+      { arg: [0, 3], expected: AGENTIC.WALLET },
+      { arg: [0, 4], max: cap },
+    ]);
+    expect(sellOut.pins?.at(-1)).toEqual({ arg: [0, 5], max: cap });
+    const usdcCap = parseUnits('10', 6);
+    expect(approveUsdc.pins).toEqual([
+      { arg: 0, expected: R },
+      { arg: 1, max: usdcCap },
+    ]);
+    expect(buyIn.pins).toEqual([
+      { arg: [0, 0], expected: U },
+      { arg: [0, 1], expected: W },
+      { arg: [0, 3], expected: AGENTIC.WALLET },
+      { arg: [0, 4], max: usdcCap },
+    ]);
+    expect(buyOut.pins?.at(-1)).toEqual({ arg: [0, 5], max: usdcCap });
+    expect(r.allowedCalls.at(-1)?.pins).toEqual([{ arg: 0, max: cap }]);
+    expect(pinTotal(r)).toBeLessThanOrEqual(32);
+  }
+);
+it.each(TESTNETS)(
+  'LENDING %s wraps ETH into the Aave WETH reserve and pins every position to the wallet',
+  (chainNamespace) => {
+    const { pool, weth } = AAVE[chainNamespace];
+    const r = agenticPresets.get('LENDING', input(chainNamespace)).rules[0];
+    const W = getAddress(weth),
+      P = getAddress(pool);
+    expect(
+      r.allowedCalls.map((c) => [getAddress(c.target), c.selector, c.pins])
+    ).toEqual([
+      [W, 'deposit()', undefined],
+      [
+        W,
+        'approve(address,uint256)',
+        [
+          { arg: 0, expected: P },
+          { arg: 1, max: cap },
+        ],
       ],
-    })
-  ).toThrow(/ERC20/);
-});
-it('defaults omitted caps to zero without introducing an unlimited approval', () => {
-  const r = agenticPresets.get('DEXES', {
-    ...input,
-    assets: [{ token: tokenA }, { token: tokenB }],
-  }).rules[0];
-  expect(
-    r.assets?.every(
-      (a) => a.maxPerCall === BigInt(0) && a.maxTotal === BigInt(0)
-    )
-  ).toBe(true);
-  expect(
-    r.allowedCalls.every((c) => c.pins?.some((p) => p.max === BigInt(0)))
-  ).toBe(true);
-});
-it('scopes money-market approvals to their actual underlying token', () => {
-  const underlying = '0x4616975f7E6045FD9737e95bC527e9e14c727BD2' as Address;
-  const r = agenticPresets.get('LENDING', {
-    chainNamespace: 'eip155:84532',
-    assets: [{ token: underlying, maxPerCall: BigInt(2) }],
-  }).rules[0];
-  const approvals = r.allowedCalls.filter(
-    (c) => c.selector === 'approve(address,uint256)'
-  );
-  expect(approvals).toHaveLength(1); // Only mUSDbC: this mock token is not an Aave reserve.
-  expect(approvals.flatMap((c) => c.pins ?? [])).not.toContainEqual({
-    arg: 0,
-    expected: getAddress('0x2F39a349A79492a70E152760ce7123A1933eCf28'),
-  });
-});
-it.each([
-  'eip155:1',
-  'eip155:8453',
-  'eip155:42161',
-  'eip155:56',
-  'eip155:11155111',
-  'eip155:84532',
-  'eip155:421614',
-  'eip155:97',
-] as const)(
-  'normalizes every DEX call on %s to the exact ABI bytes',
+      ...(
+        [
+          ['supply(address,uint256,address,uint16)', 2],
+          ['withdraw(address,uint256,address)', 2],
+          ['borrow(address,uint256,uint256,uint16,address)', 4],
+          ['repay(address,uint256,uint256,address)', 3],
+        ] as const
+      ).map(([selector, beneficiary]) => [
+        P,
+        selector,
+        [
+          { arg: 0, expected: W },
+          { arg: beneficiary, expected: AGENTIC.WALLET },
+          { arg: 1, max: cap },
+        ],
+      ]),
+      [W, 'withdraw(uint256)', [{ arg: 0, max: cap }]],
+    ]);
+    expect(r.allowedCalls[0].maxValue).toBe(cap);
+  }
+);
+it.each(
+  TESTNETS.flatMap((chain) =>
+    (['DEXES', 'LENDING'] as const).map((p) => [p, chain] as const)
+  )
+)(
+  '%s %s compiles with the deployed v6 policy within its limits',
+  async (preset, chainNamespace) => {
+    const r = agenticPresets.get(preset, input(chainNamespace)).rules[0];
+    const out = (await normalizePublicRule(
+      publicRules([r])[0],
+      ADDR.owner,
+      mockRuntime(new FakeChain())
+    )) as UniversalRule;
+    expect(out.allowedCalls).toHaveLength(r.allowedCalls.length);
+    expect(out.allowedCalls[0].maxValue).toBe(cap);
+    expect(out.allowedCalls.slice(1).every((c) => !c.maxValue)).toBe(true);
+  }
+);
+it.each(TESTNETS)(
+  'normalizes every DEX swap on %s to the exact ABI bytes',
   async (chainNamespace) => {
-    const r = agenticPresets.get('DEXES', { ...input, chainNamespace })
-      .rules[0];
+    const r = agenticPresets.get('DEXES', input(chainNamespace)).rules[0];
     const rt = mockRuntime(new FakeChain());
     const out = (await normalizePublicRule(
       publicRules([r])[0],
@@ -155,7 +250,7 @@ it('supports tuple/fixed-array positions but never descends into dynamic storage
   expect(() => evmPinOffset('0x12345678', [0, 1])).toThrow(/scalar/);
 });
 it('tuple-authored pins re-encode using the raw-selector word indexes returned by reads', async () => {
-  const r = agenticPresets.get('DEXES', input).rules[0];
+  const r = agenticPresets.get('DEXES', input('eip155:11155111')).rules[0];
   const rt = mockRuntime(new FakeChain());
   const first = (await normalizePublicRule(
     publicRules([r])[0],
@@ -184,144 +279,15 @@ it('tuple-authored pins re-encode using the raw-selector word indexes returned b
     first.allowedCalls.map((c) => c.pins)
   );
 });
-it('mutating a returned tuple path cannot change a later preset', () => {
-  const r = agenticPresets.get('DEXES', input).rules[0];
-  (r.allowedCalls[0].pins![0].arg as number[])[1] = 99;
-  expect(
-    agenticPresets.get('DEXES', input).rules[0].allowedCalls[0].pins![0].arg
-  ).toEqual([0, 0]);
-});
-
-it('includes a curated capped token pair and exact pair pins on every DEX chain', () => {
-  const { rules, readiness } = agenticPresets.get('DEXES');
-  expect(rules.map((r) => r.chainNamespace)).toEqual(
-    agenticPresets.list().presets.find((p) => p.constant === 'DEXES')!.chains
-  );
-  for (const rule of rules) {
-    expect(rule).not.toHaveProperty('agent');
-    expect(rule.validUntil).toBeGreaterThan(Math.floor(Date.now() / 1000));
-    expect(rule.assets).toHaveLength(2);
-    expect(
-      rule.assets!.every(
-        (a) =>
-          a.maxPerCall > BigInt(0) && (a.maxTotal ?? BigInt(0)) >= a.maxPerCall
-      )
-    ).toBe(true);
-    expect(rule.allowedCalls).toHaveLength(6);
-    const swaps = rule.allowedCalls.filter((c) =>
-      c.selector.startsWith('exact')
-    );
-    expect(swaps).toHaveLength(4);
-    for (const call of swaps) {
-      expect(call.pins).toHaveLength(4);
-      expect(call.pins).toContainEqual({
-        arg: [0, 3],
-        expected: AGENTIC.WALLET,
-      });
-      expect(call.pins?.at(-1)?.max).toBeGreaterThan(BigInt(0));
-      expect(call.label).not.toContain('select two tokens');
-    }
-  }
-  expect(readiness.chains.every((c) => c.knownTokens.length >= 2)).toBe(true);
-  expect(
-    readiness.chains.every(
-      (c) => !c.issues.some((i) => i.code === 'TOKEN_PAIR_REQUIRED')
-    )
-  ).toBe(true);
-});
-it('keeps single-token swaps disabled and generates approvals only for the supplied asset', () => {
-  const rule = agenticPresets.get('DEXES', {
-    ...input,
-    assets: [input.assets![0]],
+it('mutating a returned rule cannot change a later preset', () => {
+  const r = agenticPresets.get('DEXES', input('eip155:84532')).rules[0];
+  (r.allowedCalls[2].pins![0].arg as number[])[1] = 99;
+  r.allowedCalls[0].maxValue = BigInt(0);
+  r.assets![0].maxPerCall = BigInt(0);
+  const again = agenticPresets.get('DEXES', {
+    chainNamespace: 'eip155:84532',
   }).rules[0];
-  expect(rule.assets).toEqual([input.assets![0]]);
-  expect(rule.allowedCalls).toHaveLength(3);
-  for (const call of rule.allowedCalls.slice(0, 2)) {
-    expect(call.pins).toContainEqual({ arg: [0, 0], expected: tokenA });
-    expect(call.pins?.at(-1)?.max).toBe(BigInt(0));
-  }
-  expect(rule.allowedCalls[2].selector).toBe('approve(address,uint256)');
-  expect(rule.allowedCalls[2].target).toBe(tokenA);
-});
-it('keeps chains without supplied assets discoverable and regenerates complete pairs without disabled alternatives', () => {
-  const { rules } = agenticPresets.get('DEXES', {
-    assets: input.assets!.map((a) => ({ ...a, chainNamespace: chain })),
-  });
-  expect(rules).toHaveLength(8);
-  expect(
-    rules.find((r) => r.chainNamespace === chain)?.allowedCalls
-  ).toHaveLength(6);
-  for (const r of rules.filter((r) => r.chainNamespace !== chain)) {
-    expect(r.assets).toEqual([]);
-    expect(r.allowedCalls).toHaveLength(2);
-    expect(r.allowedCalls.every((c) => c.pins?.at(-1)?.max === BigInt(0))).toBe(
-      true
-    );
-  }
-  const preview = agenticPresets.get('DEXES', {
-    chainNamespace: chain,
-    assets: [],
-  }).rules[0];
-  const ready = agenticPresets.get('DEXES', input).rules[0];
-  expect(preview.allowedCalls).toHaveLength(2);
-  expect(ready.allowedCalls).toHaveLength(6);
-  expect(
-    ready.allowedCalls.every((c) => !c.label?.includes('select two tokens'))
-  ).toBe(true);
-});
-
-it.each(['eip155:1', 'eip155:8453', 'eip155:42161', 'eip155:56'] as const)(
-  'mainnet %s templates preserve one rule per chain, selectors and wallet pins',
-  (chainNamespace) => {
-    for (const category of ['DEXES', 'LENDING'] as const) {
-      const { rules } = agenticPresets.get(category, { chainNamespace });
-      expect(rules).toHaveLength(1);
-      expect(rules[0].chainNamespace).toBe(chainNamespace);
-      expect(rules[0].allowedCalls.length).toBeLessThanOrEqual(32);
-      expect(rules[0].allowedCalls.every((c) => c.selector.includes('('))).toBe(
-        true
-      );
-      expect(
-        rules[0].allowedCalls.some((c) =>
-          c.pins?.some((p) => p.expected === AGENTIC.WALLET)
-        )
-      ).toBe(true);
-      expect(rules[0]).not.toHaveProperty('agent');
-    }
-  }
-);
-
-it('mainnet Lido uses the selected token units and excludes unbounded withdrawal/claim methods', () => {
-  const stETH = getAddress('0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84');
-  const { rules, readiness } = agenticPresets.get('STAKING', {
-    chainNamespace: 'eip155:1',
-    assets: [{ token: stETH, maxPerCall: BigInt(5), maxTotal: BigInt(10) }],
-  });
-  const calls = rules[0].allowedCalls;
-  expect(
-    calls.find((c) => c.selector === 'wrap(uint256)')?.pins
-  ).toContainEqual({ arg: 0, max: BigInt(5) });
-  expect(calls.some((c) => c.selector === 'submit(address)')).toBe(false);
-  expect(
-    calls.some(
-      (c) =>
-        c.selector.startsWith('requestWithdrawals') ||
-        c.selector.startsWith('claimWithdraw')
-    )
-  ).toBe(false);
-  expect(readiness.chains[0].excludedCalls).toEqual(
-    expect.arrayContaining([
-      expect.objectContaining({
-        selector: 'requestWithdrawals(uint256[],address)',
-        reason: 'DYNAMIC_AMOUNT',
-      }),
-      expect.objectContaining({
-        selector: 'claimWithdrawal(uint256)',
-        reason: 'POSITION_AMOUNT',
-      }),
-    ])
-  );
-  expect(
-    calls.filter((c) => c.selector === 'approve(address,uint256)')
-  ).toHaveLength(2);
+  expect(again.allowedCalls[2].pins![0].arg).toEqual([0, 0]);
+  expect(again.allowedCalls[0].maxValue).toBe(parseUnits('0.001', 18));
+  expect(again.assets![0].maxPerCall).toBe(parseUnits('0.001', 18));
 });

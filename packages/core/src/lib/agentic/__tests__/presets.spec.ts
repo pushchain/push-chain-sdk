@@ -1,8 +1,9 @@
 import { getAddress, zeroAddress } from 'viem';
 import { AGENTIC } from '../constants';
-import { agenticPresets, buildPresetApi } from '../presets';
+import { buildPresetApi } from '../presets';
 import type { PresetDefinition } from '../presets/catalog';
 import type { Rule } from '../agentic.types';
+import { MOVEABLE_TOKEN_CONSTANTS } from '../../constants/tokens';
 import { normalizePublicRule, publicRules } from '../public-rule';
 import { FakeChain, ADDR } from './fake-chain';
 import { mockRuntime } from './mock-runtime';
@@ -12,6 +13,11 @@ const target = getAddress('0x0000000000000000000000000000000000001234');
 const token = getAddress('0x000000000000000000000000000000000000abcd');
 const agent = getAddress('0x000000000000000000000000000000000000a999');
 const until = () => Math.floor(Date.now() / 1000) + 3600;
+const eth = (maxPerCall = BigInt(5), maxTotal = BigInt(10)) => ({
+  token: zeroAddress,
+  maxPerCall,
+  maxTotal,
+});
 function catalog(): PresetDefinition[] {
   return [
     {
@@ -23,13 +29,18 @@ function catalog(): PresetDefinition[] {
           allowedCalls: [
             {
               target,
-              selector: 'deposit(address,uint256)',
+              selector: 'deposit()',
+              budget: { kind: 'native-value' },
+            },
+            {
+              target,
+              selector: 'lend(address,uint256)',
               pins: [{ arg: 0, expected: AGENTIC.WALLET }],
               app: 'Fixture',
-              label: 'Deposit',
+              label: 'Lend',
+              budget: { kind: 'native-amount', amountArg: 1 },
             },
           ],
-          approvals: [{ spender: target, app: 'Fixture' }],
         },
         {
           chainNamespace: other,
@@ -45,91 +56,52 @@ function catalog(): PresetDefinition[] {
     },
   ];
 }
-it('ships verified mainnet and testnet templates and keeps prediction empty', () => {
-  expect(Object.values(AGENTIC.PRESETS.CATEGORY)).toEqual([
-    'DEXES',
-    'LENDING',
-    'STAKING',
-    'PREDICTION',
-  ]);
-  const entries = agenticPresets.list().presets;
-  expect(entries.map((p) => [p.constant, p.chains.length])).toEqual([
-    ['DEXES', 8],
-    ['LENDING', 8],
-    ['STAKING', 2],
-    ['PREDICTION', 0],
-  ]);
-  expect(
-    entries
-      .flatMap((p) => p.chains)
-      .every((c) =>
-        [
-          'eip155:1',
-          'eip155:8453',
-          'eip155:42161',
-          'eip155:56',
-          'eip155:11155111',
-          'eip155:84532',
-          'eip155:421614',
-          'eip155:97',
-        ].includes(c)
-      )
-  ).toBe(true);
-  expect(agenticPresets.get('PREDICTION')).toEqual({
-    rules: [],
-    readiness: { ready: false, chains: [] },
-  });
-  expect(agenticPresets.get('DEXES').rules).toHaveLength(8);
-  expect(() =>
-    agenticPresets.get('LENDING', { chainNamespace: 'eip155:999999' })
-  ).toThrow(/no approved entry/);
-});
-it('groups apps on a chain into one editable template with default expiry and omitted identity', () => {
-  const data = catalog();
-  data[0].chains[0].allowedCalls = [
-    ...data[0].chains[0].allowedCalls,
-    {
-      target: ADDR.other,
-      selector: 'lend(address)',
-      pins: [{ arg: 0, expected: AGENTIC.WALLET }],
-    },
-  ];
-  const api = buildPresetApi(data),
+it('returns one editable template per chain with default ETH limits, expiry and no identity', () => {
+  const api = buildPresetApi(catalog()),
     res = api.get('DEXES');
+  expect(Object.keys(res)).toEqual(['rules']);
   expect(res.rules.map((r) => r.chainNamespace)).toEqual([chain, other]);
-  expect(res.rules[0].allowedCalls).toHaveLength(2);
   for (const rule of res.rules) {
     expect(rule).not.toHaveProperty('agent');
-    expect(rule).not.toHaveProperty('assets');
+    expect(rule.assets).toHaveLength(1);
+    expect(rule.assets![0].token).toBe(zeroAddress);
     expect(rule.validUntil).toBeGreaterThan(Math.floor(Date.now() / 1000));
   }
+  const max = res.rules[0].assets![0].maxPerCall;
+  expect(res.rules[0].allowedCalls[0].maxValue).toBe(max);
+  expect(res.rules[0].allowedCalls[1].pins).toEqual([
+    { arg: 0, expected: AGENTIC.WALLET },
+    { arg: 1, max },
+  ]);
   expect(api.list({ type: 'CATEGORY' }).presets[0].chains).toEqual([
     chain,
     other,
   ]);
 });
-it('returns ready Rule types with identity and expiry; routes assets and defaults missing caps to zero', () => {
-  const api = buildPresetApi(catalog());
-  const { rules } = api.get('DEXES', {
+it('returns ready Rule types with identity and expiry and places each ETH asset on its chain', () => {
+  const { rules } = buildPresetApi(catalog()).get('DEXES', {
     agent,
     validUntil: until(),
     assets: [
-      { chainNamespace: chain, token },
+      { chainNamespace: chain, ...eth(BigInt(2), BigInt(3)) },
       {
         chainNamespace: other,
-        token: zeroAddress,
-        maxPerCall: BigInt(2),
-        maxTotal: BigInt(3),
+        token: MOVEABLE_TOKEN_CONSTANTS.BASE_SEPOLIA.ETH,
+        maxPerCall: BigInt(4),
+        maxTotal: BigInt(8),
       },
     ],
   });
   const typed: Rule[] = rules;
-  expect(typed[0].assets).toEqual([
-    { token, maxPerCall: BigInt(0), maxTotal: BigInt(0) },
-  ]);
+  expect(typed[0].assets).toEqual([eth(BigInt(2), BigInt(3))]);
   expect(typed[1].assets).toEqual([
-    { token: zeroAddress, maxPerCall: BigInt(2), maxTotal: BigInt(3) },
+    {
+      token: { ...MOVEABLE_TOKEN_CONSTANTS.BASE_SEPOLIA.ETH },
+      maxPerCall: BigInt(4),
+      maxTotal: BigInt(8),
+    },
   ]);
+  expect(typed[0].allowedCalls[0].maxValue).toBe(BigInt(2));
   expect(typed.every((r) => r.agent === agent && r.validUntil > 0)).toBe(true);
 });
 it('does not type an incomplete template as a ready rule', () => {
@@ -138,72 +110,65 @@ it('does not type an incomplete template as a ready rule', () => {
   const ready: Rule[] = rules;
   expect(ready[0].agent).toBeUndefined();
 });
-it('adds only spender-pinned and amount-bounded ERC20 approvals; native assets have none', () => {
-  const { rules } = buildPresetApi(catalog()).get('DEXES', {
-    chainNamespace: chain,
-    assets: [
-      { token, maxPerCall: BigInt(5), maxTotal: BigInt(10) },
-      { token: zeroAddress, maxPerCall: BigInt(1) },
-    ],
-  });
-  expect(rules).toHaveLength(1);
-  expect(rules[0].allowedCalls).toHaveLength(2);
-  expect(rules[0].allowedCalls[1]).toMatchObject({
-    target: token,
-    selector: 'approve(address,uint256)',
-    pins: [
-      { arg: 0, expected: target },
-      { arg: 1, max: BigInt(5) },
-    ],
-  });
-  expect(rules[0].assets![0]).not.toHaveProperty('chainNamespace');
-});
 it('does not mutate caller assets, returned records, or the bundled catalog', () => {
   const data = catalog();
   const api = buildPresetApi(data);
   const asset = {
-    token: {
-      address: token,
-      symbol: 'TEST',
-      decimals: 6,
-      mechanism: 'approve' as const,
-    },
+    token: { ...MOVEABLE_TOKEN_CONSTANTS.ETHEREUM_SEPOLIA.ETH },
+    maxPerCall: BigInt(5),
+    maxTotal: BigInt(10),
   };
   const first = api.get('DEXES', { chainNamespace: chain, assets: [asset] });
-  first.rules[0].allowedCalls[0].pins![0] = { arg: 0, expected: zeroAddress };
-  (first.rules[0].assets![0].token as { address: string }).address =
-    zeroAddress;
+  first.rules[0].allowedCalls[1].pins![0] = { arg: 0, expected: zeroAddress };
+  (first.rules[0].assets![0].token as { symbol: string }).symbol = 'X';
   api.list().presets[0].chains.length = 0;
-  data[0].chains[0].allowedCalls[0].target = zeroAddress;
-  expect(asset.token.address).toBe(token);
-  expect(api.get('DEXES').rules[0].allowedCalls[0]).toMatchObject({
+  data[0].chains[0].allowedCalls[1].target = zeroAddress;
+  expect(asset.token.symbol).toBe('ETH');
+  expect(api.get('DEXES').rules[0].allowedCalls[1]).toMatchObject({
     target,
-    pins: [{ arg: 0, expected: AGENTIC.WALLET }],
+    pins: [{ arg: 0, expected: AGENTIC.WALLET }, { arg: 1 }],
   });
   expect(api.list().presets[0].chains).toHaveLength(2);
 });
 it.each([
-  { assets: [{ token }] },
-  { chainNamespace: chain, assets: [{ chainNamespace: other, token }] },
-  {
-    chainNamespace: chain,
-    assets: [{ token }, { token: token.toUpperCase().replace('0X', '0x') }],
-  },
-  { chainNamespace: chain, assets: [{ token, maxPerCall: BigInt(-1) }] },
-  {
-    chainNamespace: chain,
-    assets: [{ token, maxTotal: BigInt(1) << BigInt(256) }],
-  },
-  { agent: zeroAddress },
-  { validUntil: 1 },
-  { validUntil: 1.5 },
-  { assets: [null] },
+  [{ assets: [eth()] }, /needs chainNamespace/],
+  [
+    { chainNamespace: chain, assets: [{ chainNamespace: other, ...eth() }] },
+    /outside the selected preset/,
+  ],
+  [{ chainNamespace: chain, assets: [eth(), eth()] }, /duplicate/],
+  [
+    { chainNamespace: chain, assets: [{ ...eth(), token }] },
+    /only ETH from Push/,
+  ],
+  [{ chainNamespace: chain, assets: [{ token: zeroAddress }] }, /uint256/],
+  [
+    { chainNamespace: chain, assets: [eth(BigInt(0), BigInt(1))] },
+    /positive maxPerCall and maxTotal/,
+  ],
+  [
+    { chainNamespace: chain, assets: [eth(BigInt(-1))] },
+    /maxPerCall must be a uint256/,
+  ],
+  [
+    {
+      chainNamespace: chain,
+      assets: [eth(BigInt(1), BigInt(1) << BigInt(256))],
+    },
+    /maxTotal must be a uint256/,
+  ],
+  [{ chainNamespace: chain, assets: [] }, /Add an ETH asset/],
+  [{ assets: [{ chainNamespace: chain, ...eth() }] }, /Add an ETH asset/],
+  [{ agent: zeroAddress }, /nonzero Push address/],
+  [{ validUntil: 1 }, /future uint48/],
+  [{ validUntil: 1.5 }, /future uint48/],
+  [{ assets: [null] }, /must be an object/],
 ])(
   'rejects malformed or mismatched options before returning templates (case %#)',
-  (options) => {
+  (options, error) => {
     expect(() =>
       buildPresetApi(catalog()).get('DEXES', options as never)
-    ).toThrow();
+    ).toThrow(error);
   }
 );
 it('rejects unknown presets, unsupported list types and unsupported chain filters', () => {
@@ -214,34 +179,14 @@ it('rejects unknown presets, unsupported list types and unsupported chain filter
     /no approved entry/
   );
 });
-it('produces separate pinned alternatives for multiple spenders', () => {
+it('enforces the 32-call ceiling', () => {
   const data = catalog();
-  data[0].chains[0].approvals = [
-    { spender: target, app: 'One' },
-    { spender: ADDR.other, app: 'Two' },
-  ];
-  const result = buildPresetApi(data).get('DEXES', {
-    chainNamespace: chain,
-    assets: [{ token }],
-  });
-  expect(
-    result.rules[0].allowedCalls.filter(
-      (c) => c.selector === 'approve(address,uint256)'
-    )
-  ).toHaveLength(2);
-});
-it('enforces the 32-call ceiling including generated approvals', () => {
-  const data = catalog();
-  data[0].chains[0].allowedCalls = Array.from({ length: 32 }, (_, i) => ({
+  data[0].chains[0].allowedCalls = Array.from({ length: 33 }, (_, i) => ({
     target,
     selector: `fn${i}()`,
   }));
-  const api = buildPresetApi(data);
-  expect(
-    api.get('DEXES', { chainNamespace: chain }).rules[0].allowedCalls
-  ).toHaveLength(32);
   expect(() =>
-    api.get('DEXES', { chainNamespace: chain, assets: [{ token }] })
+    buildPresetApi(data).get('DEXES', { chainNamespace: chain })
   ).toThrow(/1..32/);
 });
 it('requires full signatures and rejects duplicate function entries', () => {
@@ -256,25 +201,21 @@ it('requires full signatures and rejects duplicate function entries', () => {
     /unpinned alternative/
   );
 });
-it('compiles preset spender and amount pins with the deployed v6 policy', async () => {
+it('compiles preset value and amount caps with the deployed v6 policy', async () => {
   const { rules } = buildPresetApi(catalog()).get('DEXES', {
     chainNamespace: chain,
     agent,
     validUntil: until(),
-    assets: [{ token, maxPerCall: BigInt(5) }],
+    assets: [eth()],
   });
-  const normalized = await normalizePublicRule(
+  const normalized = (await normalizePublicRule(
     publicRules(rules)[0],
     ADDR.other,
     mockRuntime(new FakeChain())
-  );
-  expect(
-    (
-      normalized as import('../agentic.types').UniversalRule
-    ).allowedCalls[1].pins?.map((p) => p.op)
-  ).toEqual([0, 1]);
+  )) as import('../agentic.types').UniversalRule;
+  expect(normalized.allowedCalls[0].maxValue).toBe(BigInt(5));
+  expect(normalized.allowedCalls[1].pins?.map((p) => p.op)).toEqual([0, 1]);
 });
-
 it('keeps OR alternatives EVM-only: repeated Solana instructions are refused', () => {
   const api = buildPresetApi([
     {

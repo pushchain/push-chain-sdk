@@ -8,6 +8,8 @@ export type {
   AgenticWallet,
   RuleCall as AllowedCall,
   RuleAsset as AssetCap,
+  RuleAssetInput,
+  AuthoredRule,
   Checkpoint,
   CheckpointKind,
   CreateOptions,
@@ -37,8 +39,5 @@ export type {
   ReadyPresetOptions,
   PresetRuleTemplate,
   PresetResult,
-  PresetChainReadiness,
-  PresetConfigurationIssue,
-  PresetCallIssue,
   AgenticPresets,
 } from './presets/types';

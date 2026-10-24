@@ -3,9 +3,7 @@ import { CHAIN, PUSH_NETWORK } from '../../constants/enums';
 import { SYNTHETIC_PUSH_ERC20 } from '../../constants/chain';
 import type { Orchestrator } from '../../orchestrator/orchestrator';
 import { createAgenticRuntime } from '../runtime';
-import { agenticPresets } from '../presets';
 import { exactAgenticRoute, resolveAgenticPrc20 } from '../token-routes';
-import { ADDR } from './fake-chain';
 
 const CIRCLE = {
   [CHAIN.ETHEREUM_SEPOLIA]: [
@@ -80,44 +78,4 @@ it('never matches by symbol, by another chain or on another network', () => {
   expect(
     exactAgenticRoute(CHAIN.ETHEREUM_SEPOLIA, 'USDC', PUSH_NETWORK.TESTNET)
   ).toBeUndefined();
-});
-it.each([
-  ['DEXES', CHAIN.ETHEREUM_SEPOLIA],
-  ['LENDING', CHAIN.ARBITRUM_SEPOLIA],
-] as const)(
-  '%s %s defaults are route-ready with unchanged assets and caps',
-  (category, chainNamespace) => {
-    const res = agenticPresets.get(category, {
-      chainNamespace,
-      agent: ADDR.agent,
-    });
-    expect(res.readiness.ready).toBe(true);
-    const state = res.readiness.chains[0];
-    expect(state.bridgeAssets.every((a) => a.status === 'registered')).toBe(
-      true
-    );
-    expect(state.bridgeAssets).toContainEqual({
-      token: getAddress(CIRCLE[chainNamespace][0]),
-      prc20: getAddress(CIRCLE[chainNamespace][1]),
-      status: 'registered',
-    });
-    expect(res.rules[0].assets).toEqual(state.selectedAssets);
-  }
-);
-it('Base DEX USDC is routed while its WETH leg stays unavailable', () => {
-  const state = agenticPresets.get('DEXES', {
-    chainNamespace: CHAIN.BASE_SEPOLIA,
-    agent: ADDR.agent,
-  }).readiness.chains[0];
-  expect(state.bridgeAssets).toEqual([
-    {
-      token: '0x4200000000000000000000000000000000000006',
-      status: 'unavailable',
-    },
-    {
-      token: getAddress(CIRCLE[CHAIN.BASE_SEPOLIA][0]),
-      prc20: getAddress(CIRCLE[CHAIN.BASE_SEPOLIA][1]),
-      status: 'registered',
-    },
-  ]);
 });

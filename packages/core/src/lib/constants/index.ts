@@ -54,6 +54,7 @@ export const READ_CONSTANTS = {
 } as const;
 export type {
   MoveableToken,
+  MoveableTokenSet,
   PayableToken,
   PushChainMoveableToken,
   ChainSuffixAccessor,

@@ -40,18 +40,11 @@ async function main() {
     agent: '0x0000000000000000000000000000000000005678',
     chainNamespace: 'eip155:11155111',
   });
-  assert.equal(preset.readiness.ready, false);
-  assert.deepEqual(
-    preset.rules[0].assets,
-    preset.readiness.chains[0].selectedAssets
-  );
-  assert(preset.readiness.chains[0].selectedAssets.length > 0);
+  assert.deepEqual(Object.keys(preset), ['rules']);
+  assert.equal(preset.rules[0].assets.length, 1);
   assert.equal(
-    cjs.PushChain.utils.agentic.presets.get('LENDING', {
-      agent: '0x0000000000000000000000000000000000005678',
-      chainNamespace: 'eip155:11155111',
-    }).readiness.ready,
-    false
+    preset.rules[0].assets[0].token,
+    '0x0000000000000000000000000000000000000000'
   );
   const guide = fs.readFileSync(path.join(built, 'AGW.md'), 'utf8');
   const source = [...guide.matchAll(/```ts\n([\s\S]*?)```/g)]

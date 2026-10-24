@@ -16,12 +16,9 @@ export const PRESET_ACCEPTANCE_CASES = [
   ['DEXES', 'eip155:11155111'],
   ['DEXES', 'eip155:84532'],
   ['DEXES', 'eip155:421614'],
-  ['DEXES', 'eip155:97'],
   ['LENDING', 'eip155:11155111'],
   ['LENDING', 'eip155:84532'],
   ['LENDING', 'eip155:421614'],
-  ['LENDING', 'eip155:97'],
-  ['STAKING', 'eip155:11155111'],
 ] as const satisfies readonly (readonly [PresetCategory, `eip155:${string}`])[];
 
 function words(param: AbiParameter): number {
