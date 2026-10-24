@@ -1,0 +1,37 @@
+Running 14 scenarios (group: agw-extended) across 2 spec files.
+
+FAIL core-e2e __e2e__/agw-extended/management.spec.ts (238.257 s)
+  ● agw extended management › 6. index race commits no grants to the competing wallet and retry takes the next slot
+
+    expect(received).rejects.toMatchObject(expected)
+
+    - Expected  - 4
+    + Received  + 1
+
+      Object {
+    -   "code": "INDEX_RACE",
+    -   "details": Object {
+    -     "committed": false,
+    -   },
+    +   "code": "PUSH_CHAIN_EXECUTION_FAILED",
+      }
+
+      76 |       return original(params, opts);
+      77 |     };
+    > 78 |     try { await expect(f.owner.agentic.create('e2e-race-loser', { rules: [rule()] })).rejects.toMatchObject({ code: 'INDEX_RACE', details: { committed: false } }); }
+         |                                                                                               ^
+      79 |     finally { rt.execute = original; }
+      80 |     if (!competing) throw new Error('Race injection did not run');
+      81 |     expect((await f.owner.agentic.wallet(competing.wallet).rules.list()).rules).toEqual([]);
+
+      at Object.toMatchObject (../../node_modules/expect/build/index.js:218:22)
+      at Object.<anonymous> (__e2e__/agw-extended/management.spec.ts:78:95)
+
+PASS core-e2e __e2e__/agw-extended/native-policy.spec.ts (296.801 s)
+
+Test Suites: 1 failed, 1 passed, 2 total
+Tests:       1 failed, 13 passed, 14 total
+Snapshots:   0 total
+Time:        535.098 s
+Ran all test suites within paths "__e2e__/agw-extended/management.spec.ts", "__e2e__/agw-extended/native-policy.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

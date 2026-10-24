@@ -1,0 +1,11 @@
+PASS core packages/core/src/lib/agentic/__tests__/preset-default-policy.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/preset-catalog.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/presets.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/preset-operation-limits.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/preset-default-tokens.spec.ts
+
+Test Suites: 5 passed, 5 total
+Tests:       72 passed, 72 total
+Snapshots:   0 total
+Time:        2.495 s, estimated 3 s
+Ran all test suites within paths "packages/core/src/lib/agentic/__tests__/presets.spec.ts", "packages/core/src/lib/agentic/__tests__/preset-catalog.spec.ts", "packages/core/src/lib/agentic/__tests__/preset-operation-limits.spec.ts", "packages/core/src/lib/agentic/__tests__/preset-default-tokens.spec.ts", "packages/core/src/lib/agentic/__tests__/preset-default-policy.spec.ts".

@@ -1,0 +1,10 @@
+[
+  {
+    "descriptor": "@pushchain/core@npm:^6.0.26",
+    "version": "0.0.0-use.local"
+  },
+  {
+    "descriptor": "commander@npm:^4.0.0",
+    "version": "13.1.0"
+  }
+]

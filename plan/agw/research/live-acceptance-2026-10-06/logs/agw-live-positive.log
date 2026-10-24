@@ -1,0 +1,45 @@
+FAIL core-e2e packages/core/__e2e__/agw/universal-evm.spec.ts (59.44 s)
+  agw universal evm
+    ✕ 1. positive-amount outbound: allowance pull/burn, the wallet CEA executes on Sepolia, receipts and replay identity (9436 ms)
+    ○ skipped 2. destination revert is classified on the receipt; the Push leg succeeded
+
+  ● agw universal evm › 1. positive-amount outbound: allowance pull/burn, the wallet CEA executes on Sepolia, receipts and replay identity
+
+    AgenticRevertError: sendPushTx — Push Chain transaction 0x33b8ed9690023e9c8450ce2219f197e98da0412a49a267672ef7ddbe3fe48c27 reverted
+
+      135 |   if (decoded || err instanceof PushChainExecutionError) {
+      136 |     const e = err as { message?: string; gatewayTxHash?: string; decodedError?: DecodedErrorPayload };
+    > 137 |     return new AgenticRevertError(e?.message ?? decoded?.name ?? 'AGW revert', {
+          |            ^
+      138 |       decodedError: decoded ?? e?.decodedError,
+      139 |       gatewayTxHash: e?.gatewayTxHash,
+      140 |       agenticCode: decoded?.name,
+
+      at wrapSendError (src/lib/agentic/management/common.ts:137:12)
+      at agenticSend (src/lib/agentic/execution/send.ts:359:34)
+      at async Object.<anonymous> (__e2e__/agw/universal-evm.spec.ts:137:16)
+
+    Cause:
+    PushChainExecutionError: sendPushTx — Push Chain transaction 0x33b8ed9690023e9c8450ce2219f197e98da0412a49a267672ef7ddbe3fe48c27 reverted
+
+      76 |         receiptWaited = true;
+      77 |         if (receipt.status === 'reverted') {
+    > 78 |           throw new PushChainExecutionError(
+         |                 ^
+      79 |             `${label} — Push Chain transaction ${txHash} reverted`
+      80 |           );
+      81 |         }
+
+      at getIndexedPushTransaction (src/lib/orchestrator/internals/push-chain-tx.ts:78:17)
+      at async sendPushTx (src/lib/orchestrator/internals/push-chain-tx.ts:316:22)
+      at async executeStandardPayload (src/lib/orchestrator/internals/execute-standard.ts:173:12)
+      at async Orchestrator.executeWithPolicy (src/lib/orchestrator/orchestrator.ts:471:11)
+      at async agenticSend (src/lib/agentic/execution/send.ts:349:9)
+      at async Object.<anonymous> (__e2e__/agw/universal-evm.spec.ts:137:16)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 1 skipped, 2 total
+Snapshots:   0 total
+Time:        59.469 s
+Ran all test suites within paths "packages/core/__e2e__/agw/universal-evm.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

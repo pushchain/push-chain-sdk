@@ -1,0 +1,31 @@
+Running 3 scenarios (group: agw-svm-wire) across 1 spec files.
+
+FAIL core-e2e __e2e__/agw-svm-wire/outbound.spec.ts (805.011 s)
+  agw svm wire
+    ✓ 1. positive outbound: actual CEA transfer and counter execution, receipt and replay (102123 ms)
+    ✓ 2. substituted account and oversized instruction amount fail before submission (11664 ms)
+    ✕ 3. destination program failure is classified and does not restore policy spend (625608 ms)
+
+  ● agw svm wire › 3. destination program failure is classified and does not restore policy spend
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "failed"
+    Received: "timeout"
+
+      159 |     f.evidence('svm-wire-failure-submitted', { wallet, rulesId, hash: tx.hash });
+      160 |     await adaptTrackedResponse(rt(agent), tx);
+    > 161 |     const receipt = await tx.wait({ outboundTimeoutMs: 600_000 });
+          |                                                                   ^
+      162 |     f.evidence('svm-wire-failure-receipt', { hash: tx.hash, receipt });
+      163 |     const pushReceipt = await f.push.getTransactionReceipt({ hash: tx.hash as Hex });
+      164 |     expect(pushReceipt.status).toBe('success'); expect(receipt.externalStatus).toBe('failed');
+
+      at Object.<anonymous> (__e2e__/agw-svm-wire/outbound.spec.ts:161:80)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 2 passed, 3 total
+Snapshots:   0 total
+Time:        805.092 s
+Ran all test suites within paths "__e2e__/agw-svm-wire/outbound.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

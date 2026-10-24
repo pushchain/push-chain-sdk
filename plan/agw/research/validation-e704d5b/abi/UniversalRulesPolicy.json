@@ -1,0 +1,2066 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "SEND_OUTBOUND_SELECTOR",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes4",
+        "internalType": "bytes4"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "SESSION_ENGINE",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "UNIVERSAL_EXECUTOR_MODULE",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "UNIVERSAL_GATEWAY_PC",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "assertSpent",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "bytes32",
+        "internalType": "ConfigId"
+      },
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "expectedValueSpent",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "expectedAmountSpent",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "expectedCalls",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "assertSpent",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "bytes32",
+        "internalType": "ConfigId"
+      },
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "expectedSpent",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "checkAction",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "bytes32",
+        "internalType": "ConfigId"
+      },
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "target",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "value",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "data",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "creditRevert",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "bytes32",
+        "internalType": "ConfigId"
+      },
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "outboundTxId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getConfig",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "bytes32",
+        "internalType": "ConfigId"
+      },
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct Config",
+        "components": [
+          {
+            "name": "initialized",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "validUntil",
+            "type": "uint48",
+            "internalType": "uint48"
+          },
+          {
+            "name": "destChainHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "expectedCEA",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "asset",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "maxAmountPerCall",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxAmountTotal",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxPCPerCall",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "spent",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "allowedCalls",
+            "type": "tuple[]",
+            "internalType": "struct AllowedCall[]",
+            "components": [
+              {
+                "name": "target",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "selector",
+                "type": "bytes4",
+                "internalType": "bytes4"
+              },
+              {
+                "name": "beneficiaryOffset",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "hasBeneficiary",
+                "type": "bool",
+                "internalType": "bool"
+              },
+              {
+                "name": "maxValue",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getMode",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "bytes32",
+        "internalType": "ConfigId"
+      },
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct ModeSlot",
+        "components": [
+          {
+            "name": "initialized",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "mode",
+            "type": "uint8",
+            "internalType": "enum RulesType"
+          },
+          {
+            "name": "vm",
+            "type": "uint8",
+            "internalType": "enum VmFamily"
+          },
+          {
+            "name": "chainHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getNativeConfig",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "bytes32",
+        "internalType": "ConfigId"
+      },
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct NativeConfig",
+        "components": [
+          {
+            "name": "initialized",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "validUntil",
+            "type": "uint48",
+            "internalType": "uint48"
+          },
+          {
+            "name": "target",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "selector",
+            "type": "bytes4",
+            "internalType": "bytes4"
+          },
+          {
+            "name": "maxValuePerCall",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxValueTotal",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "valueSpent",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "amount",
+            "type": "tuple",
+            "internalType": "struct AmountRule",
+            "components": [
+              {
+                "name": "enabled",
+                "type": "bool",
+                "internalType": "bool"
+              },
+              {
+                "name": "offset",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "maxPerCall",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "maxTotal",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "amountSpent",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxCalls",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "callsUsed",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "pins",
+            "type": "tuple[]",
+            "internalType": "struct ArgPin[]",
+            "components": [
+              {
+                "name": "offset",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "expected",
+                "type": "bytes32",
+                "internalType": "bytes32"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getSvmConfig",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "bytes32",
+        "internalType": "ConfigId"
+      },
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct SvmConfig",
+        "components": [
+          {
+            "name": "initialized",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "validUntil",
+            "type": "uint48",
+            "internalType": "uint48"
+          },
+          {
+            "name": "expectedCEA",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "gatewayProgram",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "asset",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "maxAmountPerCall",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxAmountTotal",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxPCPerCall",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "spent",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "ceaAccounts",
+            "type": "bytes32[]",
+            "internalType": "bytes32[]"
+          },
+          {
+            "name": "programs",
+            "type": "tuple[]",
+            "internalType": "struct AllowedProgram[]",
+            "components": [
+              {
+                "name": "program",
+                "type": "bytes32",
+                "internalType": "bytes32"
+              },
+              {
+                "name": "discriminator",
+                "type": "bytes8",
+                "internalType": "bytes8"
+              },
+              {
+                "name": "discriminatorLen",
+                "type": "uint8",
+                "internalType": "uint8"
+              },
+              {
+                "name": "dataless",
+                "type": "bool",
+                "internalType": "bool"
+              },
+              {
+                "name": "maxAccounts",
+                "type": "uint8",
+                "internalType": "uint8"
+              }
+            ]
+          },
+          {
+            "name": "pins",
+            "type": "tuple[]",
+            "internalType": "struct SvmAccountPin[]",
+            "components": [
+              {
+                "name": "ruleIndex",
+                "type": "uint8",
+                "internalType": "uint8"
+              },
+              {
+                "name": "accountIndex",
+                "type": "uint8",
+                "internalType": "uint8"
+              },
+              {
+                "name": "expected",
+                "type": "bytes32",
+                "internalType": "bytes32"
+              }
+            ]
+          },
+          {
+            "name": "dataPins",
+            "type": "tuple[]",
+            "internalType": "struct SvmDataPin[]",
+            "components": [
+              {
+                "name": "ruleIndex",
+                "type": "uint8",
+                "internalType": "uint8"
+              },
+              {
+                "name": "fromEnd",
+                "type": "bool",
+                "internalType": "bool"
+              },
+              {
+                "name": "offset",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "offsetB",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "len",
+                "type": "uint8",
+                "internalType": "uint8"
+              },
+              {
+                "name": "mode",
+                "type": "uint8",
+                "internalType": "enum SvmDataPinMode"
+              },
+              {
+                "name": "expected",
+                "type": "bytes32",
+                "internalType": "bytes32"
+              },
+              {
+                "name": "num",
+                "type": "uint64",
+                "internalType": "uint64"
+              },
+              {
+                "name": "den",
+                "type": "uint64",
+                "internalType": "uint64"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "initialize",
+    "inputs": [
+      {
+        "name": "universalGatewayPC",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "universalExecutorModule",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "sessionEngine",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "initializeWithMultiplexer",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "configId",
+        "type": "bytes32",
+        "internalType": "ConfigId"
+      },
+      {
+        "name": "initData",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "isCredited",
+    "inputs": [
+      {
+        "name": "outboundTxId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "pushChainHash",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "supportsInterface",
+    "inputs": [
+      {
+        "name": "iid",
+        "type": "bytes4",
+        "internalType": "bytes4"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "pure"
+  },
+  {
+    "type": "function",
+    "name": "version",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "pure"
+  },
+  {
+    "type": "event",
+    "name": "Initialized",
+    "inputs": [
+      {
+        "name": "version",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "NativeCallMetered",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "ConfigId"
+      },
+      {
+        "name": "multiplexer",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "account",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "value",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OutboundMetered",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "ConfigId"
+      },
+      {
+        "name": "multiplexer",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "account",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "PolicySet",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "ConfigId"
+      },
+      {
+        "name": "multiplexer",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "account",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RevertCredited",
+    "inputs": [
+      {
+        "name": "outboundTxId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "id",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "ConfigId"
+      },
+      {
+        "name": "account",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amountApplied",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RulesConfigured",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "ConfigId"
+      },
+      {
+        "name": "multiplexer",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "account",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "mode",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "enum RulesType"
+      },
+      {
+        "name": "vm",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "enum VmFamily"
+      },
+      {
+        "name": "chainHash",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "AllowListOutOfRange",
+    "inputs": [
+      {
+        "name": "length",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "AlreadyCredited",
+    "inputs": [
+      {
+        "name": "outboundTxId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "AlreadyInitialized",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "bytes32",
+        "internalType": "ConfigId"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "AmbiguousRule",
+    "inputs": [
+      {
+        "name": "i",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "j",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "AmountExceedsCap",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "cap",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "AmountExceedsU64",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ArgPinMismatch",
+    "inputs": [
+      {
+        "name": "actual",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "index",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "expected",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "AssetMismatch",
+    "inputs": [
+      {
+        "name": "expected",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "actual",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "BatchSizeOutOfRange",
+    "inputs": [
+      {
+        "name": "count",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "BeneficiaryMismatch",
+    "inputs": [
+      {
+        "name": "expected",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "actual",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "CallLimitReached",
+    "inputs": [
+      {
+        "name": "callsUsed",
+        "type": "uint32",
+        "internalType": "uint32"
+      },
+      {
+        "name": "maxCalls",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "CallNotAllowed",
+    "inputs": [
+      {
+        "name": "target",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "selector",
+        "type": "bytes4",
+        "internalType": "bytes4"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "CalldataTooShort",
+    "inputs": [
+      {
+        "name": "length",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "CalldataTooShortForAmount",
+    "inputs": [
+      {
+        "name": "actualLength",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "needed",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "CalldataTooShortForPin",
+    "inputs": [
+      {
+        "name": "actualLength",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "index",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "needed",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "CallerIsNotUEModule",
+    "inputs": [
+      {
+        "name": "caller",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "CeaAccountAtUnpinnedIndex",
+    "inputs": [
+      {
+        "name": "accountIndex",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "account",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "CeaAccountsMissExpectedCEA",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ChainMismatch",
+    "inputs": [
+      {
+        "name": "declared",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "assetChain",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "DiscriminatorLenOutOfRange",
+    "inputs": [
+      {
+        "name": "rule",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "len",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "DuplicateSvmPin",
+    "inputs": [
+      {
+        "name": "first",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "second",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "EmptyChain",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ForbiddenInnerTarget",
+    "inputs": [
+      {
+        "name": "target",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ForbiddenProgramInAllowList",
+    "inputs": [
+      {
+        "name": "rule",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "program",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ForbiddenTargetProgram",
+    "inputs": [
+      {
+        "name": "program",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InnerValueExceedsAllowance",
+    "inputs": [
+      {
+        "name": "index",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "value",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "maxValue",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidAsset",
+    "inputs": [
+      {
+        "name": "asset",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidCeaAccount",
+    "inputs": [
+      {
+        "name": "index",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidConfigField",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidExpiry",
+    "inputs": [
+      {
+        "name": "validUntil",
+        "type": "uint48",
+        "internalType": "uint48"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidInitialization",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidRevertRecipient",
+    "inputs": [
+      {
+        "name": "expected",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "actual",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidSelector",
+    "inputs": [
+      {
+        "name": "selector",
+        "type": "bytes4",
+        "internalType": "bytes4"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidSvmConfigField",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidTarget",
+    "inputs": [
+      {
+        "name": "target",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "MalformedInnerCalldata",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MalformedOutboundRequest",
+    "inputs": [
+      {
+        "name": "length",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "MalformedSvmPayload",
+    "inputs": [
+      {
+        "name": "code",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "NativeAmountExceedsCap",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "cap",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "NativeTargetIsGateway",
+    "inputs": [
+      {
+        "name": "target",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "NativeTargetZero",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotInitialized",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "bytes32",
+        "internalType": "ConfigId"
+      },
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "NotInitializing",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "PCValueExceedsCap",
+    "inputs": [
+      {
+        "name": "value",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "cap",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "PayloadNotMulticall",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "PolicyNotInitialized",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "bytes32",
+        "internalType": "ConfigId"
+      },
+      {
+        "name": "multiplexer",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ProgramListOutOfRange",
+    "inputs": [
+      {
+        "name": "length",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ProgramNotAllowed",
+    "inputs": [
+      {
+        "name": "program",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "discriminator",
+        "type": "bytes8",
+        "internalType": "bytes8"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "RecipientMustBeEmpty",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "RecipientNotPubkey",
+    "inputs": [
+      {
+        "name": "length",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "RecipientTargetMismatch",
+    "inputs": [
+      {
+        "name": "recipient",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "target",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "RuleWithoutPin",
+    "inputs": [
+      {
+        "name": "rule",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "RulesExpired",
+    "inputs": [
+      {
+        "name": "validUntil",
+        "type": "uint48",
+        "internalType": "uint48"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SelectorMismatch",
+    "inputs": [
+      {
+        "name": "actual",
+        "type": "bytes4",
+        "internalType": "bytes4"
+      },
+      {
+        "name": "expected",
+        "type": "bytes4",
+        "internalType": "bytes4"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SpentMismatch",
+    "inputs": [
+      {
+        "name": "expected",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "actual",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SvmAccountCountBelowPin",
+    "inputs": [
+      {
+        "name": "pin",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "count",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "needed",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SvmAccountCountMismatch",
+    "inputs": [
+      {
+        "name": "count",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "expected",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SvmAccountPinMismatch",
+    "inputs": [
+      {
+        "name": "pin",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "accountIndex",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "expected",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "actual",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SvmAccountsOutOfRange",
+    "inputs": [
+      {
+        "name": "count",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SvmDataCeilingExceeded",
+    "inputs": [
+      {
+        "name": "pin",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "actual",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "ceiling",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SvmDataFloorNotMet",
+    "inputs": [
+      {
+        "name": "pin",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "actual",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "floor",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SvmDataPinInvalid",
+    "inputs": [
+      {
+        "name": "pin",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SvmDataPinMismatch",
+    "inputs": [
+      {
+        "name": "pin",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "expected",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "actual",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SvmDataRatioNotMet",
+    "inputs": [
+      {
+        "name": "pin",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "a",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "b",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "num",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "den",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SvmDataTooShortForPin",
+    "inputs": [
+      {
+        "name": "pin",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "ixLen",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SvmInstructionNotExecute",
+    "inputs": [
+      {
+        "name": "instructionId",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SvmIxDataTooLong",
+    "inputs": [
+      {
+        "name": "length",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SvmMaxAccountsOutOfRange",
+    "inputs": [
+      {
+        "name": "rule",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "maxAccounts",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SvmPayloadEmpty",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "SvmPinIndexOutOfRange",
+    "inputs": [
+      {
+        "name": "pin",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "accountIndex",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SvmPinRuleOutOfRange",
+    "inputs": [
+      {
+        "name": "pin",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "rule",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "TargetMismatch",
+    "inputs": [
+      {
+        "name": "actual",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "expected",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "TooManyCeaAccounts",
+    "inputs": [
+      {
+        "name": "count",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "TooManyPins",
+    "inputs": [
+      {
+        "name": "count",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "TooManySvmDataPins",
+    "inputs": [
+      {
+        "name": "count",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "TooManySvmPins",
+    "inputs": [
+      {
+        "name": "count",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "TotalNativeAmountExceeded",
+    "inputs": [
+      {
+        "name": "newSpent",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "cap",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "TotalSpendCapExceeded",
+    "inputs": [
+      {
+        "name": "wouldBeTotal",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "cap",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "TotalValueExceeded",
+    "inputs": [
+      {
+        "name": "newSpent",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "cap",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "UncappedGasSwapRejected",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnsupportedNamespace",
+    "inputs": [
+      {
+        "name": "chainHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ValueExceedsCap",
+    "inputs": [
+      {
+        "name": "value",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "cap",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ValueOnlyCalldataNotEmpty",
+    "inputs": [
+      {
+        "name": "length",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ValueOnlyWithAmountRule",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ValueOnlyWithPins",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "WrongModeForCall",
+    "inputs": [
+      {
+        "name": "actual",
+        "type": "uint8",
+        "internalType": "enum RulesType"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "WrongVmForCall",
+    "inputs": [
+      {
+        "name": "actual",
+        "type": "uint8",
+        "internalType": "enum VmFamily"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ZeroAddress",
+    "inputs": []
+  }
+]

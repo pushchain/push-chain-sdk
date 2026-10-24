@@ -1,0 +1,67 @@
+[
+  {
+    "name": "marketplace-register",
+    "at": "2026-10-20T12:21:32.942Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+    "cardId": "3",
+    "txHash": "0x4fa8144b3187a138f1dafd2e15fb7e2746caf9d6c1b5792f58559de049faef0d"
+  },
+  {
+    "name": "marketplace-open",
+    "at": "2026-10-20T12:21:51.874Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+    "jobId": "2",
+    "wallet": "0x3dA787ac28639116EDe5Fd34CFce0820e74f91f1",
+    "rulesId": "0xf7789ce3dc79b3a52ec15584ae208e3cc987e95f27d520c424c5284e9a124f47",
+    "txHash": "0x5ccf837039ea26439624c48f187715de40684a069f4d41b3bf63b0dcbd70fe60"
+  },
+  {
+    "name": "marketplace-cancel-cleanup",
+    "at": "2026-10-20T12:22:10.902Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+    "cardId": "3",
+    "wallet": "0x3dA787ac28639116EDe5Fd34CFce0820e74f91f1",
+    "jobId": "2",
+    "txHash": "0x83465e2001df92c35a26add94647c3d1a55a435f7658acaed168babf589116aa"
+  },
+  {
+    "name": "marketplace-paid-preview",
+    "at": "2026-10-20T12:22:27.580Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+    "pass": true,
+    "fees": {
+      "quoted": "1687500000000000",
+      "paid": "1687500000000000"
+    },
+    "reads": [
+      {
+        "decoded": "0",
+        "requestId": "0xdf67c96355ab3ba26248c0dd05a597683336927ebfdcee568948f12070ebb3bc",
+        "txHash": "0xbb03de6faffaebb972e77a07e6887028ed6b59d3adcb44bb7a4627f108ea57a5",
+        "outcome": "SUCCESS"
+      }
+    ]
+  },
+  {
+    "name": "marketplace-external-open",
+    "at": "2026-10-20T12:23:09.977Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+    "jobId": "3",
+    "wallet": "0x1772FE5B6C48F1A0D78F65342dF62C99F25C094F",
+    "uea": "0x5C2029EbBAC9F5643775CB60a7609d0e8D57412D",
+    "signerChainId": "11155111"
+  },
+  {
+    "name": "marketplace-external-cleanup",
+    "at": "2026-10-20T12:23:29.162Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+    "jobId": "3",
+    "cardId": "3"
+  }
+]

@@ -1,0 +1,8 @@
+PASS core packages/core/src/lib/agentic/__tests__/svm-backend.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/outbound-svm-confirmation.spec.ts
+
+Test Suites: 2 passed, 2 total
+Tests:       28 passed, 28 total
+Snapshots:   0 total
+Time:        3.034 s
+Ran all test suites within paths "packages/core/src/lib/agentic/__tests__/svm-backend.spec.ts", "packages/core/src/lib/orchestrator/__tests__/outbound-svm-confirmation.spec.ts".

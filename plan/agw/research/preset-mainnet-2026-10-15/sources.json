@@ -1,0 +1,48 @@
+[
+  {
+    "url": "https://raw.githubusercontent.com/bgd-labs/aave-address-book/main/src/AaveV3Ethereum.sol",
+    "file": "AaveV3Ethereum.sol",
+    "sha256": "afe8adbbf8fe7d709ae1d2168b8d97ccb8110fdedb572fc2120ecae10ae7588b"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/bgd-labs/aave-address-book/main/src/AaveV3Base.sol",
+    "file": "AaveV3Base.sol",
+    "sha256": "135e2f325b53140c5a82895cf40debc80323fed77bd3ebb240a8d00248ba02ae"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/bgd-labs/aave-address-book/main/src/AaveV3Arbitrum.sol",
+    "file": "AaveV3Arbitrum.sol",
+    "sha256": "6b8f9a12a904a2c13d59423fe9c60fd66ec868761704cbcc776d0c2fe1510b1c"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/bgd-labs/aave-address-book/main/src/AaveV3BNB.sol",
+    "file": "AaveV3BNB.sol",
+    "sha256": "190523aa7f4bd0654e4155eed60a88852b374f3bc28855750a497b45f2efd36b"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/moonwell-fi/moonwell-contracts-v2/main/chains/8453.json",
+    "file": "moonwell-8453.json",
+    "sha256": "9c57bfb2bd1c17e384c4113b6c82de05b2b4bc4671c2fb25202babe90dd2079d"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/VenusProtocol/venus-protocol/develop/deployments/bscmainnet_addresses.json",
+    "file": "venus-bscmainnet.json",
+    "sha256": "d126b3cb0ac0221cbeb20ac20f5f63bfec458fd79f03ab92c7ccee1bb63aedc0"
+  },
+  {
+    "url": "https://docs.lido.fi/deployed-contracts/",
+    "purpose": "Official Lido deployed addresses and caller/recipient/function semantics; read October 15"
+  },
+  {
+    "url": "https://docs.lido.fi/contracts/lido/",
+    "purpose": "Official Lido deployed addresses and caller/recipient/function semantics; read October 15"
+  },
+  {
+    "url": "https://docs.lido.fi/contracts/wsteth/",
+    "purpose": "Official Lido deployed addresses and caller/recipient/function semantics; read October 15"
+  },
+  {
+    "url": "https://docs.lido.fi/contracts/withdrawal-queue-erc721/",
+    "purpose": "Official Lido deployed addresses and caller/recipient/function semantics; read October 15"
+  }
+]

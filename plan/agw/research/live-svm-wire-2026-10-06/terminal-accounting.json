@@ -1,0 +1,10 @@
+{
+  "at": "2026-10-06T07:56:43.396Z",
+  "block": "23950641",
+  "wallet": "0x4612ad240cd66A77b921693BbbB356d1B8219b2c",
+  "token": "0x5D525Df2bD99a6e7ec58b76aF2fd95F39874EBed",
+  "balance": "10000",
+  "allowance": "0",
+  "spent": "20000",
+  "transactionsSent": 0
+}

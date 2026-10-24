@@ -1,0 +1,17 @@
+PASS core-agw-local packages/core/__agw-local__/preset-acceptance.spec.ts (5.382 s)
+  unchanged default preset contract acceptance
+    ✓ DEXES eip155:11155111 preserves every generated asset, cap, function and pin (50 ms)
+    ✓ DEXES eip155:84532 preserves every generated asset, cap, function and pin (39 ms)
+    ✓ DEXES eip155:421614 preserves every generated asset, cap, function and pin (38 ms)
+    ✓ DEXES eip155:97 preserves every generated asset, cap, function and pin (35 ms)
+    ✓ LENDING eip155:11155111 preserves every generated asset, cap, function and pin (28 ms)
+    ✓ LENDING eip155:84532 preserves every generated asset, cap, function and pin (48 ms)
+    ✓ LENDING eip155:421614 preserves every generated asset, cap, function and pin (19 ms)
+    ✓ LENDING eip155:97 preserves every generated asset, cap, function and pin (28 ms)
+    ✓ STAKING eip155:11155111 preserves every generated asset, cap, function and pin (25 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       9 passed, 9 total
+Snapshots:   0 total
+Time:        5.415 s
+Ran all test suites within paths "packages/core/__agw-local__/preset-acceptance.spec.ts".

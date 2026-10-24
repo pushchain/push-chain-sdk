@@ -1,0 +1,834 @@
+{
+  "sdk": [
+    {
+      "code": "DUPLICATE_RULE",
+      "userMessage": "Keep one rule per agent and network. Edit the existing rule or remove the duplicate."
+    },
+    {
+      "code": "AGENT_IS_OWNER",
+      "userMessage": "Choose an agent address different from the wallet owner."
+    },
+    {
+      "code": "AMBIGUOUS_RULE",
+      "userMessage": "More than one rule matches this agent and network. Keep one active matching rule before sending."
+    },
+    {
+      "code": "TARGET_NOT_ON_RULE_CHAIN",
+      "userMessage": "Choose an app on the network selected for this rule."
+    },
+    {
+      "code": "ASSET_CHAIN_MISMATCH",
+      "userMessage": "The selected token belongs to a different network. Choose a token on this rule’s network."
+    },
+    {
+      "code": "TOKEN_ROUTE_UNAVAILABLE",
+      "userMessage": "This token cannot currently be transferred from Push to the selected network. Choose a supported token or use funds already on the destination network."
+    },
+    {
+      "code": "REQUEST_REJECTED",
+      "userMessage": "The wallet request was cancelled. Check wallet activity before trying again."
+    },
+    {
+      "code": "NOT_OWNER_OR_AGENT",
+      "userMessage": "Connect the wallet owner or an agent authorized by its rules."
+    },
+    {
+      "code": "WALLET_NOT_DEPLOYED",
+      "userMessage": "This agentic wallet has not been created yet."
+    },
+    {
+      "code": "NOT_AGENTIC_WALLET",
+      "userMessage": "This address is not a supported agentic wallet."
+    },
+    {
+      "code": "DELETE_NEEDS_TARGET",
+      "userMessage": "Choose which rules to remove."
+    },
+    {
+      "code": "NO_RULES_FOR_CHAIN",
+      "userMessage": "This agent has no active rule for the selected network."
+    },
+    {
+      "code": "FROM_NOT_ALLOWED",
+      "userMessage": "The agentic wallet is the sender. Remove the custom sender selection."
+    },
+    {
+      "code": "NOT_ALLOWED_IN_AGENTIC_MODE",
+      "userMessage": "This action is unavailable while using an agentic wallet."
+    },
+    {
+      "code": "INVALID_RULE",
+      "userMessage": "Some rule settings are invalid. Review the rule and try again."
+    },
+    {
+      "code": "CAPABILITY_UNAVAILABLE",
+      "userMessage": "This feature is not available for this wallet or network yet."
+    },
+    {
+      "code": "READ_ONLY",
+      "userMessage": "Connect a signing wallet to continue."
+    },
+    {
+      "code": "NOT_WALLET_OWNER",
+      "userMessage": "Connect the owner wallet to change these permissions."
+    },
+    {
+      "code": "RULE_NOT_FOUND",
+      "userMessage": "This rule could not be found. Refresh the wallet’s rules and try again."
+    },
+    {
+      "code": "RULE_READ_FAILED",
+      "userMessage": "The wallet’s current state could not be loaded. Refresh and try again."
+    },
+    {
+      "code": "INCONSISTENT_READ",
+      "userMessage": "The wallet changed while it was being checked. Refresh before trying again."
+    },
+    {
+      "code": "INDEX_RACE",
+      "userMessage": "The expected wallet address changed. Refresh wallet information before trying again."
+    },
+    {
+      "code": "RECEIPT_MISMATCH",
+      "userMessage": "The transaction result needs verification. Check its status before retrying."
+    },
+    {
+      "code": "RECEIPT_UNAVAILABLE",
+      "userMessage": "The transaction was submitted, but its status could not be confirmed. Check its status before trying again."
+    },
+    {
+      "code": "AGENT_GAS_INSUFFICIENT",
+      "userMessage": "The agent needs more Push coins to pay transaction fees."
+    },
+    {
+      "code": "WALLET_BALANCE_INSUFFICIENT",
+      "userMessage": "The agentic wallet does not have enough funds for this action."
+    }
+  ],
+  "contracts": [
+    {
+      "name": "AccessControlBadConfirmation",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "AccessControlEnforcedDefaultAdminDelay",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "AccessControlEnforcedDefaultAdminRules",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "AccessControlInvalidDefaultAdmin",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "AccessControlUnauthorizedAccount",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "AddressEmptyCode",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "AllowListOutOfRange",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "AlreadyCredited",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "AlreadyInitialized",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "AmbiguousRule",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "AmountExceedsCap",
+      "userMessage": "This action exceeds a rule’s spending or usage limit. Reduce the amount or ask the owner to update the rule."
+    },
+    {
+      "name": "AmountExceedsU64",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "ArgPinAboveMax",
+      "userMessage": "This action exceeds a rule’s spending or usage limit. Reduce the amount or ask the owner to update the rule."
+    },
+    {
+      "name": "ArgPinMismatch",
+      "userMessage": "This action does not match the wallet’s permissions. Check the token, recipient and allowed function."
+    },
+    {
+      "name": "AssetListOutOfRange",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "AssetNotAllowed",
+      "userMessage": "This action does not match the wallet’s permissions. Check the token, recipient and allowed function."
+    },
+    {
+      "name": "AssetSpentMismatch",
+      "userMessage": "The wallet changed while this action was being prepared. Refresh its state before trying again."
+    },
+    {
+      "name": "AssociatedArray_OutOfBounds",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "BatchSizeOutOfRange",
+      "userMessage": "Too many rules or functions are selected. Reduce the selection and try again."
+    },
+    {
+      "name": "CallLimitReached",
+      "userMessage": "This action exceeds a rule’s spending or usage limit. Reduce the amount or ask the owner to update the rule."
+    },
+    {
+      "name": "CallNotAllowed",
+      "userMessage": "This action does not match the wallet’s permissions. Check the token, recipient and allowed function."
+    },
+    {
+      "name": "CalldataTooShort",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "CalldataTooShortForAmount",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "CalldataTooShortForPin",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "CallerIsNotAgent",
+      "userMessage": "Connect the agent authorized by this rule."
+    },
+    {
+      "name": "CallerIsNotFactory",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "CallerIsNotOwner",
+      "userMessage": "Connect the owner wallet to make this change."
+    },
+    {
+      "name": "CallerIsNotUEModule",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "CeaAccountAtUnpinnedIndex",
+      "userMessage": "The rule is missing a required wallet-recipient restriction. Review its recipient settings."
+    },
+    {
+      "name": "CeaAccountsMissExpectedCEA",
+      "userMessage": "The rule is missing a required wallet-recipient restriction. Review its recipient settings."
+    },
+    {
+      "name": "ChainIdMismatch",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "ChainMismatch",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "CloneArgumentsTooLong",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "Create2EmptyBytecode",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "DiscriminatorLenOutOfRange",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "DuplicateAction",
+      "userMessage": "This rule contains duplicate functions, tokens or conditions. Remove the duplicate selection."
+    },
+    {
+      "name": "DuplicateAsset",
+      "userMessage": "This rule contains duplicate functions, tokens or conditions. Remove the duplicate selection."
+    },
+    {
+      "name": "DuplicateSvmPin",
+      "userMessage": "This rule contains duplicate functions, tokens or conditions. Remove the duplicate selection."
+    },
+    {
+      "name": "ERC1967InvalidImplementation",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "ERC1967NonPayable",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "EmptyChain",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "EnforcedPause",
+      "userMessage": "This operation is temporarily paused. Try again later."
+    },
+    {
+      "name": "EngineStillHoldsPermissions",
+      "userMessage": "This action does not match the wallet’s permissions. Check the token, recipient and allowed function."
+    },
+    {
+      "name": "ExecutorMismatch",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "ExpectedPause",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "FailedCall",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "FailedDeployment",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "ForbiddenActionSelector",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "ForbiddenActionTarget",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "ForbiddenDispatchTarget",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "ForbiddenInnerTarget",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "ForbiddenProgramInAllowList",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "ForbiddenTargetProgram",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "ForbiddenValidationData",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "HashIndexOutOfBounds",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "HashMismatch",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "ImplementationNotSet",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "InconsistentChain",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "IndexMismatch",
+      "userMessage": "The wallet changed while this action was being prepared. Refresh its state before trying again."
+    },
+    {
+      "name": "IndexOutOfRange",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "InsufficientBalance",
+      "userMessage": "There are not enough funds for this action. Check the wallet balance and fees."
+    },
+    {
+      "name": "IntentExecMismatch",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "IntentGrantNonceMismatch",
+      "userMessage": "The wallet changed while this action was being prepared. Refresh its state before trying again."
+    },
+    {
+      "name": "IntentGrantNonceNotZero",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "IntentRulesMismatch",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "IntentSessionMismatch",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "IntentWalletMismatch",
+      "userMessage": "The wallet changed while this action was being prepared. Refresh its state before trying again."
+    },
+    {
+      "name": "InvalidActionId",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "InvalidAsset",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "InvalidCallTarget",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "InvalidCeaAccount",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "InvalidConfigField",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "InvalidData",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "InvalidEnableSignature",
+      "userMessage": "The signature could not be verified. Reconnect the authorized wallet and try again."
+    },
+    {
+      "name": "InvalidExpiry",
+      "userMessage": "Choose a valid future expiry for this rule."
+    },
+    {
+      "name": "InvalidISessionValidator",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "InvalidInitialization",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "InvalidMode",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "InvalidModuleAddress",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "InvalidNonce",
+      "userMessage": "The wallet changed while this action was being prepared. Refresh its state before trying again."
+    },
+    {
+      "name": "InvalidOwnerSignature",
+      "userMessage": "The signature could not be verified. Reconnect the authorized wallet and try again."
+    },
+    {
+      "name": "InvalidPermissionId",
+      "userMessage": "This action does not match the wallet’s permissions. Check the token, recipient and allowed function."
+    },
+    {
+      "name": "InvalidRevertRecipient",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "InvalidSelector",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "InvalidSelfCall",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "InvalidSession",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "InvalidSessionKeySignature",
+      "userMessage": "The signature could not be verified. Reconnect the authorized wallet and try again."
+    },
+    {
+      "name": "InvalidSvmConfigField",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "InvalidTarget",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "InvalidUserOpSender",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "LabelTooLong",
+      "userMessage": "The wallet name is too long. Shorten it and try again."
+    },
+    {
+      "name": "MalformedBatchCalldata",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "MalformedConfig",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "MalformedInnerCalldata",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "MalformedOutboundRequest",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "MalformedSessionShape",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "MalformedSvmPayload",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "ModuleAlreadyInstalled",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "NativeAmountExceedsCap",
+      "userMessage": "This action exceeds a rule’s spending or usage limit. Reduce the amount or ask the owner to update the rule."
+    },
+    {
+      "name": "NativeTargetIsGateway",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "NativeTargetZero",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "NoExecutionsInBatch",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "NoPoliciesSet",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "NotAWallet",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "NotInitialized",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "NotInitializing",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "OutsideTimeWindow",
+      "userMessage": "This request is outside its valid time window. Refresh and approve a new request."
+    },
+    {
+      "name": "OwnerLaneRequired",
+      "userMessage": "Connect the owner wallet to make this change."
+    },
+    {
+      "name": "OwnerSigExpired",
+      "userMessage": "The wallet approval has expired. Review and sign a new request."
+    },
+    {
+      "name": "PCValueExceedsCap",
+      "userMessage": "The required gas exceeds this rule’s gas budget. Review the budget before trying again."
+    },
+    {
+      "name": "PartlyEnabledActions",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "PartlyEnabledPolicies",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "PayloadNotMulticall",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "PaymasterValidationNotEnabled",
+      "userMessage": "This action does not match the wallet’s permissions. Check the token, recipient and allowed function."
+    },
+    {
+      "name": "PolicyNotInitialized",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "PolicyViolation",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "ProgramListOutOfRange",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "ProgramNotAllowed",
+      "userMessage": "This action does not match the wallet’s permissions. Check the token, recipient and allowed function."
+    },
+    {
+      "name": "RecipientMustBeEmpty",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "RecipientNotPubkey",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "RecipientTargetMismatch",
+      "userMessage": "This action does not match the wallet’s permissions. Check the token, recipient and allowed function."
+    },
+    {
+      "name": "ReentrancyGuardReentrantCall",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "RuleWithoutPin",
+      "userMessage": "The rule is missing a required wallet-recipient restriction. Review its recipient settings."
+    },
+    {
+      "name": "RulesExpired",
+      "userMessage": "This rule has expired. Ask the owner to renew it."
+    },
+    {
+      "name": "RulesTypeMismatch",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "SafeCastOverflowedUintDowncast",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "SelectorMismatch",
+      "userMessage": "This action does not match the wallet’s permissions. Check the token, recipient and allowed function."
+    },
+    {
+      "name": "SignatureExpired",
+      "userMessage": "The wallet approval has expired. Review and sign a new request."
+    },
+    {
+      "name": "SignerNotFound",
+      "userMessage": "The signature could not be verified. Reconnect the authorized wallet and try again."
+    },
+    {
+      "name": "SmartSessionModuleAlreadyInstalled",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "SpentLengthMismatch",
+      "userMessage": "The wallet changed while this action was being prepared. Refresh its state before trying again."
+    },
+    {
+      "name": "SpentMismatch",
+      "userMessage": "The wallet changed while this action was being prepared. Refresh its state before trying again."
+    },
+    {
+      "name": "SvmAccountCountBelowPin",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "SvmAccountCountMismatch",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "SvmAccountPinMismatch",
+      "userMessage": "This action does not match the wallet’s permissions. Check the token, recipient and allowed function."
+    },
+    {
+      "name": "SvmAccountsOutOfRange",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "SvmDataCeilingExceeded",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "SvmDataFloorNotMet",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "SvmDataPinInvalid",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "SvmDataPinMismatch",
+      "userMessage": "This action does not match the wallet’s permissions. Check the token, recipient and allowed function."
+    },
+    {
+      "name": "SvmDataRatioNotMet",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "SvmDataTooShortForPin",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "SvmInstructionNotExecute",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "SvmIxDataTooLong",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "SvmMaxAccountsOutOfRange",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "SvmPayloadEmpty",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "SvmPinIndexOutOfRange",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "SvmPinRuleOutOfRange",
+      "userMessage": "This function has too many conditions. Choose a simpler rule configuration."
+    },
+    {
+      "name": "TargetMismatch",
+      "userMessage": "This action does not match the wallet’s permissions. Check the token, recipient and allowed function."
+    },
+    {
+      "name": "TooManyActions",
+      "userMessage": "Too many rules or functions are selected. Reduce the selection and try again."
+    },
+    {
+      "name": "TooManyAllowedCallPins",
+      "userMessage": "This rule has more than 32 conditions. Select fewer tokens or allowed functions."
+    },
+    {
+      "name": "TooManyCeaAccounts",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "TooManyInitialRules",
+      "userMessage": "Too many rules or functions are selected. Reduce the selection and try again."
+    },
+    {
+      "name": "TooManyPins",
+      "userMessage": "This function has too many conditions. Choose a simpler rule configuration."
+    },
+    {
+      "name": "TooManySvmDataPins",
+      "userMessage": "This function has too many conditions. Choose a simpler rule configuration."
+    },
+    {
+      "name": "TooManySvmPins",
+      "userMessage": "This function has too many conditions. Choose a simpler rule configuration."
+    },
+    {
+      "name": "TotalNativeAmountExceeded",
+      "userMessage": "This action exceeds a rule’s spending or usage limit. Reduce the amount or ask the owner to update the rule."
+    },
+    {
+      "name": "TotalSpendCapExceeded",
+      "userMessage": "This action exceeds a rule’s spending or usage limit. Reduce the amount or ask the owner to update the rule."
+    },
+    {
+      "name": "TotalValueExceeded",
+      "userMessage": "This action exceeds a rule’s spending or usage limit. Reduce the amount or ask the owner to update the rule."
+    },
+    {
+      "name": "UUPSUnauthorizedCallContext",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "UUPSUnsupportedProxiableUUID",
+      "userMessage": "This action is not supported on the selected network or wallet version."
+    },
+    {
+      "name": "UncappedGasSwapRejected",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "UnknownPermission",
+      "userMessage": "This action does not match the wallet’s permissions. Check the token, recipient and allowed function."
+    },
+    {
+      "name": "UnsupportedCallType",
+      "userMessage": "This action is not supported on the selected network or wallet version."
+    },
+    {
+      "name": "UnsupportedEnvelopeVersion",
+      "userMessage": "This action is not supported on the selected network or wallet version."
+    },
+    {
+      "name": "UnsupportedExecutionMode",
+      "userMessage": "This action is not supported on the selected network or wallet version."
+    },
+    {
+      "name": "UnsupportedExecutionType",
+      "userMessage": "This action is not supported on the selected network or wallet version."
+    },
+    {
+      "name": "UnsupportedModuleType",
+      "userMessage": "This action is not supported on the selected network or wallet version."
+    },
+    {
+      "name": "UnsupportedNamespace",
+      "userMessage": "This action is not supported on the selected network or wallet version."
+    },
+    {
+      "name": "UnsupportedPolicy",
+      "userMessage": "This action is not supported on the selected network or wallet version."
+    },
+    {
+      "name": "UnsupportedSmartSessionMode",
+      "userMessage": "This action is not supported on the selected network or wallet version."
+    },
+    {
+      "name": "ValidationFailed",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "ValidatorNotInstalled",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "ValueExceedsCap",
+      "userMessage": "This action exceeds a rule’s spending or usage limit. Reduce the amount or ask the owner to update the rule."
+    },
+    {
+      "name": "ValueOnlyCalldataNotEmpty",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "ValueOnlyWithAmountRule",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "ValueOnlyWithPins",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "WrongModeForCall",
+      "userMessage": "This action is not supported on the selected network or wallet version."
+    },
+    {
+      "name": "WrongVmForCall",
+      "userMessage": "This action is not supported on the selected network or wallet version."
+    },
+    {
+      "name": "ZeroAddress",
+      "userMessage": "The wallet contract rejected this transaction. Review the permissions and transaction details before trying again."
+    },
+    {
+      "name": "ZeroMaxCalls",
+      "userMessage": "This action exceeds a rule’s spending or usage limit. Reduce the amount or ask the owner to update the rule."
+    }
+  ]
+}

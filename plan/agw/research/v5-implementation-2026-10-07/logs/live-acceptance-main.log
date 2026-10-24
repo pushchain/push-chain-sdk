@@ -1,0 +1,44 @@
+FAIL core-e2e packages/core/__e2e__/agw/labels.spec.ts (172.119 s)
+  ● agw labels › 4. an agent cannot rename through either the SDK or the contract
+
+    expect(received).rejects.toThrow(expected)
+
+    Expected substring: "ForbiddenDispatchTarget"
+    Received message:   "The contract function \"executeAsAgent\" reverted with the following signature:
+    0x1c792c05·
+    Unable to decode signature \"0x1c792c05\" as it was not found on the provided ABI.
+    Make sure you are using the correct ABI and that the error exists on it.
+    You can look up the decoded signature here: https://openchain.xyz/signatures?query=0x1c792c05.··
+    Contract Call:
+      address:   0xe5579a19Fbb5e23814c993b61f9787647C0ef724
+      function:  executeAsAgent(bytes32 rulesId, bytes32 mode, bytes executionCalldata)
+      args:                    (0xc14cf8098cdf3e85b71d1fab16e606608ea31e67d1a78a72eda939bd39e78d8b, 0x0000000000000000000000000000000000000000000000000000000000000000, 0xe5579a19fbb5e23814c993b61f9787647c0ef7240000000000000000000000000000000000000000000000000000000000000000bf5309690000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000661747461636b0000000000000000000000000000000000000000000000000000)
+      sender:    0xE28544d09E80004E68cfEE4C97Ce47664Af1D718·
+    Docs: https://viem.sh/docs/contract/decodeErrorResult
+    Version: viem@2.27.2"
+
+          157 |       })
+          158 |     ).rejects.toThrow('CallerIsNotOwner');
+        > 159 |     await expect(
+              |     ^
+          160 |       f.push.simulateContract({
+          161 |         address: made.wallet,
+          162 |         abi: v5.abis.wallet,
+
+      at getContractError (../../node_modules/viem/utils/errors/getContractError.ts:78:10)
+      at simulateContract (../../node_modules/viem/actions/public/simulateContract.ts:308:27)
+      at async Object.<anonymous> (__e2e__/agw/labels.spec.ts:159:5)
+      at Object.toThrow (../../node_modules/expect/build/index.js:218:22)
+      at Object.<anonymous> (__e2e__/agw/labels.spec.ts:175:15)
+
+PASS core-e2e packages/core/__e2e__/agw/native-exec.spec.ts (142.36 s)
+PASS core-e2e packages/core/__e2e__/agw/lifecycle.spec.ts (84.523 s)
+
+Test Suites: 1 failed, 2 passed, 3 total
+Tests:       1 failed, 14 passed, 15 total
+Snapshots:   0 total
+Time:        399.036 s
+Ran all test suites within paths "packages/core/__e2e__/agw/labels.spec.ts", "packages/core/__e2e__/agw/native-exec.spec.ts", "packages/core/__e2e__/agw/lifecycle.spec.ts".
+Jest did not exit one second after the test run has completed.
+
+'This usually means that there are asynchronous operations that weren't stopped in your tests. Consider running Jest with `--detectOpenHandles` to troubleshoot this issue.

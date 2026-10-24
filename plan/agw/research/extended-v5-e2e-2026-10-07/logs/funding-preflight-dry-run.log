@@ -1,0 +1,27 @@
+AGW deployment manifest verified on-chain.
+Solana wire fixture verified read-only before funding.
+
+Wallets
+  EVM master     (Sepolia)        0x0A16CBa65FfCAa4C2282b27b027Ab4A2fE46E0Bf
+  Push master    (Donut)          0x0A16CBa65FfCAa4C2282b27b027Ab4A2fE46E0Bf
+  Solana master  (Devnet)         3nK8X1re4zLNrgz9Y3xKS4g2fKPJ6M3N9BhNuFfkjwAb
+  Shared UEA     (Donut)          0x5C70C864Cf1aDfB04A0e107fFA248ba3600EAb8D
+  UEA CEA PDA    (Devnet)         Fqp8UeJxEWvN1Ciu5jqrA3opGXwNvRL2HfJxNQotj3Qh
+
+Group "agw" — 58 scenarios, headroom ×1.25.
+
+┌────────────────────────┬───────────┬──────────┬─────────────┬────────┐
+│         Scope          │   Asset   │   Need   │    Have     │ Status │
+├────────────────────────┼───────────┼──────────┼─────────────┼────────┤
+│ EVM master (Sepolia)   │ ETH       │ 0.027500 │      3.8372 │   ✓    │
+│ Push master (Donut)    │ PC        │ 588.8125 │ 969762.3672 │   ✓    │
+│ Push master (Donut)    │ pETH      │ 0.000014 │    434.3115 │   ✓    │
+│ Push master (Donut)    │ pSOL      │ 0.000150 │      5.7690 │   ✓    │
+│ Push master (Donut)    │ pUSDT.sol │ 0.001250 │  10006.8169 │   ✓    │
+│ Push master (Donut)    │ pUSDC.eth │ 0.000014 │  44642.9077 │   ✓    │
+│ Solana master (Devnet) │ SOL       │ 0.013750 │    0.615391 │   ✓    │
+│ UEA (Donut)            │ PC        │  15.0000 │   6193.4999 │   ✓    │
+└────────────────────────┴───────────┴──────────┴─────────────┴────────┘
+
+All master wallets can cover this run.
+Derived accounts are already at target. Ready to run.

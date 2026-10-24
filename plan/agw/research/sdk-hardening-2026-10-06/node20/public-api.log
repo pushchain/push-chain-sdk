@@ -1,0 +1,1 @@
+{"compiledMatchesSource":true,"addedExports":[],"removedExports":[],"changedAgwTypes":["AgenticError","AGENTIC_ERROR_CODE","AllowedCall"],"publicTypeChanges":["AGENTIC_ERROR_CODE","AgenticError","AgenticErrorCode","AgenticNetworkConstants","AllowedCall"],"transactionMethodChanges":[],"instanceMethodChanges":[],"initializeSignatureChanged":false,"agwConstantsChanged":true}

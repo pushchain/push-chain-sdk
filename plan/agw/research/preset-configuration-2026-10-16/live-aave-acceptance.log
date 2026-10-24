@@ -1,0 +1,11 @@
+PASS core-e2e __e2e__/agw/presets-live.spec.ts (284.596 s)
+  agw presets live
+    ✓ 2. Aave preset supplies and withdraws the wallet position (283628 ms)
+    ○ skipped 1. Uniswap preset swaps from the wallet CEA and rejects a different recipient
+
+Test Suites: 1 passed, 1 total
+Tests:       1 skipped, 1 passed, 2 total
+Snapshots:   0 total
+Time:        284.63 s, estimated 1848 s
+Ran all test suites within paths "__e2e__/agw/presets-live.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

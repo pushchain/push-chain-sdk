@@ -1,0 +1,20 @@
+AGW deployment manifest verified on-chain.
+
+Wallets
+  EVM master     (Sepolia)        0x0A16CBa65FfCAa4C2282b27b027Ab4A2fE46E0Bf
+  Push master    (Donut)          0x0A16CBa65FfCAa4C2282b27b027Ab4A2fE46E0Bf
+  Solana master  (Devnet)         3nK8X1re4zLNrgz9Y3xKS4g2fKPJ6M3N9BhNuFfkjwAb
+  Shared UEA     (Donut)          0x5C70C864Cf1aDfB04A0e107fFA248ba3600EAb8D
+  UEA CEA PDA    (Devnet)         Fqp8UeJxEWvN1Ciu5jqrA3opGXwNvRL2HfJxNQotj3Qh
+
+Group "agw-presets" — 1 scenarios, headroom ×1.25.
+
+┌─────────────────────┬───────┬──────────┬─────────────┬────────┐
+│        Scope        │ Asset │   Need   │    Have     │ Status │
+├─────────────────────┼───────┼──────────┼─────────────┼────────┤
+│ Push master (Donut) │ PC    │  95.7500 │ 969150.1424 │   ✓    │
+│ Push master (Donut) │ pETH  │ 0.000003 │    434.3115 │   ✓    │
+└─────────────────────┴───────┴──────────┴─────────────┴────────┘
+
+All master wallets can cover this run.
+Derived accounts are already at target. Ready to run.

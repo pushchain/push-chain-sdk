@@ -1,0 +1,17 @@
+{
+  "commit": "e704d5b58fd1d30ce02bc0ad74dccfbdb37804f9",
+  "sha256": {
+    "offline-results.json": "99efbf0c745f7f79e6caad9309507a0a23699449bb0af4b9a3961804f1d2f85e",
+    "tests-offline.log": "c2a4609c6e32a349e8ed2377eaa06b47c275524c0a5a3150d66bd1fd95217370",
+    "README.md": "ad374fd06a7573216576b7addb3f961b93a20c2f01175281b3d19601213e1bde",
+    "check-execute.log": "af6d29316b18c91823cc08bab29ce45bd72121c5a4082165982430e213c47053",
+    "review-tests-offline.log": "694c7fe8fc426860527a73cb6e50a9bbd99d94f40aea1cd6a87e5f8521efa7a0",
+    "build.log": "d06ce6f6ca208ad4862c029b8e55d8640dd4e071cf432f5910aae3e865daf09f",
+    "review-tests/IndependentReviewHead.t.sol": "8a3625629263047173a905cab08227d400b66a25d8af00fc292fcad24bbab71d",
+    "abi/AGWFactory.json": "b65f66a1556d2a9ddf9aabe9f595c685c2aada436772892f5a40fb1eec846397",
+    "abi/UniversalRulesPolicy.json": "8301b452b035d12d03ff1861940b895128a40eaf280fb6d3ae30ffc46c5ae86d",
+    "abi/AGW.json": "ca41d463fac3f7ec8c4399402f2afe41678f43d75baf2ad0220a804699e1fd7b",
+    "abi/AgentValidator.json": "a4570ddc373241580de8742cbb3d9f2c837094c65bfd1cdd52243ca0c38196fd",
+    "abi/SmartSession.json": "6e5d9cea4dbed01f06af913c1e093743b86b7432195f4a4bf90fb94b282c51b2"
+  }
+}

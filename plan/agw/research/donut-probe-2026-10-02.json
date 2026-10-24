@@ -1,0 +1,33 @@
+{
+  "block": "23818643",
+  "rpc": "https://evm.donut.rpc.push.org/",
+  "checks": {
+    "factory": {
+      "exit": 0,
+      "output": "0xD7FEF338572f96edBeF89E720f1F0fF1284ec79C",
+      "error": ""
+    },
+    "policy": {
+      "exit": 0,
+      "output": "\"1.0.0\"",
+      "error": ""
+    },
+    "wallet": {
+      "exit": 0,
+      "output": "\"push.agentwallet.1.0.0\"",
+      "error": ""
+    },
+    "gateway_slot": {
+      "exit": 0,
+      "output": "0x0000000000000000000000001e412939780f2b834dc42c7ac58d9f99888da659",
+      "error": ""
+    },
+    "gateway_dispatch": {
+      "implementation": "0x1e412939780f2b834dc42c7ac58d9f99888da659",
+      "read_exit": 0,
+      "eight_field_push4_present": true,
+      "six_field_push4_present": false
+    }
+  },
+  "caveat": "PUSH4 scan is supporting evidence, not full ABI proof; probes only cover named deployment."
+}

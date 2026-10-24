@@ -1,0 +1,369 @@
+{
+  "at": "2026-10-20T16:37:15.813Z",
+  "readOnly": true,
+  "origins": {
+    "pushNative": {
+      "signerChain": "eip155:42101",
+      "pushBlock": "24457436",
+      "cases": [
+        {
+          "chain": "eip155:11155111",
+          "inputGasLimit": "2000000",
+          "protocolFee": "0",
+          "nativeValueForGas": "10000000000000000000",
+          "gasLimitUsed": "2000000",
+          "attachedPC": 10
+        },
+        {
+          "chain": "eip155:11155111",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "10000000000000000000",
+          "gasLimitUsed": "500000",
+          "attachedPC": 10
+        },
+        {
+          "chain": "eip155:84532",
+          "inputGasLimit": "2000000",
+          "protocolFee": "0",
+          "nativeValueForGas": "10000000000000000000",
+          "gasLimitUsed": "2000000",
+          "attachedPC": 10
+        },
+        {
+          "chain": "eip155:84532",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "10000000000000000000",
+          "gasLimitUsed": "500000",
+          "attachedPC": 10
+        },
+        {
+          "chain": "eip155:421614",
+          "inputGasLimit": "2000000",
+          "protocolFee": "0",
+          "nativeValueForGas": "10000000000000000000",
+          "gasLimitUsed": "2000000",
+          "attachedPC": 10
+        },
+        {
+          "chain": "eip155:421614",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "10000000000000000000",
+          "gasLimitUsed": "500000",
+          "attachedPC": 10
+        },
+        {
+          "chain": "eip155:97",
+          "inputGasLimit": "2000000",
+          "protocolFee": "0",
+          "nativeValueForGas": "10000000000000000000",
+          "gasLimitUsed": "2000000",
+          "attachedPC": 10
+        },
+        {
+          "chain": "eip155:97",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "10000000000000000000",
+          "gasLimitUsed": "500000",
+          "attachedPC": 10
+        },
+        {
+          "chain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          "label": "native-sol omitted",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "10000000000000000000",
+          "gasLimitUsed": "1052",
+          "attachedPC": 10
+        },
+        {
+          "chain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          "label": "spl fresh CEA ATA omitted",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "10000000000000000000",
+          "gasLimitUsed": "2285",
+          "attachedPC": 10
+        },
+        {
+          "chain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          "label": "spl existing CEA ATA omitted",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "10000000000000000000",
+          "gasLimitUsed": "960",
+          "attachedPC": 10
+        },
+        {
+          "chain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          "label": "spl existing explicit 5000",
+          "inputGasLimit": "5000",
+          "protocolFee": "0",
+          "nativeValueForGas": "10000000000000000000",
+          "gasLimitUsed": "5000",
+          "attachedPC": 10
+        },
+        {
+          "chain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          "label": "legacy 1,000,000",
+          "inputGasLimit": "1000000",
+          "protocolFee": "0",
+          "nativeValueForGas": "100000000000000000000",
+          "gasLimitUsed": "1000000",
+          "attachedPC": 100
+        },
+        {
+          "chain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          "label": "explicit 500 (< base 960)",
+          "inputGasLimit": "500",
+          "error": "The contract function \"getOutboundTxGasAndFees\" reverted."
+        }
+      ]
+    },
+    "sepoliaUEA": {
+      "signerChain": "eip155:11155111",
+      "pushBlock": "24457442",
+      "cases": [
+        {
+          "chain": "eip155:11155111",
+          "inputGasLimit": "2000000",
+          "protocolFee": "0",
+          "nativeValueForGas": "4298505409669058069",
+          "gasLimitUsed": "2000000",
+          "attachedPC": 4.298505409669058
+        },
+        {
+          "chain": "eip155:11155111",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "4298505409669058069",
+          "gasLimitUsed": "500000",
+          "attachedPC": 4.298505409669058
+        },
+        {
+          "chain": "eip155:84532",
+          "inputGasLimit": "2000000",
+          "protocolFee": "0",
+          "nativeValueForGas": "4298505409669058069",
+          "gasLimitUsed": "2000000",
+          "attachedPC": 4.298505409669058
+        },
+        {
+          "chain": "eip155:84532",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "4298505409669058069",
+          "gasLimitUsed": "500000",
+          "attachedPC": 4.298505409669058
+        },
+        {
+          "chain": "eip155:421614",
+          "inputGasLimit": "2000000",
+          "protocolFee": "0",
+          "nativeValueForGas": "4298505409669058069",
+          "gasLimitUsed": "2000000",
+          "attachedPC": 4.298505409669058
+        },
+        {
+          "chain": "eip155:421614",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "4298505409669058069",
+          "gasLimitUsed": "500000",
+          "attachedPC": 4.298505409669058
+        },
+        {
+          "chain": "eip155:97",
+          "inputGasLimit": "2000000",
+          "protocolFee": "0",
+          "nativeValueForGas": "22998723343893328290",
+          "gasLimitUsed": "2000000",
+          "attachedPC": 22.998723343893328
+        },
+        {
+          "chain": "eip155:97",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "5749680835973332073",
+          "gasLimitUsed": "500000",
+          "attachedPC": 5.749680835973332
+        },
+        {
+          "chain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          "label": "native-sol omitted",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "4298505409669058069",
+          "gasLimitUsed": "1052",
+          "attachedPC": 4.298505409669058
+        },
+        {
+          "chain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          "label": "spl fresh CEA ATA omitted",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "4298505409669058069",
+          "gasLimitUsed": "2285",
+          "attachedPC": 4.298505409669058
+        },
+        {
+          "chain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          "label": "spl existing CEA ATA omitted",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "4298505409669058069",
+          "gasLimitUsed": "960",
+          "attachedPC": 4.298505409669058
+        },
+        {
+          "chain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          "label": "spl existing explicit 5000",
+          "inputGasLimit": "5000",
+          "protocolFee": "0",
+          "nativeValueForGas": "4298505409669058069",
+          "gasLimitUsed": "5000",
+          "attachedPC": 4.298505409669058
+        },
+        {
+          "chain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          "label": "legacy 1,000,000",
+          "inputGasLimit": "1000000",
+          "protocolFee": "0",
+          "nativeValueForGas": "42985054096690580686",
+          "gasLimitUsed": "1000000",
+          "attachedPC": 42.985054096690575
+        },
+        {
+          "chain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          "label": "explicit 500 (< base 960)",
+          "inputGasLimit": "500",
+          "error": "The contract function \"getOutboundTxGasAndFees\" reverted."
+        }
+      ]
+    },
+    "solanaUEA": {
+      "signerChain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+      "pushBlock": "24457448",
+      "cases": [
+        {
+          "chain": "eip155:11155111",
+          "inputGasLimit": "2000000",
+          "protocolFee": "0",
+          "nativeValueForGas": "10987924271225922711",
+          "gasLimitUsed": "2000000",
+          "attachedPC": 10.987924271225923
+        },
+        {
+          "chain": "eip155:11155111",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "10987924271225922711",
+          "gasLimitUsed": "500000",
+          "attachedPC": 10.987924271225923
+        },
+        {
+          "chain": "eip155:84532",
+          "inputGasLimit": "2000000",
+          "protocolFee": "0",
+          "nativeValueForGas": "10987924271225922711",
+          "gasLimitUsed": "2000000",
+          "attachedPC": 10.987924271225923
+        },
+        {
+          "chain": "eip155:84532",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "10987924271225922711",
+          "gasLimitUsed": "500000",
+          "attachedPC": 10.987924271225923
+        },
+        {
+          "chain": "eip155:421614",
+          "inputGasLimit": "2000000",
+          "protocolFee": "0",
+          "nativeValueForGas": "10987924271225922711",
+          "gasLimitUsed": "2000000",
+          "attachedPC": 10.987924271225923
+        },
+        {
+          "chain": "eip155:421614",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "10987924271225922711",
+          "gasLimitUsed": "500000",
+          "attachedPC": 10.987924271225923
+        },
+        {
+          "chain": "eip155:97",
+          "inputGasLimit": "2000000",
+          "protocolFee": "0",
+          "nativeValueForGas": "58789790020767176873",
+          "gasLimitUsed": "2000000",
+          "attachedPC": 58.78979002076718
+        },
+        {
+          "chain": "eip155:97",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "14697447505191794219",
+          "gasLimitUsed": "500000",
+          "attachedPC": 14.697447505191795
+        },
+        {
+          "chain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          "label": "native-sol omitted",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "10987924271225922711",
+          "gasLimitUsed": "1052",
+          "attachedPC": 10.987924271225923
+        },
+        {
+          "chain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          "label": "spl fresh CEA ATA omitted",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "10987924271225922711",
+          "gasLimitUsed": "2285",
+          "attachedPC": 10.987924271225923
+        },
+        {
+          "chain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          "label": "spl existing CEA ATA omitted",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "10987924271225922711",
+          "gasLimitUsed": "960",
+          "attachedPC": 10.987924271225923
+        },
+        {
+          "chain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          "label": "spl existing explicit 5000",
+          "inputGasLimit": "5000",
+          "protocolFee": "0",
+          "nativeValueForGas": "10987924271225922711",
+          "gasLimitUsed": "5000",
+          "attachedPC": 10.987924271225923
+        },
+        {
+          "chain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          "label": "legacy 1,000,000",
+          "inputGasLimit": "1000000",
+          "protocolFee": "0",
+          "nativeValueForGas": "109879242712259227110",
+          "gasLimitUsed": "1000000",
+          "attachedPC": 109.87924271225923
+        },
+        {
+          "chain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          "label": "explicit 500 (< base 960)",
+          "inputGasLimit": "500",
+          "error": "The contract function \"getOutboundTxGasAndFees\" reverted."
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,212 @@
+# AGW SDK implementation — review handoff
+
+> Latest: [selected hardening and exact live-E2E status](research/sdk-hardening-2026-10-06/README.md). Node 20/24 pass 1,975 units and 75 local cases; the seeded differential corpus has zero mismatches. No new SDK API, hosted CI, release or funded-run change in this batch.
+
+> Latest: [nine SDK-owned tasks completed](research/sdk-independent-completion-2026-10-06/README.md), including internal SVM integration and shared confirmation. 1,975 units and 68 actual-contract tests pass. Public SVM and pending product choices remain gated; automated API comparison is saved.
+
+> Latest SDK-owned follow-up: [six delayed-index contract cases, checked consumer examples and package documentation](research/sdk-independent-followup-2026-10-06/README.md). All 59 local actual-contract cases pass; the prior 25 live scenarios remain passing evidence. Public SDK APIs and pending decisions are unchanged by this follow-up.
+
+> Latest acceptance: [October 6 funded tests and fixes](research/live-acceptance-2026-10-06/README.md). Network restrictions are resolved; all 53 Anvil cases and the unfiltered unit suite pass. All 25 registered AGW scenarios have passing selected-run coverage; public SVM destination integration and scope decisions remain. Changes are on feat/agw-sdk-v4. Everything below the current banners describes historical implementation/review evidence.
+
+> Current implementation: [v4-only native/EVM migration and validation](research/v4-implementation-2026-10-06/README.md) supersede earlier missing-adapter/empty-registry statements below. Legacy runtime/test artifacts are removed. SVM mapping, H3/H4.5/H6, ref/label scope and funded acceptance remain.
+
+> October 6 update: [v4 deployment/wire review](research/deployment-review-2026-10-06/README.md) supersedes the deployment/artifact absence recorded below. Those definitions are supplied, but this implementation/review evidence still concerns e704d5b; v4 SDK migration and harness acceptance remain. No live transaction was sent.
+
+October 3, 2026. For the reviewing agent. The per-step status is in [implementation-status.md](implementation-status.md).
+
+## Revisions
+
+| Item | Revision |
+| --- | --- |
+| Branch | `feat/agw-sdk-impl` (local only, not pushed) |
+| Base | `feat/agw-sdk-planning@349635b2254823488603b37f4b44c4f5c929feb9` |
+| Commits | `07d8adc` adapter/registry/codecs · `e87c47b` management/execution/responses · `4488639` local harness + vectors · `00b62d4` unit tests · `ebc4167` READ.CHAIN / Web2 · `e63bcc9` E2E agw group · `fa90b2a` atomic multi-rule add |
+| AGW source | `pushAgenticWallet_v3@e704d5b58fd1d30ce02bc0ad74dccfbdb37804f9` (remote ref rechecked, unchanged) |
+| Core / gateway | `universalMarketplace_v1@cb69e0b` / `pc20-3rd-iteration@bcbf7df` (rechecked, unchanged) |
+| Target spec | Notion page 5 export 2026-10-03 13:23 IST; no newer export or answers found |
+| Toolchain | forge/anvil 1.5.1-stable (b0a9dd9), solc 0.8.26 via IR, viem 2.27.2 |
+
+The ABIs in `src/lib/agentic/contracts/abi/e704d5b` are generated from `plan/agw/research/validation-e704d5b/abi/*.json` (sha256 in each header). A fresh isolated build is ABI-identical to that evidence, and its runtime sizes match the validation report.
+
+## What changed
+
+New module `packages/core/src/lib/agentic/`:
+
+| Area | Files |
+| --- | --- |
+| Types, errors, capabilities, registry | `agentic.types.ts`, `errors.ts`, `capabilities.ts`, `deployments.ts`, `constants.ts`, `chain.ts`, `revert.ts` |
+| Contract adapter | `contracts/e704d5b.ts`, `contracts/reader.ts`, generated `contracts/abi/e704d5b/*` |
+| Codecs | `codec/{ids,selectors,abi-layout,defaults,policy,native,session,universal,rules}.ts`, `codec/historical/e704d5b-universal.ts` (internal) |
+| Reads | `reads/{snapshot,wallets,rules,checkpoints}.ts` |
+| Writes | `management/{common,create,rules-write}.ts` |
+| Execution | `execution/{guards,outbound,send}.ts`, `context.ts`, `runtime.ts`, `response.ts` |
+| Namespace | `agentic.ts`, `wallet.ts`, `utils.ts`, `index.ts` |
+
+Edited core files:
+- `push-chain/push-chain.ts`: options type, `client.agentic`, agentic wiring, guards, reinitialize.
+- `orchestrator/orchestrator.types.ts`: optional `agentic` response field.
+- `orchestrator/internals/errors.ts` and `execute-standard.ts`: `cause` is kept.
+- `progress-hook/*`: AGENTIC-TX family.
+- `constants/{index,enums,read-state}.ts`, `read-state/{destination,read-params,read-state.types,read-tracker,spec-builder}.ts` and `orchestrator/route-detector.ts`: Web2.
+- `utils.ts`, `lib/index.ts`: exports.
+
+Tooling and tests:
+- `scripts/agw-local/` (prepare.sh, gen-abi.mjs, harness contracts)
+- `__agw-local__/` and `jest.agw-local.config.ts`, `tsconfig.agw-local.json`
+- `src/lib/agentic/__tests__/`, `__fixtures__/e704d5b-vectors.json`
+- `read-state/__tests__/web2-compat.spec.ts`
+- `__e2e__/agw/`, `__e2e__/ci/{suite,run,preflight}.ts`
+- `.github/workflows/e2e.yml`
+
+## Public behaviour and its authority
+
+| Change | Authority / assumption |
+| --- | --- |
+| `PushChain.initialize(signer, { agenticWallet })`; `universal.account` = wallet, `origin`/`getAccountStatus`/gas signer-scoped | Spec 2.a |
+| `reinitialize` does not inherit `agenticWallet` | SDK-owned decision (sdk-owned-review) |
+| Read-only client with `agenticWallet` resolves the context but never signs | SDK-owned decision |
+| `client.agentic.derive/create/list/wallet`; handle `info/owner/checkpoints/rules.*` | Spec 1.a–1.m |
+| `list()` includes the next undeployed slot | SDK interpretation of the spec example |
+| `setLabel`, revoked `rules.get`, universal rule encode/decode/update, SVM, `compileCard` throw `CAPABILITY_UNAVAILABLE` | A07, A06, A05, H4.4, A08 |
+| `ref` on a rule is refused unless the generation supports it (never dropped) | A07 |
+| Omitted-limit defaults | A03 (provisional) |
+| Approval selectors refused in universal agent rules; native approvals need a pinned spender | A01 (provisional), obligation 16 |
+| Native agent arrays refused | A02 (provisional) |
+| `DUPLICATE_RULE` used for ambiguous send-time candidates | sdk-owned-review |
+| Extra codes: `CAPABILITY_UNAVAILABLE`, `GENERATION_UNSUPPORTED`, `READ_ONLY`, `NOT_WALLET_OWNER`, `RULE_NOT_FOUND`, `RULE_READ_FAILED`, `INCONSISTENT_READ`, `INDEX_RACE`, `CREATE_PARTIAL`, `RECEIPT_MISMATCH`, `AGENT_GAS_INSUFFICIENT`, `WALLET_BALANCE_INSUFFICIENT`, `GATEWAY_ALLOWANCE_INSUFFICIENT`, `RULE_LIMIT_EXCEEDED`, `INVALID_RULE` | SDK-owned; names not final until reviewed |
+| `utils.agentic.rulesId(agent, nonce, {validator})`, `deriveWallet(owner, index, {factory, walletImplementation})` | A04 (provisional signatures) |
+| `CONSTANTS.AGENTIC` is `{}`; `ENVELOPE_VERSION` omitted | A07 |
+| `READ.CHAIN` (enumerable, `WEB2 = 'web2'`); `CHAIN.WEB2`/`READ.WEB2` now `'web2'`; `'web2:https'` accepted | Spec §4; legacy compatibility per G16 |
+| `PushChainExecutionError` and `PushChainBatchExecutionError` exported; error keeps `cause` | Spec 3.f (`AgenticRevertError extends PushChainExecutionError`) |
+| AGENTIC-TX 101/102/104/105/106/107/199-01/199-02, no 103 | Spec 3.f (PROPOSED) |
+
+## Commands and results
+
+Run from the repository root unless noted.
+
+| Command | Result |
+| --- | --- |
+| `npx tsc -p packages/core/tsconfig.lib.json --noEmit` | clean |
+| `npx tsc -p packages/core/tsconfig.spec.json --noEmit` (includes `__e2e__` and `ci/*.ts`) | clean |
+| `yarn nx run core:build --skip-nx-cache` | success |
+| `yarn nx run core:lint --skip-nx-cache` | 7 errors, 831 warnings; **all 7 errors pre-existing** in untouched files (`pc20/tracking.ts`, `pc20/__tests__/svm.spec.ts`, `__e2e__/docs-examples/13-read-state/*`); new code has warnings only (non-null assertions in tests) |
+| `node node_modules/jest/bin/jest.js --config packages/core/jest.config.ts --runInBand` | 110 suites passed, 1 skipped (pre-existing); **1883 passed, 12 skipped, 0 failed** |
+| …same, `packages/core/src/lib/agentic` | 6 suites, **123 passed** |
+| …same, `read-state/__tests__/web2-compat.spec.ts` | **12 passed** |
+| …the ten baseline suites from `research/sdk-owned-review-2026-10-03/test-summary.json` | **183 passed** (unchanged baseline) |
+| `AGW_LOCAL_DIR=$(packages/core/scripts/agw-local/prepare.sh \| tail -1) node node_modules/jest/bin/jest.js --config packages/core/jest.agw-local.config.ts --runInBand --forceExit` | 3 suites, **32 passed** |
+| `AGW_WRITE_VECTORS=1` + the vectors spec, then without it | vectors regenerated deterministically and re-verified |
+| `cd packages/core && yarn e2e:list --group agw` | 21 scenarios, 7 spec files |
+| `yarn e2e:verify --group agw` | 21 scenarios, 7 files, 21 distinct tests, consistent |
+| `yarn e2e:verify --group all` | **76 scenarios, 40 files, 81 tests: unchanged** (agw excluded) |
+| `AGW_E2E=1 AGW_DEPLOYMENT_MANIFEST= npx jest -c jest.e2e.config.ts --runTestsByPath __e2e__/agw/create.spec.ts` | 2 failed with `AgwPrerequisiteError` (strict gate, intended); no RPC or broadcast |
+| Same spec without `AGW_E2E` | skipped (not reported as passed) |
+| `multi-asset-svm.spec.ts` | 7 todo |
+
+Not run: `yarn e2e:preflight --group agw [--dry-run]` and `yarn e2e:ci --group agw`. Both need configured keys and a deployment manifest; no live run was authorized and no compatible deployment exists.
+
+## Real contracts versus mocks
+
+**Real contracts (local harness, pinned e704d5b on anvil chainId 9000).** SmartSession, AgentValidator, UniversalRulesPolicy (proxy), the AGW implementation and AGWFactory (proxy) decide every assertion about:
+- authorization (owner door, agent door, stranger, `CallerIsNotAgent` path)
+- policy enforcement: `CallLimitReached`, `ArgPinMismatch`, amount caps, `RulesExpired`, URP outbound gates 9–11 and the multicall allow-list
+- IDs, wallet prediction and checkpoint sequencing (the five-tick replacement; OWNER_ACTION + RULES_GRANTED per batched grant)
+- atomic `rules.update` and its rollback after an intervening agent spend
+- revoke-all, sequential create partial failure and recovery
+- allowance set/remove through the owner door, and allowance consumption
+
+Committed vectors are contract-computed (`getPermissionId`, `predictWallet`, a real grant).
+
+**Stubbed in the harness:**
+- The gateway at `0x…C1`: models only pull + burn + fee arithmetic.
+- The fee quote.
+- The destination CEA address, for the outbound case.
+- Only Push-EOA signers run; there is no UEA, precompile, Cosmos module, TSS, relay or destination execution.
+
+**Mocks (unit).** Chain reads (`__tests__/fake-chain.ts`, an in-memory model of the views) and the signer transport (`mock-runtime.ts`). These test SDK logic only: selection, error mapping, call shapes, ordering, consistency checks and pre-signature guards.
+
+**Live.** None. No transaction was broadcast to any testnet. No compatible deployment has been verified or registered; that is evidence of unavailable support, not proof that none exists anywhere.
+
+## Blockers and placeholders
+
+- **A07 — no compatible deployment has been verified or registered.** Every AGW call on a real network fails with `GENERATION_UNSUPPORTED`. The E2E group fails its gate, and preflight refuses to fund. To onboard:
+  1. Write a manifest per `__e2e__/agw/_manifest.ts`.
+  2. Add a verified entry to `VERIFIED_DEPLOYMENTS` in `deployments.ts`, and populate `CONSTANTS.AGENTIC` from it.
+  3. Pass `AGW_DEPLOYMENT_MANIFEST` in `.github/workflows/e2e.yml`. It is not wired there yet.
+- **A05.** Universal rules through the public `UniversalRule` (assets[]), universal `rules.update`, multi-asset `Spent`, and universal decoding in `rules.list`. That last one makes `list` fail outright on a wallet holding a universal rule, rather than truncate.
+- **Universal E2E scenario 7.** It grants with the internal historical single-asset codec as fixture setup. This is valid only for an e704d5b-ABI deployment.
+- **A06.** Revoked-rule history.
+- **A08.** `compileCard`.
+- **SVM destinations.** H4.4 and obligations 19–23.
+- **A01–A04.** Implemented as provisional behaviour behind single modules (`codec/policy.ts`, `codec/defaults.ts`, `utils.ts`).
+- **Step 17.** Release documentation, examples and a changeset are not written.
+
+## Areas most needing review
+
+1. **`CHAIN.WEB2` / `READ.WEB2` value change** from `'web2:https'` to `'web2'`. Spec alias semantics require it, and comparisons against the constants still work. Code comparing against the old literal would break.
+2. **No SDK allowance writes.** Neither door approves the gateway; both consume an allowance the owner set with an ordinary owner-door send, and fail with `GATEWAY_ALLOWANCE_INSUFFICIENT` before signing otherwise (review R4).
+3. **Checkpoint semantics of batched writes.**
+   - Multi-ID revoke and multi-rule add use one owner `execute` batch, for atomicity and one signature.
+   - This adds one OWNER_ACTION tick per call on top of RULES_REVOKED / RULES_GRANTED.
+   - Single-ID revoke and single-rule add stay direct (one tick).
+   - `create` uses the signer's batch, which is sequential on a 7702-less Push EOA, reported as `CREATE_PARTIAL`.
+4. **`create` index race.** It is detected after the fact (`INDEX_RACE`). Concurrent creates by the same owner can land grants on the raced wallet, and the error details say so.
+5. **Decoded native pins/amount use the raw `{ offset, expected }` form.** Stored terms carry no ABI, so decoding never invents an argument index; the encoder accepts that form, so decoded rules re-encode exactly. This extends the page-5 `NativeRule` type and needs product sign-off (review R5).
+6. **Agent gas guard.**
+   - It mirrors R1's fee-lock condition, using R1's default 1e7 gas estimate when no `gasLimit` is given.
+   - Formula: `balance < (gasLimit ?? 1e7) * gasPrice`.
+   - It applies to every agentic send by an external signer whose UEA is deployed.
+7. **`universal.read`/`executeReads` in agentic mode.** They execute through the wallet, check the wallet's balance, and default `refundTo` to the wallet. An agent needs a native rule for the read registry entrypoint.
+8. **`trackTransaction` replay adaptation.** It runs only for wallets of a registered generation. Otherwise the response is unchanged. One extra RPC per tracked AGW call.
+9. **`PolicyCheckReverted` decoding.** The inner error is named by selector only, because its arguments are truncated by the engine. The SDK also extracts revert data from viem's "custom error 0x…: …" text, because the R1 path previously discarded the cause.
+10. **viem `decodeEventLog` pitfall.** With a single-event ABI, viem skips the topic0 check. All AGW log parsers match topic0 explicitly. Other SDK modules were not audited for this.
+11. **Pre-existing inconsistency.** `CHAIN.PUSH_LOCALNET` is `eip155:9001` but `CHAIN_INFO[PUSH_LOCALNET].chainId` is `9000`. The harness follows `CHAIN_INFO`, and native rule chains derive from `CHAIN_INFO`.
+12. **E2E specs have never executed live.** Expect adjustment on first run: budgets, fee sizing (`AGW_E2E_MAX_PC_PER_CALL`), destination-revert classification text, and first-use event IDs.
+
+## Reproducing the local harness
+
+```sh
+OUT=$(packages/core/scripts/agw-local/prepare.sh | tail -1)   # isolated git archive + pinned submodules + forge build
+AGW_LOCAL_DIR=$OUT node node_modules/jest/bin/jest.js --config packages/core/jest.agw-local.config.ts --runInBand --forceExit
+```
+
+`prepare.sh` reads the AGW repo with `git archive`/`ls-tree` only, and never touches its working tree. The harness uses anvil's public development keys and broadcasts only to the local anvil it spawns.
+
+## Review response (2026-10-03)
+
+The independent review in [implementation-review/review.md](implementation-review/review.md) reported seven issues against `3008497`. All seven were confirmed and fixed. Its two real-contract races pass unmodified against the fix (R1), or with the throw expected (R4); both are ported into `__agw-local__/agw-local-races.spec.ts`. Its SDK-boundary regressions are ported into the unit suites, adapted where the fix changed the API (`ownerOutboundCalls` removed, composer options, offset-form pins).
+
+| Finding | Resolution | Evidence |
+| --- | --- | --- |
+| R1 create race grants on the wrong wallet | The deploy call is `deployWalletWithSig(intent{owner, index, wallet}, 0x, label)` sent by the owner itself: no signature, but the factory reverts `IndexMismatch`/`IntentWalletMismatch` if the slot moved, so a batch that would grant on a raced address reverts first. Mapped to `INDEX_RACE` with `committed: false` | Real contracts (sequential path): no permissions on either wallet, retry succeeds. Unit: deploy call shape, race mapping. Atomic 7702/UEA paths rely on the same contract check; not locally exercised |
+| R4 owner outbound restores revoked allowance; uint256.max overflow | Removed the read-modify-write approval. Both doors only consume an existing allowance | Real contracts: an allowance revoked after the read stays 0 and the pull reverts `LowAllowance`. Unit: no approve call, insufficient allowance refused, unlimited allowance accepted |
+| R2 explicit Push ChainTarget routed outbound | A ChainTarget on the connected Push chain is normalized to the native path. Another Push network is refused | Unit: agent and owner, `PUSH_TESTNET_DONUT`/`PUSH_TESTNET` alias, `PUSH_MAINNET` refusal |
+| R3 transfer-only outbound drops the recipient | Destination calls are built as core Route 2 builds them: ERC-20 `transfer(target)`, native value to the target, explicit arrays as given, and the burn sized from `value` when there are no funds. A request with no destination call (CEA parking) is refused, and the agent door refuses selector-less destination calls before signing | Unit: ERC-20 transfer payload names the recipient; value-only burn and forward; parking refused. Recipient-balance acceptance still needs a live run |
+| R5 decoded pins misrepresented | Decoder returns `{ offset, expected }`. Encoder accepts it, plus canonical 32-byte words in argument form | Unit: static-array round trip, address-pin re-encode, offset validation; harness decode assertion updated |
+| R6 replay keeps a Push-only route | A decoded AGW outbound sets `UOA_TO_CEA` and its chain authoritatively | Unit at the adapter boundary. The delayed-Cosmos path through response-builder/`wait()` is not exercised (needs a live or deeper mocked run) |
+| R7 recovery reports unknown as not deployed | Committed state is derived from this call's own receipts. `walletDeployed` is `true`, `false` or `'unknown'` (pending hash or failed recovery reads, with `recoveryError`). A post-submit receipt failure keeps the hash (`RECEIPT_UNAVAILABLE`, surfaced inside `CREATE_PARTIAL`) | Unit: receipts-derived recovery, pending hash, failed recovery read, lost receipt |
+
+Also from this pass:
+- Revert decoding now names an error by selector when its arguments were lost in a node's text rendering. That is how the R1 `IndexMismatch` is recognized on the sequential path.
+- An omitted `funds.token` on an outbound means the destination's native token, as in Route 2.
+- The E2E positive outbound uses the explicit call-array form and independently checks the wallet CEA's Sepolia balance. Caller/event correlation for the executing CEA is still to be added before a funded run.
+
+Counts after the fixes: unit **1,899 passed, 12 skipped** (110 suites passed, 1 skipped; agentic 139); local harness **34 passed in 4 suites**. Library/spec typecheck and build pass. Lint has no errors in changed code (7 pre-existing errors elsewhere). E2E manifests are unchanged (agw 21, all 76).
+
+
+## Outbound response follow-up
+
+F1 from the follow-up review is fixed. Live and replayed outbound response `to/data/value` now describe the first encoded destination call, with the full ordered list in `agentic.destinationCalls`. This avoids guessing whether a token transfer was explicit or generated from funds. Wrapped raw metadata and signer origin are preserved.
+
+R6 now has regular tests through the real response-builder/wait closure with mocked RPC/polling, covering owner and agent doors, successful and reverted roots, and init/per-call terminal-hook counts. Live Cosmos/TSS/destination acceptance remains pending.
+
+Validation: 1,908 unit tests and 34 local-contract tests pass; library/spec typechecks and build pass. Lint retains seven errors in unchanged files. See [resolution and coverage](implementation-review/outbound-response-resolution.md). Product sign-off on raw-offset types and deployment gates are unchanged.
+
+
+## Harsh scope alignment October 4
+
+The clear product replies are now implemented. No SDK approval-selector or mandatory-spender policy remains; caller-requested pins are still encoded/validated. RulesRecord no longer exposes spent; update assertions still read internal counters. Active-only reads return RULE_NOT_FOUND for unknown/revoked IDs. Public generation-context helpers and compileCard are removed; the remaining public utils are actionId/configId/decodeRules, and client.agentic.derive remains available.
+
+Native agent arrays wrap each action in a single-call executeAsAgent and use an internal atomic-only orchestrator path. UEA uses existing multicall; Push EOA requires a deployed 7702 executor and usable authorization. Lack of capability or authorization never falls back to separate calls. Replay recognizes verified UEA/delegated-EOA batches and exposes the ordered actions in agentic.nativeCalls. A local real-type-4 test with actual AGW/engine/policy and a fixture ERC-7821 executor proves sender preservation, cumulative limits and full rollback. Live native batch scenarios are registered but not run.
+
+H3 defaults remain byte-for-byte unchanged. Raw-offset API approval and final multi-asset/SVM/deployment artifacts remain pending. [Evidence](research/product-alignment-2026-10-04/README.md).

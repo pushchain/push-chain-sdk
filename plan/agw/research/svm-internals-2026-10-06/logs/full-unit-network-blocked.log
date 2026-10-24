@@ -1,0 +1,600 @@
+FAIL core packages/core/src/lib/universal/account/account.spec.ts (63.147 s)
+  ● Console
+
+    console.warn
+      [PushChain] convertExecutorToOrigin() is deprecated. Use resolveControllerAccount() instead.
+
+      425 | ): Promise<OriginAccountInfo> {
+      426 |   if (!options?._internal && !_convertExecutorToOriginWarned) {
+    > 427 |     console.warn(
+          |             ^
+      428 |       '[PushChain] convertExecutorToOrigin() is deprecated. Use resolveControllerAccount() instead.'
+      429 |     );
+      430 |     _convertExecutorToOriginWarned = true;
+
+      at convertExecutorToOrigin (src/lib/universal/account/account.ts:427:13)
+      at Object.<anonymous> (src/lib/universal/account/account.spec.ts:106:38)
+
+    console.warn
+      [PushChain] convertOriginToExecutor() is deprecated. Use deriveExecutorAccount() instead.
+
+      207 | ): Promise<ExecutorAccountInfo> {
+      208 |   if (!_convertOriginToExecutorWarned) {
+    > 209 |     console.warn(
+          |             ^
+      210 |       '[PushChain] convertOriginToExecutor() is deprecated. Use deriveExecutorAccount() instead.'
+      211 |     );
+      212 |     _convertOriginToExecutorWarned = true;
+
+      at convertOriginToExecutor (src/lib/universal/account/account.ts:209:13)
+      at Object.<anonymous> (src/lib/universal/account/account.spec.ts:158:51)
+
+  ● Universal Account Utilities › convertOriginToExecutor() - Not Mocked › should return same address and pushChainClient.universal.account
+
+    thrown: "Exceeded timeout of 30000 ms for a test.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+      64 |   // Network-dependent tests - run via integration config
+      65 |   describe('convertOriginToExecutor() - Not Mocked', () => {
+    > 66 |     it('should return same address and pushChainClient.universal.account', async () => {
+         |     ^
+      67 |       const account = privateKeyToAccount(generatePrivateKey());
+      68 |       const walletClient = createWalletClient({
+      69 |         account: account,
+
+      at src/lib/universal/account/account.spec.ts:66:5
+      at src/lib/universal/account/account.spec.ts:65:3
+      at Object.<anonymous> (src/lib/universal/account/account.spec.ts:17:1)
+
+  ● Universal Account Utilities › convertExecutorToOrigin() › Solana: should return valid origin data for a UEA address
+
+    ContractFunctionExecutionError: HTTP request failed.
+
+    URL: https://evm.donut.rpc.push.org/
+    Request body: {"method":"eth_call","params":[{"data":"0xd0f4b097000000000000000000000000bcfad05e5f19ae46feaab2f72ad9977bc239b395","to":"0x00000000000000000000000000000000000000eA"},"latest"]}
+
+    Raw Call Arguments:
+      to:    0x00000000000000000000000000000000000000eA
+      data:  0xd0f4b097000000000000000000000000bcfad05e5f19ae46feaab2f72ad9977bc239b395
+
+    Contract Call:
+      address:   0x00000000000000000000000000000000000000eA
+      function:  getOriginForUEA(address addr)
+      args:                     (0xbCfaD05E5f19Ae46feAab2F72Ad9977BC239b395)
+
+    Docs: https://viem.sh/docs/contract/readContract
+    Details: fetch failed
+    Version: viem@2.27.2
+
+      486 |   });
+      487 |
+    > 488 |   const originResult = (await client.readContract({
+          |                         ^
+      489 |     address: FACTORY_ADDRESS,
+      490 |     abi: FACTORY_V1,
+      491 |     functionName: 'getOriginForUEA',
+
+      at getContractError (../../node_modules/viem/utils/errors/getContractError.ts:78:10)
+      at readContract (../../node_modules/viem/actions/public/readContract.ts:136:27)
+      at async convertExecutorToOrigin (src/lib/universal/account/account.ts:488:25)
+      at async Object.<anonymous> (src/lib/universal/account/account.spec.ts:106:9)
+
+    Cause:
+    CallExecutionError: HTTP request failed.
+
+    URL: https://evm.donut.rpc.push.org/
+    Request body: {"method":"eth_call","params":[{"data":"0xd0f4b097000000000000000000000000bcfad05e5f19ae46feaab2f72ad9977bc239b395","to":"0x00000000000000000000000000000000000000eA"},"latest"]}
+
+    Raw Call Arguments:
+      to:    0x00000000000000000000000000000000000000eA
+      data:  0xd0f4b097000000000000000000000000bcfad05e5f19ae46feaab2f72ad9977bc239b395
+
+    Details: fetch failed
+    Version: viem@2.27.2
+
+      486 |   });
+      487 |
+    > 488 |   const originResult = (await client.readContract({
+          |                         ^
+      489 |     address: FACTORY_ADDRESS,
+      490 |     abi: FACTORY_V1,
+      491 |     functionName: 'getOriginForUEA',
+
+      at getCallError (../../node_modules/viem/utils/errors/getCallError.ts:42:10)
+      at call (../../node_modules/viem/actions/public/call.ts:282:23)
+      at async readContract (../../node_modules/viem/actions/public/readContract.ts:120:22)
+      at async convertExecutorToOrigin (src/lib/universal/account/account.ts:488:25)
+      at async Object.<anonymous> (src/lib/universal/account/account.spec.ts:106:9)
+
+    Cause:
+    HttpRequestError: HTTP request failed.
+
+    URL: https://evm.donut.rpc.push.org/
+    Request body: {"method":"eth_call","params":[{"data":"0xd0f4b097000000000000000000000000bcfad05e5f19ae46feaab2f72ad9977bc239b395","to":"0x00000000000000000000000000000000000000eA"},"latest"]}
+
+    Details: fetch failed
+    Version: viem@2.27.2
+
+      at Object.request (../../node_modules/viem/utils/rpc/http.ts:161:15)
+      at async fn (../../node_modules/viem/clients/transports/http.ts:145:19)
+      at async request (../../node_modules/viem/clients/transports/http.ts:150:39)
+      at async delay.count.count (../../node_modules/viem/utils/buildRequest.ts:150:22)
+      at async attemptRetry (../../node_modules/viem/utils/promise/withRetry.ts:44:22)
+
+    Cause:
+    TypeError: fetch failed
+
+      at async response.errorInstance.request_js_1.TimeoutError.body.body (../../node_modules/viem/utils/rpc/http.ts:120:30)
+      at ../../async /Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/node_modules/viem/utils/promise/withTimeout.ts:36:17
+
+    Cause:
+    getaddrinfo ENOTFOUND evm.donut.rpc.push.org
+
+
+
+  ● Universal Account Utilities › convertExecutorToOrigin() › Ethereum: should return valid origin data for a UEA address
+
+    ContractFunctionExecutionError: HTTP request failed.
+
+    URL: https://evm.donut.rpc.push.org/
+    Request body: {"method":"eth_call","params":[{"data":"0xd0f4b0970000000000000000000000007aee1699fee2c906251863d24d35b3debe0932ec","to":"0x00000000000000000000000000000000000000eA"},"latest"]}
+
+    Raw Call Arguments:
+      to:    0x00000000000000000000000000000000000000eA
+      data:  0xd0f4b0970000000000000000000000007aee1699fee2c906251863d24d35b3debe0932ec
+
+    Contract Call:
+      address:   0x00000000000000000000000000000000000000eA
+      function:  getOriginForUEA(address addr)
+      args:                     (0x7AEE1699FeE2C906251863D24D35B3dEbe0932EC)
+
+    Docs: https://viem.sh/docs/contract/readContract
+    Details: fetch failed
+    Version: viem@2.27.2
+
+      486 |   });
+      487 |
+    > 488 |   const originResult = (await client.readContract({
+          |                         ^
+      489 |     address: FACTORY_ADDRESS,
+      490 |     abi: FACTORY_V1,
+      491 |     functionName: 'getOriginForUEA',
+
+      at getContractError (../../node_modules/viem/utils/errors/getContractError.ts:78:10)
+      at readContract (../../node_modules/viem/actions/public/readContract.ts:136:27)
+      at async convertExecutorToOrigin (src/lib/universal/account/account.ts:488:25)
+      at async Object.<anonymous> (src/lib/universal/account/account.spec.ts:130:9)
+
+    Cause:
+    CallExecutionError: HTTP request failed.
+
+    URL: https://evm.donut.rpc.push.org/
+    Request body: {"method":"eth_call","params":[{"data":"0xd0f4b0970000000000000000000000007aee1699fee2c906251863d24d35b3debe0932ec","to":"0x00000000000000000000000000000000000000eA"},"latest"]}
+
+    Raw Call Arguments:
+      to:    0x00000000000000000000000000000000000000eA
+      data:  0xd0f4b0970000000000000000000000007aee1699fee2c906251863d24d35b3debe0932ec
+
+    Details: fetch failed
+    Version: viem@2.27.2
+
+      486 |   });
+      487 |
+    > 488 |   const originResult = (await client.readContract({
+          |                         ^
+      489 |     address: FACTORY_ADDRESS,
+      490 |     abi: FACTORY_V1,
+      491 |     functionName: 'getOriginForUEA',
+
+      at getCallError (../../node_modules/viem/utils/errors/getCallError.ts:42:10)
+      at call (../../node_modules/viem/actions/public/call.ts:282:23)
+      at async readContract (../../node_modules/viem/actions/public/readContract.ts:120:22)
+      at async convertExecutorToOrigin (src/lib/universal/account/account.ts:488:25)
+      at async Object.<anonymous> (src/lib/universal/account/account.spec.ts:130:9)
+
+    Cause:
+    HttpRequestError: HTTP request failed.
+
+    URL: https://evm.donut.rpc.push.org/
+    Request body: {"method":"eth_call","params":[{"data":"0xd0f4b0970000000000000000000000007aee1699fee2c906251863d24d35b3debe0932ec","to":"0x00000000000000000000000000000000000000eA"},"latest"]}
+
+    Details: fetch failed
+    Version: viem@2.27.2
+
+      at Object.request (../../node_modules/viem/utils/rpc/http.ts:161:15)
+      at async fn (../../node_modules/viem/clients/transports/http.ts:145:19)
+      at async request (../../node_modules/viem/clients/transports/http.ts:150:39)
+      at async delay.count.count (../../node_modules/viem/utils/buildRequest.ts:150:22)
+      at async attemptRetry (../../node_modules/viem/utils/promise/withRetry.ts:44:22)
+
+    Cause:
+    TypeError: fetch failed
+
+      at async response.errorInstance.request_js_1.TimeoutError.body.body (../../node_modules/viem/utils/rpc/http.ts:120:30)
+      at ../../async /Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/node_modules/viem/utils/promise/withTimeout.ts:36:17
+
+    Cause:
+    getaddrinfo ENOTFOUND evm.donut.rpc.push.org
+
+
+
+  ● Universal Account Utilities › convertOriginToExecutor() - Direct Tests › should compute and cache address for EVM chain
+
+    thrown: "Exceeded timeout of 30000 ms for a test.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+      191 |
+      192 |     // Network-dependent test - run via integration config
+    > 193 |     it('should compute and cache address for EVM chain', async () => {
+          |     ^
+      194 |       const evmAccount = {
+      195 |         chain: CHAIN.ETHEREUM_SEPOLIA,
+      196 |         address: EVM_ADDRESS,
+
+      at src/lib/universal/account/account.spec.ts:193:5
+      at src/lib/universal/account/account.spec.ts:151:3
+      at Object.<anonymous> (src/lib/universal/account/account.spec.ts:17:1)
+
+PASS core packages/core/src/lib/agentic/__tests__/svm-internals.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/r1-error-classification.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/r3-error-classification.spec.ts
+
+ReferenceError: You are trying to `import` a file after the Jest environment has been torn down. From src/lib/universal/account/account.spec.ts.
+
+      69 |     bytecodeHash: initCodeHash,
+      70 |   });
+    > 71 | }
+         |  ^
+      72 |
+      73 | // ============================================================================
+      74 | // On-chain UEA Computation
+
+      at ../../node_modules/viem/actions/public/call.ts:268:57
+      at async call (../../node_modules/viem/actions/public/call.ts:268:57)
+      at async readContract (../../node_modules/viem/actions/public/readContract.ts:120:22)
+      at async computeUEA (src/lib/orchestrator/internals/uea-manager.ts:71:29)
+      at async Object.<anonymous> (src/lib/universal/account/account.spec.ts:79:24)
+PASS core packages/core/src/lib/orchestrator/__tests__/send-transaction-progress-hook.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/block-results-client.spec.ts
+PASS core packages/core/src/lib/progress-hook/__tests__/response-invariant.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/r2-outbound-revert-flow.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/inbound-tracker-derivation.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/push-chain-tx-retry.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/outbound-error-classification.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/outbound-timeout-clamp.spec.ts
+PASS core packages/core/src/lib/push-client/push-client.archive-fallback.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/outbound-confirmation-gate.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/response-surface.spec.ts
+PASS core packages/core/src/lib/orchestrator/internals/pc20/__tests__/funds-only-burn-guard.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/cascade-composition.spec.ts
+PASS core packages/core/src/lib/progress-hook/__tests__/r1-spec-strings.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/r1-error-emission.spec.ts
+PASS core packages/core/src/lib/progress-hook/__tests__/read-tx-spec-strings.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/cascade-event-hook-bridge.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/gas-calculator.spec.ts
+PASS core packages/core/src/lib/orchestrator/svm-idl/resolve.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/route-handlers-svm-r3.spec.ts
+PASS core packages/core/src/lib/progress-hook/__tests__/multichain-hooks.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/read-executor.spec.ts
+PASS core packages/core/src/lib/progress-hook/__tests__/r3-spec-strings.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/signing-payload.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/account-status.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/read-tracker.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/execute-standard-required-funds.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/envelope-evm.spec.ts
+PASS core packages/core/src/lib/universal/signer/signer.spec.ts
+PASS core packages/core/src/lib/orchestrator/internals/pc20/__tests__/gate.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/tx-transformer-gas.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/native-batch-response.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/tx-transformer-multichain.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/gateway-uea-account.spec.ts
+PASS core packages/core/src/lib/orchestrator/internals/pc20/__tests__/svm-rent-pc20.spec.ts
+PASS core packages/core/src/lib/orchestrator/internals/pc20/__tests__/resolver.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/send.spec.ts
+PASS core packages/core/src/lib/orchestrator/internals/pc20/__tests__/inbound-payload.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/source-hash-resolution.spec.ts
+PASS core packages/core/src/lib/orchestrator/internals/pc20/__tests__/chain-namespace.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/route-handlers-evm-r3-native-eoa.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/rescue-svm-confirmation.spec.ts
+PASS core packages/core/src/lib/utils.spec.ts
+  ● Console
+
+    console.log
+      1.5
+
+      at Object.<anonymous> (src/lib/utils.spec.ts:973:17)
+
+    console.log
+      1.5
+
+      at Object.<anonymous> (src/lib/utils.spec.ts:977:17)
+
+    console.log
+      1.23
+
+      at Object.<anonymous> (src/lib/utils.spec.ts:982:17)
+
+PASS core packages/core/src/lib/orchestrator/__tests__/push-chain-native-multicall.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/cascade-builder-progress-hook.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/rules-policy.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/cascade-svm-rent.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/pc20-request-recipient.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/context-helpers-tracker.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/management.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/payload-builders.spec.ts
+PASS core packages/core/src/lib/universal-tx-detector/__tests__/scenarios.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/public-surface.spec.ts
+PASS core packages/core/src/lib/orchestrator/internals/pc20/__tests__/export.spec.ts
+PASS core packages/core/src/lib/universal-tx-detector/__tests__/detector.spec.ts
+PASS core packages/core/src/lib/orchestrator/internals/pc20/__tests__/svm.spec.ts
+PASS core packages/core/src/lib/progress-hook/__tests__/r2-spec-strings.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/svm-rent.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/track-transaction-guard.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/registry.spec.ts
+PASS core packages/core/src/lib/push-client/push-client.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/response-builder-push-revert.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/route-detector.spec.ts
+PASS core packages/core/src/lib/orchestrator/svm-idl/build-payload.spec.ts
+PASS core packages/core/src/lib/orchestrator/internals/__tests__/signing.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/terminal-suppression.spec.ts
+PASS core packages/core/src/lib/universal-tx-detector/__tests__/cascade.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/pc20-tracked-leg.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/gas-usd-sizer.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/read-params.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/envelope-svm.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/preflight.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/spec-builder.spec.ts
+PASS core packages/core/src/lib/universal-tx-detector/__tests__/detector-svm.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/read-events.spec.ts
+PASS core packages/core/src/lib/universal-tx-detector/__tests__/detector-svm-log-index.spec.ts
+PASS core packages/core/src/lib/constants/__tests__/token-constants.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/web2-compat.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/outbound-response.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/revalidate-read.spec.ts
+PASS core packages/core/src/lib/universal-tx-detector/__tests__/normalize.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/result-decoder.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/ucallback-codec.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/preflight.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/abi-selectors.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/svm-account.spec.ts
+PASS core packages/core/src/lib/universal-tx-detector/__tests__/child-inbounds.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/codec.spec.ts
+PASS core packages/core/src/lib/universal-tx-detector/__tests__/auto-detect.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/reads-context.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/envelope-web2.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/validate.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/pc20-tracked-leg-svm.spec.ts
+PASS core packages/core/src/lib/orchestrator/internals/pc20/__tests__/address-codec.spec.ts
+PASS core packages/core/src/lib/vm-client/evm-client.chain-symbol.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/budget.spec.ts
+PASS core packages/core/src/lib/orchestrator/svm-idl/registry.spec.ts
+PASS core packages/core/src/lib/vm-client/evm-client.dynamic-gas.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/read-types.spec.ts
+PASS core packages/core/src/lib/universal-tx-detector/__tests__/classify.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/errors.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/max-pc-for-gas.spec.ts
+PASS core packages/core/src/lib/orchestrator/svm-idl/normalize-address.spec.ts
+PASS core packages/core/src/lib/orchestrator/svm-idl/ix-encoder.spec.ts
+PASS core packages/core/src/lib/constants/__tests__/svm-gateway-idl.spec.ts
+PASS core packages/core/src/lib/orchestrator/internals/pc20/__tests__/tracking.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/error-decoder.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/r3-execute-order.spec.ts
+PASS core packages/core/src/lib/formatters.spec.ts
+
+Summary of all failing tests
+FAIL src/lib/universal/account/account.spec.ts (63.147 s)
+  ● Universal Account Utilities › convertOriginToExecutor() - Not Mocked › should return same address and pushChainClient.universal.account
+
+    thrown: "Exceeded timeout of 30000 ms for a test.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+      64 |   // Network-dependent tests - run via integration config
+      65 |   describe('convertOriginToExecutor() - Not Mocked', () => {
+    > 66 |     it('should return same address and pushChainClient.universal.account', async () => {
+         |     ^
+      67 |       const account = privateKeyToAccount(generatePrivateKey());
+      68 |       const walletClient = createWalletClient({
+      69 |         account: account,
+
+      at src/lib/universal/account/account.spec.ts:66:5
+      at src/lib/universal/account/account.spec.ts:65:3
+      at Object.<anonymous> (src/lib/universal/account/account.spec.ts:17:1)
+
+  ● Universal Account Utilities › convertExecutorToOrigin() › Solana: should return valid origin data for a UEA address
+
+    ContractFunctionExecutionError: HTTP request failed.
+
+    URL: https://evm.donut.rpc.push.org/
+    Request body: {"method":"eth_call","params":[{"data":"0xd0f4b097000000000000000000000000bcfad05e5f19ae46feaab2f72ad9977bc239b395","to":"0x00000000000000000000000000000000000000eA"},"latest"]}
+
+    Raw Call Arguments:
+      to:    0x00000000000000000000000000000000000000eA
+      data:  0xd0f4b097000000000000000000000000bcfad05e5f19ae46feaab2f72ad9977bc239b395
+
+    Contract Call:
+      address:   0x00000000000000000000000000000000000000eA
+      function:  getOriginForUEA(address addr)
+      args:                     (0xbCfaD05E5f19Ae46feAab2F72Ad9977BC239b395)
+
+    Docs: https://viem.sh/docs/contract/readContract
+    Details: fetch failed
+    Version: viem@2.27.2
+
+      486 |   });
+      487 |
+    > 488 |   const originResult = (await client.readContract({
+          |                         ^
+      489 |     address: FACTORY_ADDRESS,
+      490 |     abi: FACTORY_V1,
+      491 |     functionName: 'getOriginForUEA',
+
+      at getContractError (../../node_modules/viem/utils/errors/getContractError.ts:78:10)
+      at readContract (../../node_modules/viem/actions/public/readContract.ts:136:27)
+      at async convertExecutorToOrigin (src/lib/universal/account/account.ts:488:25)
+      at async Object.<anonymous> (src/lib/universal/account/account.spec.ts:106:9)
+
+    Cause:
+    CallExecutionError: HTTP request failed.
+
+    URL: https://evm.donut.rpc.push.org/
+    Request body: {"method":"eth_call","params":[{"data":"0xd0f4b097000000000000000000000000bcfad05e5f19ae46feaab2f72ad9977bc239b395","to":"0x00000000000000000000000000000000000000eA"},"latest"]}
+
+    Raw Call Arguments:
+      to:    0x00000000000000000000000000000000000000eA
+      data:  0xd0f4b097000000000000000000000000bcfad05e5f19ae46feaab2f72ad9977bc239b395
+
+    Details: fetch failed
+    Version: viem@2.27.2
+
+      486 |   });
+      487 |
+    > 488 |   const originResult = (await client.readContract({
+          |                         ^
+      489 |     address: FACTORY_ADDRESS,
+      490 |     abi: FACTORY_V1,
+      491 |     functionName: 'getOriginForUEA',
+
+      at getCallError (../../node_modules/viem/utils/errors/getCallError.ts:42:10)
+      at call (../../node_modules/viem/actions/public/call.ts:282:23)
+      at async readContract (../../node_modules/viem/actions/public/readContract.ts:120:22)
+      at async convertExecutorToOrigin (src/lib/universal/account/account.ts:488:25)
+      at async Object.<anonymous> (src/lib/universal/account/account.spec.ts:106:9)
+
+    Cause:
+    HttpRequestError: HTTP request failed.
+
+    URL: https://evm.donut.rpc.push.org/
+    Request body: {"method":"eth_call","params":[{"data":"0xd0f4b097000000000000000000000000bcfad05e5f19ae46feaab2f72ad9977bc239b395","to":"0x00000000000000000000000000000000000000eA"},"latest"]}
+
+    Details: fetch failed
+    Version: viem@2.27.2
+
+      at Object.request (../../node_modules/viem/utils/rpc/http.ts:161:15)
+      at async fn (../../node_modules/viem/clients/transports/http.ts:145:19)
+      at async request (../../node_modules/viem/clients/transports/http.ts:150:39)
+      at async delay.count.count (../../node_modules/viem/utils/buildRequest.ts:150:22)
+      at async attemptRetry (../../node_modules/viem/utils/promise/withRetry.ts:44:22)
+
+    Cause:
+    TypeError: fetch failed
+
+      at async response.errorInstance.request_js_1.TimeoutError.body.body (../../node_modules/viem/utils/rpc/http.ts:120:30)
+      at ../../async /Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/node_modules/viem/utils/promise/withTimeout.ts:36:17
+
+    Cause:
+    getaddrinfo ENOTFOUND evm.donut.rpc.push.org
+
+
+
+  ● Universal Account Utilities › convertExecutorToOrigin() › Ethereum: should return valid origin data for a UEA address
+
+    ContractFunctionExecutionError: HTTP request failed.
+
+    URL: https://evm.donut.rpc.push.org/
+    Request body: {"method":"eth_call","params":[{"data":"0xd0f4b0970000000000000000000000007aee1699fee2c906251863d24d35b3debe0932ec","to":"0x00000000000000000000000000000000000000eA"},"latest"]}
+
+    Raw Call Arguments:
+      to:    0x00000000000000000000000000000000000000eA
+      data:  0xd0f4b0970000000000000000000000007aee1699fee2c906251863d24d35b3debe0932ec
+
+    Contract Call:
+      address:   0x00000000000000000000000000000000000000eA
+      function:  getOriginForUEA(address addr)
+      args:                     (0x7AEE1699FeE2C906251863D24D35B3dEbe0932EC)
+
+    Docs: https://viem.sh/docs/contract/readContract
+    Details: fetch failed
+    Version: viem@2.27.2
+
+      486 |   });
+      487 |
+    > 488 |   const originResult = (await client.readContract({
+          |                         ^
+      489 |     address: FACTORY_ADDRESS,
+      490 |     abi: FACTORY_V1,
+      491 |     functionName: 'getOriginForUEA',
+
+      at getContractError (../../node_modules/viem/utils/errors/getContractError.ts:78:10)
+      at readContract (../../node_modules/viem/actions/public/readContract.ts:136:27)
+      at async convertExecutorToOrigin (src/lib/universal/account/account.ts:488:25)
+      at async Object.<anonymous> (src/lib/universal/account/account.spec.ts:130:9)
+
+    Cause:
+    CallExecutionError: HTTP request failed.
+
+    URL: https://evm.donut.rpc.push.org/
+    Request body: {"method":"eth_call","params":[{"data":"0xd0f4b0970000000000000000000000007aee1699fee2c906251863d24d35b3debe0932ec","to":"0x00000000000000000000000000000000000000eA"},"latest"]}
+
+    Raw Call Arguments:
+      to:    0x00000000000000000000000000000000000000eA
+      data:  0xd0f4b0970000000000000000000000007aee1699fee2c906251863d24d35b3debe0932ec
+
+    Details: fetch failed
+    Version: viem@2.27.2
+
+      486 |   });
+      487 |
+    > 488 |   const originResult = (await client.readContract({
+          |                         ^
+      489 |     address: FACTORY_ADDRESS,
+      490 |     abi: FACTORY_V1,
+      491 |     functionName: 'getOriginForUEA',
+
+      at getCallError (../../node_modules/viem/utils/errors/getCallError.ts:42:10)
+      at call (../../node_modules/viem/actions/public/call.ts:282:23)
+      at async readContract (../../node_modules/viem/actions/public/readContract.ts:120:22)
+      at async convertExecutorToOrigin (src/lib/universal/account/account.ts:488:25)
+      at async Object.<anonymous> (src/lib/universal/account/account.spec.ts:130:9)
+
+    Cause:
+    HttpRequestError: HTTP request failed.
+
+    URL: https://evm.donut.rpc.push.org/
+    Request body: {"method":"eth_call","params":[{"data":"0xd0f4b0970000000000000000000000007aee1699fee2c906251863d24d35b3debe0932ec","to":"0x00000000000000000000000000000000000000eA"},"latest"]}
+
+    Details: fetch failed
+    Version: viem@2.27.2
+
+      at Object.request (../../node_modules/viem/utils/rpc/http.ts:161:15)
+      at async fn (../../node_modules/viem/clients/transports/http.ts:145:19)
+      at async request (../../node_modules/viem/clients/transports/http.ts:150:39)
+      at async delay.count.count (../../node_modules/viem/utils/buildRequest.ts:150:22)
+      at async attemptRetry (../../node_modules/viem/utils/promise/withRetry.ts:44:22)
+
+    Cause:
+    TypeError: fetch failed
+
+      at async response.errorInstance.request_js_1.TimeoutError.body.body (../../node_modules/viem/utils/rpc/http.ts:120:30)
+      at ../../async /Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/node_modules/viem/utils/promise/withTimeout.ts:36:17
+
+    Cause:
+    getaddrinfo ENOTFOUND evm.donut.rpc.push.org
+
+
+
+  ● Universal Account Utilities › convertOriginToExecutor() - Direct Tests › should compute and cache address for EVM chain
+
+    thrown: "Exceeded timeout of 30000 ms for a test.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+      191 |
+      192 |     // Network-dependent test - run via integration config
+    > 193 |     it('should compute and cache address for EVM chain', async () => {
+          |     ^
+      194 |       const evmAccount = {
+      195 |         chain: CHAIN.ETHEREUM_SEPOLIA,
+      196 |         address: EVM_ADDRESS,
+
+      at src/lib/universal/account/account.spec.ts:193:5
+      at src/lib/universal/account/account.spec.ts:151:3
+      at Object.<anonymous> (src/lib/universal/account/account.spec.ts:17:1)
+
+
+Test Suites: 1 failed, 1 skipped, 112 passed, 113 of 114 total
+Tests:       4 failed, 12 skipped, 1938 passed, 1954 total
+Snapshots:   0 total
+Time:        92.153 s
+Ran all test suites.
+Jest did not exit one second after the test run has completed.
+
+'This usually means that there are asynchronous operations that weren't stopped in your tests. Consider running Jest with `--detectOpenHandles` to troubleshoot this issue.

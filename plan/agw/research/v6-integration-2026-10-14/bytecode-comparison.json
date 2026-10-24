@@ -1,0 +1,190 @@
+{
+  "block": "24245374",
+  "source": "git:ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+  "contracts": [
+    {
+      "contract": "factoryLogic",
+      "address": "0x64893c611920604a9247530673071D46ac9174c9",
+      "executableMatchesOutsideImmutableAndLinkSlots": true,
+      "runtimeHash": "0xacd72a9e53ad4187ee52b21fc79165eee8b54be16de27be1af41c230a4ac4fe4",
+      "ignoredSlots": [
+        {
+          "start": 3190,
+          "length": 32
+        },
+        {
+          "start": 3348,
+          "length": 32
+        }
+      ],
+      "metadataExcluded": true
+    },
+    {
+      "contract": "walletImplementation",
+      "address": "0x536D3EA48219ff743ac663C6c224920e9eB476A5",
+      "executableMatchesOutsideImmutableAndLinkSlots": true,
+      "runtimeHash": "0x1076635b6ee6479e3c86f3760015f1746131c5ede0367d84aa77fe0989e9aec2",
+      "ignoredSlots": [
+        {
+          "start": 1483,
+          "length": 32
+        },
+        {
+          "start": 2134,
+          "length": 32
+        },
+        {
+          "start": 2941,
+          "length": 32
+        },
+        {
+          "start": 4732,
+          "length": 32
+        },
+        {
+          "start": 5260,
+          "length": 32
+        },
+        {
+          "start": 5899,
+          "length": 32
+        },
+        {
+          "start": 12242,
+          "length": 32
+        },
+        {
+          "start": 14129,
+          "length": 32
+        },
+        {
+          "start": 15880,
+          "length": 32
+        },
+        {
+          "start": 16225,
+          "length": 32
+        },
+        {
+          "start": 17414,
+          "length": 32
+        },
+        {
+          "start": 18229,
+          "length": 32
+        },
+        {
+          "start": 2874,
+          "length": 32
+        },
+        {
+          "start": 16857,
+          "length": 32
+        },
+        {
+          "start": 17363,
+          "length": 32
+        },
+        {
+          "start": 1196,
+          "length": 32
+        },
+        {
+          "start": 11950,
+          "length": 32
+        },
+        {
+          "start": 14191,
+          "length": 32
+        },
+        {
+          "start": 17312,
+          "length": 32
+        },
+        {
+          "start": 6166,
+          "length": 32
+        },
+        {
+          "start": 11876,
+          "length": 32
+        },
+        {
+          "start": 14934,
+          "length": 32
+        },
+        {
+          "start": 17171,
+          "length": 32
+        },
+        {
+          "start": 17987,
+          "length": 32
+        },
+        {
+          "start": 18379,
+          "length": 32
+        },
+        {
+          "start": 18478,
+          "length": 32
+        }
+      ],
+      "metadataExcluded": true
+    },
+    {
+      "contract": "urpImplementation",
+      "address": "0xa176b1424018D52711EDCb9d3D8757dc6e174463",
+      "executableMatchesOutsideImmutableAndLinkSlots": true,
+      "runtimeHash": "0x0e6569329ccb464febd53369c71fe377c7570fdf3eb42e71927702080d09176e",
+      "ignoredSlots": [
+        {
+          "start": 3060,
+          "length": 20
+        },
+        {
+          "start": 3707,
+          "length": 20
+        },
+        {
+          "start": 6121,
+          "length": 20
+        }
+      ],
+      "metadataExcluded": true
+    },
+    {
+      "contract": "sessionValidator",
+      "address": "0xBf08d8335c1cE41a577DB70666816027814737dD",
+      "executableMatchesOutsideImmutableAndLinkSlots": true,
+      "runtimeHash": "0xd76a8e352533b443a78e7cea4798372cd143071ff54377371854b39be64752e2",
+      "ignoredSlots": [],
+      "metadataExcluded": true
+    },
+    {
+      "contract": "sessionEngine",
+      "address": "0xf63DC0628fe1B25049FE3E3a3585Ef051CB98c1d",
+      "executableMatchesOutsideImmutableAndLinkSlots": true,
+      "runtimeHash": "0x5fa747bb1b2fb6635dbc22608f86a18a743d6ed9b3f394abf812ee3d4199bdde",
+      "ignoredSlots": [],
+      "metadataExcluded": true
+    },
+    {
+      "contract": "svmRulebook",
+      "address": "0x15c3259490f0625C75b5a00731e4231b2B529c1E",
+      "executableMatchesOutsideImmutableAndLinkSlots": true,
+      "runtimeHash": "0x917123d637590afda6183f7942449e671e05d9a6f5ab0cb0628c2553111cfc3e",
+      "ignoredSlots": [
+        {
+          "start": 7,
+          "length": 32
+        },
+        {
+          "start": 1,
+          "length": 20
+        }
+      ],
+      "metadataExcluded": true
+    }
+  ]
+}

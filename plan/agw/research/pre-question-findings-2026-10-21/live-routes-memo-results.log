@@ -1,0 +1,15 @@
+2026-10-21T03:20:26Z
+│ Push master (Donut) │ PC    │ 67.0000 │ 967073.5565 │   ✓    │
+PASS core-e2e __e2e__/agw/svm-memo-live.spec.ts (196.945 s)
+    ✓ 1. owner door: the gateway runs Memo with the wallet CEA as signer (70999 ms)
+    ✓ 2. agent door: a raw-prefix rule with a CEA pin runs, another prefix is refused (124796 ms)
+Tests:       2 passed, 2 total
+2026-10-21T03:23:56Z
+2026-10-21T03:14:40Z
+│ Push master (Donut) │ PC    │ 99.5000 │ 967136.5585 │   ✓    │
+PASS core-e2e __e2e__/agw/exact-routes-live.spec.ts (332.404 s)
+    ✓ 1. Sepolia Circle USDC (115006 ms)
+    ✓ 2. Base Sepolia Circle USDC (116342 ms)
+    ✓ 3. Arbitrum Sepolia Circle USDC (99791 ms)
+Tests:       3 passed, 3 total
+2026-10-21T03:20:26Z

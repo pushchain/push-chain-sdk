@@ -1,0 +1,21 @@
+{
+  "counts": {
+    "Success": 248,
+    "Skipped": 2
+  },
+  "suites": 15,
+  "nonpassing": [
+    {
+      "suite": "test/8183-tests/RulesBindingHook.fork.t.sol:RulesBindingHookForkTest",
+      "test": "test_fork_mirrorsMatchDeployedAGW()",
+      "status": "Skipped",
+      "reason": null
+    },
+    {
+      "suite": "test/8183-tests/UniversalMarketplace.fork.t.sol:UniversalMarketplaceForkTest",
+      "test": "test_fork_openJob_realAGWv6()",
+      "status": "Skipped",
+      "reason": null
+    }
+  ]
+}

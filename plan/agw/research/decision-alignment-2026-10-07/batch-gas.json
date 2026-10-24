@@ -1,0 +1,18 @@
+[
+  {
+    "hash": "0x3b434310de5fd2542a0a062c3cd2734abcc07ce921b0f497bb32cc1284853d76",
+    "block": "23988191",
+    "gas": "1100000",
+    "gasUsed": "1047582",
+    "status": "reverted",
+    "type": "eip7702"
+  },
+  {
+    "hash": "0x168f42b92fd9f5396cc68d9e6cf0b41cfbb869d6dd8892e0029f6e728acf9368",
+    "block": "23988300",
+    "gas": "1732532",
+    "gasUsed": "1171408",
+    "status": "success",
+    "type": "eip7702"
+  }
+]

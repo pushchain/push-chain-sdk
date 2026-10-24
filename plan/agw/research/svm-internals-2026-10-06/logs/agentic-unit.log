@@ -1,0 +1,15 @@
+PASS core packages/core/src/lib/agentic/__tests__/svm-internals.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/management.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/response-surface.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/send.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/outbound-response.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/native-batch-response.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/rules-policy.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/codec.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/reads-context.spec.ts
+
+Test Suites: 9 passed, 9 total
+Tests:       178 passed, 178 total
+Snapshots:   0 total
+Time:        3.414 s, estimated 4 s
+Ran all test suites matching /agentic/i.

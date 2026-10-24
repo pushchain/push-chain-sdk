@@ -1,0 +1,100 @@
+{
+ "note": "Live runs 21 Oct 03:14-03:24Z: agw-exact-routes 3/3 (owner-door Circle USDC outbound on Sepolia, Base, Arbitrum) and agw-svm-memo 2/2 (SPL Memo v2 via owner and agent doors). Public hashes only.",
+ "entries": [
+  {
+   "name": "exact-route-submitted",
+   "at": "2026-10-21T03:15:39.714Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "chain": "eip155:11155111",
+   "wallet": "0x05b5c17A66233E609dE7f7CC23B157CCEb8bFA3D",
+   "prc20": "0x387b9C8Db60E74999aAAC5A2b7825b400F12d68E",
+   "source": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+   "hash": "0xc356eb6e8999b1d150a348602dc764ae158bb731fb9a5797b3f8e122359da01f"
+  },
+  {
+   "name": "exact-route-delivered",
+   "at": "2026-10-21T03:16:50.293Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "chain": "eip155:11155111",
+   "hash": "0xc356eb6e8999b1d150a348602dc764ae158bb731fb9a5797b3f8e122359da01f",
+   "destinationHash": "0x7de758afad801a85a3bfd31545bacdeb0c8fd79758a538ad0ae3d039c7cf7bd3",
+   "destinationGasUsed": "1286650"
+  },
+  {
+   "name": "exact-route-submitted",
+   "at": "2026-10-21T03:17:36.797Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "chain": "eip155:84532",
+   "wallet": "0x97dfB17BCCB47c3810d383634bB43E7d13b89799",
+   "prc20": "0x84B62e44F667F692F7739Ca6040cD17DA02068A8",
+   "source": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+   "hash": "0x0015d85dff1ef4f8c63d15017378beb567da1ecc0f82606ac53d9e0dea4f9978"
+  },
+  {
+   "name": "exact-route-delivered",
+   "at": "2026-10-21T03:18:46.638Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "chain": "eip155:84532",
+   "hash": "0x0015d85dff1ef4f8c63d15017378beb567da1ecc0f82606ac53d9e0dea4f9978",
+   "destinationHash": "0xcd4f3ab74b5faf2a4181547b7cf31653d5b621f277e0aca22c65e286834e5307",
+   "destinationGasUsed": "364116"
+  },
+  {
+   "name": "exact-route-submitted",
+   "at": "2026-10-21T03:19:23.271Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "chain": "eip155:421614",
+   "wallet": "0xF2C2f4420eCe850C1F47659Ead3cA79B6B5f781E",
+   "prc20": "0xa261A10e94aE4bA88EE8c5845CbE7266bD679DD6",
+   "source": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+   "hash": "0x07fab93586a60c1700e54f336ddf5ecd504c968651df03c611fa26aa463c9b65"
+  },
+  {
+   "name": "exact-route-delivered",
+   "at": "2026-10-21T03:20:26.431Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "chain": "eip155:421614",
+   "hash": "0x07fab93586a60c1700e54f336ddf5ecd504c968651df03c611fa26aa463c9b65",
+   "destinationHash": "0xbc22d5c6ef2e7e42084844c0b52266b178b68248659f30a5c26a29ab01f9ac7e",
+   "destinationGasUsed": "364128"
+  },
+  {
+   "name": "svm-memo-owner-submitted",
+   "at": "2026-10-21T03:21:04.090Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "wallet": "0xb6AE3C9018723cb53CdeE157986951662874202e",
+   "hash": "0x480c55ae4f5ee3fed337ee755a87bf4b5ce88c29ca845596366ad5cc3245ce78"
+  },
+  {
+   "name": "svm-memo-owner-delivered",
+   "at": "2026-10-21T03:21:51.925Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "hash": "0x480c55ae4f5ee3fed337ee755a87bf4b5ce88c29ca845596366ad5cc3245ce78",
+   "destinationHash": "kaQ3QrRCgh4PXWhY5yWmEdWyUJ3kG6WYqZan4qva5mEccMXPPo1tFM99TPdUYvq77AqCCnpXadcJWASahHEdKVy"
+  },
+  {
+   "name": "svm-memo-agent-submitted",
+   "at": "2026-10-21T03:23:01.198Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "wallet": "0x9b99895c74808c3691E4C41fda43F8f81609baaE",
+   "hash": "0xae951445c8473d2e83f7b06facd2f8523b846cebc5eb7b94056951893d7bd6d5"
+  },
+  {
+   "name": "svm-memo-agent-delivered",
+   "at": "2026-10-21T03:23:56.719Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "hash": "0xae951445c8473d2e83f7b06facd2f8523b846cebc5eb7b94056951893d7bd6d5",
+   "destinationHash": "4PF7bSEs3jb1AFxqRub7fHbuc3ygfDy9sHqxJz24paJUN3gEi5bSmQU8b9Jd1ZVQAsLiHC1rLWVXrPPCnkCbH8rk"
+  }
+ ]
+}

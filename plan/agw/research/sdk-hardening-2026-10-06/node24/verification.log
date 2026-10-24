@@ -1,0 +1,11 @@
+AGW validation: units
+AGW validation: types-lib
+AGW validation: types-spec
+AGW validation: types-agw-local
+AGW validation: docs
+AGW validation: prepare-contracts
+AGW validation: local-contracts
+AGW validation: build
+AGW validation: package
+AGW validation: public-api
+AGW unfunded validation completed.

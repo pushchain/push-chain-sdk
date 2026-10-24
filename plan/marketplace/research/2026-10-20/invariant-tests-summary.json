@@ -1,0 +1,520 @@
+{
+  "args": [
+    "forge",
+    "test",
+    "--root",
+    "/var/folders/4_/d47r2_4s1wb3x2dvmt2ghp800000gp/T/marketplace-review-443b4e2-_ib864pr",
+    "--match-path",
+    "test/8183-tests/*.t.sol",
+    "--match-test",
+    "invariant_",
+    "--offline",
+    "--json"
+  ],
+  "environment": {
+    "FOUNDRY_INVARIANT_RUNS": "64",
+    "FOUNDRY_INVARIANT_DEPTH": "64"
+  },
+  "exit_code": 0,
+  "seconds": 51.29,
+  "counts": {
+    "Success": 10
+  },
+  "tests": [
+    {
+      "suite": "test/8183-tests/AgenticCommerce.invariants.t.sol:AgenticCommerceInvariantsTest",
+      "test": "invariant_balanceCoversEscrow()",
+      "status": "Success",
+      "reason": null,
+      "decoded_logs": [],
+      "kind": {
+        "Invariant": {
+          "runs": 64,
+          "calls": 4096,
+          "reverts": 0,
+          "metrics": {
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.setBudget": {
+              "calls": 430,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.setFees": {
+              "calls": 422,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.complete": {
+              "calls": 381,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.reject": {
+              "calls": 424,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.setProvider": {
+              "calls": 398,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.fund": {
+              "calls": 422,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.submit": {
+              "calls": 398,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.createJob": {
+              "calls": 403,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.warp": {
+              "calls": 395,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.claimRefund": {
+              "calls": 423,
+              "reverts": 0,
+              "discards": 0
+            }
+          },
+          "failed_corpus_replays": 0
+        }
+      }
+    },
+    {
+      "suite": "test/8183-tests/AgenticCommerce.invariants.t.sol:AgenticCommerceInvariantsTest",
+      "test": "invariant_onlyLegalTransitions()",
+      "status": "Success",
+      "reason": null,
+      "decoded_logs": [],
+      "kind": {
+        "Invariant": {
+          "runs": 64,
+          "calls": 4096,
+          "reverts": 0,
+          "metrics": {
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.warp": {
+              "calls": 395,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.setProvider": {
+              "calls": 398,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.setFees": {
+              "calls": 422,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.submit": {
+              "calls": 398,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.reject": {
+              "calls": 424,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.fund": {
+              "calls": 422,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.setBudget": {
+              "calls": 430,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.createJob": {
+              "calls": 403,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.claimRefund": {
+              "calls": 423,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.complete": {
+              "calls": 381,
+              "reverts": 0,
+              "discards": 0
+            }
+          },
+          "failed_corpus_replays": 0
+        }
+      }
+    },
+    {
+      "suite": "test/8183-tests/AgenticCommerce.invariants.t.sol:AgenticCommerceInvariantsTest",
+      "test": "invariant_totalEscrowedMatchesLiveBudgets()",
+      "status": "Success",
+      "reason": null,
+      "decoded_logs": [],
+      "kind": {
+        "Invariant": {
+          "runs": 64,
+          "calls": 4096,
+          "reverts": 0,
+          "metrics": {
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.claimRefund": {
+              "calls": 423,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.submit": {
+              "calls": 398,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.reject": {
+              "calls": 424,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.warp": {
+              "calls": 395,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.createJob": {
+              "calls": 403,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.fund": {
+              "calls": 422,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.setProvider": {
+              "calls": 398,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.setFees": {
+              "calls": 422,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.complete": {
+              "calls": 381,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/AgenticCommerce.invariants.t.sol:KernelHandler.setBudget": {
+              "calls": 430,
+              "reverts": 0,
+              "discards": 0
+            }
+          },
+          "failed_corpus_replays": 0
+        }
+      }
+    },
+    {
+      "suite": "test/8183-tests/UniversalMarketplace.invariants.t.sol:UniversalMarketplaceInvariants",
+      "test": "invariant_MI01_activeJobIsTheAgwsOwnJob()",
+      "status": "Success",
+      "reason": null,
+      "decoded_logs": [],
+      "kind": {
+        "Invariant": {
+          "runs": 64,
+          "calls": 6400,
+          "reverts": 0,
+          "metrics": {
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.update": {
+              "calls": 1322,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.open": {
+              "calls": 1290,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.warp": {
+              "calls": 1246,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.cancel": {
+              "calls": 1294,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.register": {
+              "calls": 1248,
+              "reverts": 0,
+              "discards": 0
+            }
+          },
+          "failed_corpus_replays": 0
+        }
+      }
+    },
+    {
+      "suite": "test/8183-tests/UniversalMarketplace.invariants.t.sol:UniversalMarketplaceInvariants",
+      "test": "invariant_MI02_marketplaceHoldsNothing()",
+      "status": "Success",
+      "reason": null,
+      "decoded_logs": [],
+      "kind": {
+        "Invariant": {
+          "runs": 64,
+          "calls": 6400,
+          "reverts": 0,
+          "metrics": {
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.cancel": {
+              "calls": 1294,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.warp": {
+              "calls": 1246,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.register": {
+              "calls": 1248,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.update": {
+              "calls": 1322,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.open": {
+              "calls": 1290,
+              "reverts": 0,
+              "discards": 0
+            }
+          },
+          "failed_corpus_replays": 0
+        }
+      }
+    },
+    {
+      "suite": "test/8183-tests/UniversalMarketplace.invariants.t.sol:UniversalMarketplaceInvariants",
+      "test": "invariant_MI03_outcomesExactlyExpected()",
+      "status": "Success",
+      "reason": null,
+      "decoded_logs": [],
+      "kind": {
+        "Invariant": {
+          "runs": 64,
+          "calls": 6400,
+          "reverts": 0,
+          "metrics": {
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.cancel": {
+              "calls": 1294,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.register": {
+              "calls": 1248,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.warp": {
+              "calls": 1246,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.update": {
+              "calls": 1322,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.open": {
+              "calls": 1290,
+              "reverts": 0,
+              "discards": 0
+            }
+          },
+          "failed_corpus_replays": 0
+        }
+      }
+    },
+    {
+      "suite": "test/8183-tests/UniversalMarketplace.invariants.t.sol:UniversalMarketplaceInvariants",
+      "test": "invariant_MI04_everyJobIsWellFormed()",
+      "status": "Success",
+      "reason": null,
+      "decoded_logs": [],
+      "kind": {
+        "Invariant": {
+          "runs": 64,
+          "calls": 6400,
+          "reverts": 0,
+          "metrics": {
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.register": {
+              "calls": 1248,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.update": {
+              "calls": 1322,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.warp": {
+              "calls": 1246,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.open": {
+              "calls": 1290,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.cancel": {
+              "calls": 1294,
+              "reverts": 0,
+              "discards": 0
+            }
+          },
+          "failed_corpus_replays": 0
+        }
+      }
+    },
+    {
+      "suite": "test/8183-tests/UniversalMarketplace.invariants.t.sol:UniversalMarketplaceInvariants",
+      "test": "invariant_MI05_userBalanceNeverMovedByOpenJob()",
+      "status": "Success",
+      "reason": null,
+      "decoded_logs": [],
+      "kind": {
+        "Invariant": {
+          "runs": 64,
+          "calls": 6400,
+          "reverts": 0,
+          "metrics": {
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.open": {
+              "calls": 1290,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.register": {
+              "calls": 1248,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.update": {
+              "calls": 1322,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.warp": {
+              "calls": 1246,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.cancel": {
+              "calls": 1294,
+              "reverts": 0,
+              "discards": 0
+            }
+          },
+          "failed_corpus_replays": 0
+        }
+      }
+    },
+    {
+      "suite": "test/8183-tests/UniversalMarketplace.invariants.t.sol:UniversalMarketplaceInvariants",
+      "test": "invariant_MI06_onePerProvider()",
+      "status": "Success",
+      "reason": null,
+      "decoded_logs": [],
+      "kind": {
+        "Invariant": {
+          "runs": 64,
+          "calls": 6400,
+          "reverts": 0,
+          "metrics": {
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.register": {
+              "calls": 1248,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.cancel": {
+              "calls": 1294,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.open": {
+              "calls": 1290,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.update": {
+              "calls": 1322,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.warp": {
+              "calls": 1246,
+              "reverts": 0,
+              "discards": 0
+            }
+          },
+          "failed_corpus_replays": 0
+        }
+      }
+    },
+    {
+      "suite": "test/8183-tests/UniversalMarketplace.invariants.t.sol:UniversalMarketplaceInvariants",
+      "test": "invariant_MI07_principalCapEqualsPrincipal()",
+      "status": "Success",
+      "reason": null,
+      "decoded_logs": [],
+      "kind": {
+        "Invariant": {
+          "runs": 64,
+          "calls": 6400,
+          "reverts": 0,
+          "metrics": {
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.warp": {
+              "calls": 1246,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.cancel": {
+              "calls": 1294,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.update": {
+              "calls": 1322,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.open": {
+              "calls": 1290,
+              "reverts": 0,
+              "discards": 0
+            },
+            "test/8183-tests/UniversalMarketplace.invariants.t.sol:MarketplaceHandler.register": {
+              "calls": 1248,
+              "reverts": 0,
+              "discards": 0
+            }
+          },
+          "failed_corpus_replays": 0
+        }
+      }
+    }
+  ]
+}

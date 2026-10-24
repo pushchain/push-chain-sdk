@@ -1,0 +1,29 @@
+FAIL core-e2e packages/core/__e2e__/agw/labels.spec.ts (149.394 s)
+  agw labels
+    ✓ 1. default and custom deployment labels are stored and listed (29006 ms)
+    ✓ 2. owner rename and empty reset update info/list, emit LabelSet and tick the owner door (33261 ms)
+    ✓ 3. UTF-8 byte boundaries are accepted or rejected without changing wallet state (20975 ms)
+    ✕ 4. an agent cannot rename through either the SDK or the contract (8338 ms)
+    ✓ 5. an external EVM owner creates and renames through its UEA (40675 ms)
+
+  ● agw labels › 4. an agent cannot rename through either the SDK or the contract
+
+    AgenticError: 0x330E269534acA1c0e0E735bba31124CDd16c1bD7 is neither the owner of 0x3fB84292fc6093F40008542dE3412581340D2feD nor the agent of an enabled rule
+
+      56 |     const active = await readActiveRules(snap, generation, wallet);
+      57 |     if (!active.some((r) => r.agent === signerPushAccount)) {
+    > 58 |       throw new AgenticError(
+         |             ^
+      59 |         AGENTIC_ERROR_CODE.NOT_OWNER_OR_AGENT,
+      60 |         `${signerPushAccount} is neither the owner of ${wallet} nor the agent of an enabled rule`,
+      61 |         {
+
+      at resolveAgenticContext (src/lib/agentic/context.ts:58:13)
+      at async Function.createInstance (src/lib/push-chain/push-chain.ts:841:33)
+      at async Object.<anonymous> (__e2e__/agw/labels.spec.ts:66:19)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 4 passed, 5 total
+Snapshots:   0 total
+Time:        149.412 s
+Ran all test suites within paths "packages/core/__e2e__/agw/labels.spec.ts".

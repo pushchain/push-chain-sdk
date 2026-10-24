@@ -1,0 +1,14 @@
+Running 3 scenarios (group: agw-svm-replay) across 1 spec files.
+
+PASS core-e2e __e2e__/agw-svm-wire/replay.spec.ts (58.193 s)
+  agw svm recorded replay
+    ✓ 1. positive replay retains wallet, signer origin and actual Solana signature (26146 ms)
+    ✓ 2. later terminal rejection is failed, while the source succeeded and spend remains charged (28339 ms)
+    ✓ 3. pinned live policy calls refuse account and data mutations without submitting (1057 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       3 passed, 3 total
+Snapshots:   0 total
+Time:        58.215 s
+Ran all test suites within paths "__e2e__/agw-svm-wire/replay.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

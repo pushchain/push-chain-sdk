@@ -1,0 +1,29 @@
+PASS core-agw-local packages/core/__agw-local__/v5-multiasset.spec.ts (9.483 s)
+  v6 multi-asset SDK management and execution
+    ✓ v6 EVM alternatives enforce both spender and MAX, and reads update losslessly (300 ms)
+    ✓ v6 refuses a bare alternative that bypasses a pinned function and too many initial rules (53 ms)
+    ✓ the shipped DEX catalog enforces tuple receiver/token/amount pins on actual v6 URP (231 ms)
+    ✓ a default-token DEX exactInputSingle call rejects spending above its policy cap despite edited bridge budgets (107 ms)
+    ✓ a default-token DEX exactOutputSingle call rejects spending above its policy cap despite edited bridge budgets (106 ms)
+    ✓ public DEXES destination-funded defaults create directly without rewriting returned rules (222 ms)
+    ✓ public LENDING destination-funded defaults create directly without rewriting returned rules (110 ms)
+    ✓ public STAKING destination-funded defaults create directly without rewriting returned rules (130 ms)
+    ✓ regenerated LENDING presets enforce new token/amount pins through atomic rules.update (353 ms)
+    ✓ regenerated STAKING presets enforce new token/amount pins through atomic rules.update (254 ms)
+    ✓ a fixture preset produces rules accepted by public create and enforced by real contracts (107 ms)
+    ✓ public create encodes two ordered assets; public get reconstructs source-token caps (67 ms)
+    ✓ a token from the wrong chain fails before deployment (12 ms)
+    ✓ a same-chain registry identity mismatch fails before deployment (4 ms)
+    ✓ both tokens execute under one rule and keep independent counters/limits (117 ms)
+    ✓ omitted and explicit zero totals both prohibit movement (101 ms)
+    ✓ empty user assets grants one zero-cap gas token and executes a call-only request (113 ms)
+    ✓ public update resets both counters in one batch and records five checkpoints (135 ms)
+    ✓ spend on the second asset after snapshot rolls back revoke/grant and checkpoint writes (144 ms)
+    ✓ out-of-band duplicate contract grants still make sends ambiguous (81 ms)
+    ✓ a legacy two-field envelope is refused by the actual v6 grant path (19 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       21 passed, 21 total
+Snapshots:   0 total
+Time:        9.524 s
+Ran all test suites within paths "packages/core/__agw-local__/v5-multiasset.spec.ts".
