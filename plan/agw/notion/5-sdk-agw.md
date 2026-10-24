@@ -1032,7 +1032,7 @@ interface Rule {
   validUntil: number;
   assets?: AssetCap[];                                            // cross-chain rules: tokens the agent may move on chainNamespace
   maxGasPerCall?: bigint;                                         // cross-chain rules: PC (wei) per outbound for the destination leg
-  allowedCalls: AllowedCall[];                                    // 1..32
+  allowedCalls: AllowedCall[];                                    // 1..8 for Push-chain rules, 1..32 for other chains (Harsh, Oct 23)
 }
 
 interface AssetCap {

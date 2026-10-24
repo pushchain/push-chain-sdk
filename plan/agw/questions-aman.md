@@ -2,6 +2,17 @@
 
 Updated October 21, 2026. Final; ready to send. Internal (not part of the message): our evidence is in [pre-question findings](research/pre-question-findings-2026-10-21/README.md).
 
+## Answered (October 23, Aman)
+
+1. **Remove Circle:** presets no longer send Circle USDC (`.old`) from Push. The `.old` mapping stays in the SDK for hand-written rules while the routes exist.
+2. **Keep only tokens Push supports; ETH works, remove LINK:** every preset now sends only native ETH.
+3. **Native ETH plus wrap on arrival: yes.**
+4. **Categories:** DEXES (Uniswap V3) and LENDING (Aave V3); STAKING can wait. PREDICTION is removed.
+
+**Shipped catalog** (testnets): Uniswap V3 and Aave V3 on Sepolia, Base Sepolia and Arbitrum Sepolia. Each preset wraps ETH first (`WETH.deposit()` capped by `maxValue`). DEX swaps WETH and Circle USDC on the destination chain only; those pools are the only WETH pools with liquidity on these routers (read on-chain October 24). Lending supplies Aave's own WETH reserve. `get` returns `{ rules }`; the `readiness` field is removed.
+
+---
+
 ## Context
 
 Presets are ready-made agent rules for Uniswap/PancakeSwap, Aave/Moonwell/Venus and EigenLayer. Each preset lists the exact tokens that app uses on each test chain.

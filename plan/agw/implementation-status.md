@@ -1,5 +1,21 @@
 # AGW SDK implementation status
 
+**October 24 — team answers implemented (local v4, uncommitted):** decisions are recorded in the [Harsh](questions-harsh.md), [Aman](questions-aman.md) and [Zaryab](questions-zaryab.md) files.
+- **Presets ship only what works:** Uniswap V3 and Aave V3 on Sepolia, Base Sepolia and Arbitrum Sepolia. Each sends only native ETH from Push and wraps it on arrival (`WETH.deposit()` capped by `maxValue`). DEX swaps WETH and Circle USDC on the destination chain only. STAKING has no chains; PREDICTION, mainnet templates and the other apps are removed. `get` returns `{ rules }`; `readiness` and the `network` option are gone (this supersedes the October 16–21 readiness entries). Supplied assets must be one ETH asset per chain with positive limits.
+- **Tokens-only EVM rules:** ERC20 assets without `allowedCalls` become transfers to the owner's EVM address, plus opt-in `transferTo` recipients; native assets and Solana are refused.
+- **`MOVEABLE.TOKEN.<CHAIN>.ALL`:** expands to every routable token (Sepolia 6, including Circle `.old`) with default limits; `PushChain.utils.agentic.assets.all(chain)` exposes the list.
+- **Smaller fixes:** the 8-function Push limit is reported first; decoded Solana rules with `fromEnd` pins are refused on write; URP's `InnerValueExceedsAllowance` and `BeneficiaryMismatch` are now decoded (they are missing from the compiled ABI).
+- **Validation:** full units, 108 local v6 contract tests, docs/package checks, build, read-only compatibility (6/6: WETH accepts native ETH, routers wrap into it, pools have liquidity, Aave lists the reserve), Donut preparation and factory simulation (6/6), and the registry drift check (0 mismatches). 
+- **Live, October 24:** all six presets pass `agw-presets-acceptance`, each as the unchanged preset with a first and a subsequent agent send of 1e12 wei ETH.
+  - First-use destination gas is up to 1.66M (Sepolia Lending) under the 2M default; later sends use up to 0.41M.
+  - The new `agw-tokens-only` group passes 2/2:
+    - Circle USDC goes back to the owner on Sepolia (`0xdbf6d780…`), and another recipient is refused before broadcast;
+    - `ALL` reads back six tokens with their defaults.
+  - Three DEX failures on the first run were test-side or node-side:
+    - Sepolia: a dropped RPC receipt read.
+    - Arbitrum: the test took the first tier with liquidity, and its 0.05% pool returns 0 USDC for small swaps. The spec and the compatibility script now choose the tier by Uniswap QuoterV2.
+    - Base: the swap landed on Base 37 s after submission, but the node kept that outbound `PENDING` for 50+ minutes. The re-run observed normally; core team, if it recurs.
+
 **October 20 — SDK fixes from the independent review (local v4, uncommitted):**
 - **Routes:** exact node-registered Circle USDC routes on Sepolia, Base Sepolia and Arbitrum Sepolia are now resolved by address for AGW only. DEXES Sepolia and LENDING Arbitrum Sepolia are route-ready; the other seven presets remain blocked.
 - **Gas:** the AGW gas budget never attaches less than the current Push pool cost plus 20%, keeps the over-$10 share, and no longer counts protocolFee twice.

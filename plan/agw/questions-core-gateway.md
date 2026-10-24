@@ -57,6 +57,8 @@ The live registry keeps `USDC.eth.old`, `USDC.base.old` and `USDC.arb.old`, and 
 
 **Send when:** Aman confirms the `.old` routes are staying.
 
+**Update (October 24):** presets no longer use the `.old` routes (Aman: remove Circle), so this only matters for hand-written rules that list Circle USDC.
+
 ---
 
 ## Core and gateway teams

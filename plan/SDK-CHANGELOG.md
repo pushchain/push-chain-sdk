@@ -4,6 +4,26 @@ Running history for work continued on `feat/agw-sdk-v4`, covering AGW, marketpla
 
 For each meaningful checkpoint, add a dated entry with the change, decisions, validation, remaining work and relevant commit/evidence links. Keep earlier entries as history and mark superseded decisions explicitly. Distinguish implemented code, planning, local/fork checks, funded execution, Git delivery and package publication. Git history for this file records the exact commit introducing each checkpoint.
 
+## 2026-10-24 — team answers: working presets, tokens-only rules, ALL
+
+**Implemented:**
+- Presets contain only the six testnet entries that work: Uniswap V3 and Aave V3 on Sepolia, Base Sepolia and Arbitrum Sepolia. They send native ETH, wrap it on arrival and return `{ rules }` without readiness.
+- Tokens-only EVM rules become transfers back to the owner, plus `transferTo`.
+- `MOVEABLE.TOKEN.<CHAIN>.ALL` and `utils.agentic.assets.all`.
+- The 8-function Push limit is reported first.
+- `fromEnd` Solana pins are refused on write.
+- Two encode-only URP errors are now decoded.
+
+**Decisions:** recorded in `plan/agw/questions-{harsh,aman,zaryab}.md`. The `.old` Circle mapping stays for hand-written rules.
+
+**Validation:**
+- Units, 108 local v6 contract tests, build, docs/package checks, read-only on-chain compatibility (6/6) and Donut preparation (6/6) pass.
+- Live: all six presets pass with first and subsequent sends, and `agw-tokens-only` passes 2/2.
+- The DEX acceptance now picks the Uniswap fee tier with QuoterV2, because Arbitrum Sepolia's 0.05% pool returns nothing for small swaps.
+- One Base outbound stayed node-`PENDING` after delivering; a re-run passed.
+
+**Git delivery:** pending on `feat/agw-sdk-v4`.
+
 ## 2026-10-20 — concise contracts-team handoff
 
 Reduced [pending questions](marketplace/questions.md) to the two current dependencies: canonical CEA deployments and the shared JobSpec/evaluator interface. Removed resolved and deferred discussions from the handoff; earlier context remains in Git history and the research docs. Documentation only; no SDK behavior changed.

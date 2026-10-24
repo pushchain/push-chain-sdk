@@ -2,6 +2,13 @@
 
 Updated October 21, 2026. Question 1 is final and ready to send. Question 2 is held until Harsh answers. What we verified ourselves is in [pre-question findings](research/pre-question-findings-2026-10-21/README.md).
 
+## Answered (October 23, Zaryab)
+
+1. **`fromEnd` pins:** confirmed (`SvmRulebook.sol:666-677`). Exploitable only on programs that ignore trailing data; assume Anchor programs such as Jupiter do. Account pins, forbidden programs and asset caps still hold. Fix in the next policy release: an optional exact instruction-data length per rule, with `fromEnd` pins refused unless it is set. **Done in the SDK until then:** create, add and update refuse a decoded Solana rule with a `fromEnd` pin (`FROM_END_PIN_UNSUPPORTED`); reading existing rules is unchanged.
+2. **Harsh's options:** C plus A for tokens-only transfers (not B); `MOVEABLE.TOKEN.<CHAIN>.ALL` is SDK-only; pins cover the limits. No contract change is requested, so the held items below are closed.
+
+---
+
 These questions cover only the deployed AGW contracts (source `ffd567d`).
 
 ---

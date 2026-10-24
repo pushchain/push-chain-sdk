@@ -57,3 +57,16 @@ Operational prerequisites remain: asset PRC20 mappings, funded source/destinatio
 ## October 18 — release correction for funding availability
 
 Configuration completeness alone is no longer advertised as readiness. Ready additionally checks the SDK's verified AGW network registry, supported gateway destinations and selected source-token registry. Push mode preserves missing assets and reports them. Destination mode explicitly requests empty bridge authority with unchanged call constraints and selectedAssets review metadata. This is additive and avoids inventing PRC20 identities. Sepolia WETH/stETH mappings and EVM address-word source metadata are now supported and read-only verified. [Final release evidence](research/preset-release-readiness-2026-10-18/README.md) supersedes prior readiness descriptions.
+
+
+## October 24 — only working presets; readiness removed
+
+This supersedes every earlier catalog, default-token and readiness entry above. After the team answers (Aman: remove Circle, keep supported tokens, native ETH plus wrap; DEXES Uniswap V3, LENDING Aave V3, STAKING later), the catalog holds six testnet presets:
+
+- Uniswap V3 and Aave V3, each on Sepolia, Base Sepolia and Arbitrum Sepolia.
+- Each sends only native ETH (0.001 per call, 0.01 in total, 20 PC gas, seven days) and wraps it first.
+- DEX swaps WETH and Circle USDC on the destination chain, with a fixed 10 USDC cap on the USDC side.
+- Lending supplies the pool's own WETH reserve (Aave's `0xC558…` on Sepolia, `0x1dF4…` on Arbitrum).
+
+`get` returns `{ rules }`, as the Notion spec (section 7.c) says. The readiness report, the `network` option, PREDICTION and the mainnet templates are removed. The marketplace demo (`pushchain/marketplace_demo`, `cards.ts`) is the reference for the ETH, wrap, approve and supply flow, which passed live there on Base and Sepolia. The consumer guide is [AGW.md](../../packages/core/AGW.md).
+

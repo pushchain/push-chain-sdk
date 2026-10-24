@@ -2,6 +2,15 @@
 
 Updated October 21, 2026. Final; ready to send. Preset questions (preset tokens and routes) are with Aman in [questions-aman.md](questions-aman.md).
 
+## Answered (October 23, Slack; Zaryab on the contract options)
+
+1. **Tokens without an app: C plus A as an opt-in, not B.** Transfers go back to the owner by default, plus recipients the owner names; never "any recipient" (Zaryab: B lets the agent send the whole destination balance to anyone). EVM ERC20s only. **Done in the SDK:** an EVM rule with ERC20 assets and no `allowedCalls` gets `transfer(address,uint256)` calls pinned to the owner's EVM address, plus `transferTo` recipients.
+2. **No tokens selected:** the UI sends `assets: [{ token: MOVEABLE.TOKEN.<CHAIN>.ALL }]`. SDK-only (Zaryab): it expands to every routable PRC20 for that chain, max 8, no wildcard, so tokens added later are not included; `.old` and new USDC are listed separately. **Done:** `ALL` with per-token default limits, plus `PushChain.utils.agentic.assets.all(chain)` for the UI. `assets: []` still means no tokens.
+3. **Limits:** ship as is; pins cover per send and total from Push (`maxPerCall`/`maxTotal`), per action (a MAX pin) and fixed spender, pool and recipient (EQ pins). No contract work requested.
+4. **8 app actions for Push-chain rules is fine** (option A: change the spec). The SDK already enforced 8; it now reports the 8-function limit even above 32.
+
+---
+
 Four product decisions on agentic wallet creation, from Riyanshu's testing of the create screen. Questions 1 and 2 block that screen today; 3 and 4 decide what we promise users. Each one says how it works today and lists the options. Options that need contract work from Zaryab are marked. If you're considering one of them, tell us and we'll get Zaryab's estimate before you decide. "SDK only" means no contract change or redeploy.
 
 Terms:
