@@ -1,3 +1,9 @@
+@pushchain/core@6.0.27-alpha.7 (2026-10-24)
+
+- feat: ship working AGW presets, tokens-only rules and MOVEABLE ALL
+
+---
+
 @pushchain/core@6.0.27-alpha.6 (2026-10-21)
 
 - fix: route exact AGW tokens and size agent gas from the pool
