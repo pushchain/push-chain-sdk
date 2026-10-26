@@ -15,7 +15,6 @@ import {
   getPushChainForNetwork,
   isPushChain,
 } from '../../orchestrator/internals/helpers';
-import { AgenticCapability, requireCapability } from '../capabilities';
 import type { AgenticExecutionContext } from '../context';
 import type { Call, UniversalConfigRead } from '../contracts/v6';
 import { SEND_OUTBOUND_SELECTOR } from '../contracts/v6';
@@ -169,12 +168,6 @@ export async function agenticSend(
   let meta: { route?: 'UOA_TO_CEA'; destinationAccount?: Address } = {};
   let outboundChain: CHAIN | undefined;
   let destinationCalls: DestinationCall[] | undefined;
-
-  if (actx.door === 'agent') {
-    requireCapability(gen.capabilities, AgenticCapability.AGENT_EXECUTE);
-  } else {
-    requireCapability(gen.capabilities, AgenticCapability.OWNER_EXECUTE);
-  }
 
   if (!outbound) {
     const calls = toCalls(p);

@@ -1,4 +1,4 @@
-/** Real v5 wallet/factory label state; no bridge or destination simulation. */
+/** Real v6 wallet/factory label state; no bridge or destination simulation. */
 import { decodeEventLog, type Address } from 'viem';
 import { PushChain } from '../src';
 import { v6 } from '../src/lib/agentic/contracts/v6';

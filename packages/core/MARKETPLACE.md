@@ -1,6 +1,6 @@
 # Agentic marketplace and jobs
 
-This SDK checkpoint targets UniversalMarketplace v2 on Push Donut, its pUSDC kernel and AGW v6. It implements card management, JobSpec authoring and paid previews, preview/open, historical deposits and the kernel lifecycle. The evaluator is currently an EOA: there is no automatic verification, baseline or rating claim.
+This SDK checkpoint targets UniversalMarketplace v2 on Push Donut, its pUSDC kernel and AGW v6. It implements card management, JobSpec authoring and paid previews, preview/open, historical deposits and the kernel lifecycle. The default Donut evaluator is currently an EOA. The explicit PRE/POST profile below supports a separately configured compatible evaluator; it does not change the live marketplace deployment.
 
 `PushChain.initialize` now exposes `client.market` and `client.job`. Helpers are `PushChain.utils.market` and `PushChain.utils.job`; vocabulary is under `PushChain.CONSTANTS.AGENTIC`. There is no separate `client.evaluation` namespace. Read-only clients can discover cards and jobs.
 
@@ -188,6 +188,66 @@ The result includes raw values, decoded fields, request responses and fees. `pas
 
 Unsupported paths throw before signing/sending. They do not return successful dummy results. Keep message, code, details and cause for diagnostics.
 
+## PRE/POST evaluator profile
+
+The next evaluator integration is pinned to `feat/universal-evaluator-pre-post-reads@8666c2a`. Use `utils.job.prePost` explicitly; the existing `utils.job` encoders continue using deployed v2. The new JobSpec has PRE/POST reads, summed left/right check sides, CHECK logic leaves and no timing fields. Its card template has no mutability field; resolving it produces NONE=1. There is no automatic conversion of existing signed bytes.
+
+```ts
+import type { JobEvaluatorConfig, PrePostJobSpec, SubmitJobOptions } from '@pushchain/core';
+import { keccak256 } from 'viem';
+
+function authorPrePostCriteria(receiptToken: Address, destinationWallet: Address) {
+  const read = PushChain.utils.job.prepareRead({
+    chain: PushChain.CONSTANTS.CHAIN.BASE_SEPOLIA,
+    target: receiptToken,
+    abi: parseAbi(['function balanceOf(address) view returns (uint256)']),
+    functionName: 'balanceOf', args: [destinationWallet],
+  });
+  return PushChain.utils.job.prePost.buildJobSpec({
+    reads: [{ read, at: 'POST_EXECUTION' }, { read, at: 'PRE_EXECUTION' }],
+    checks: [{ left: [0], right: [1], evaluation: 'NUMBER', operation: 'GREATER_OR_EQUAL', target: 5_000_000n }],
+    logic: 'ALL', allowedMutability: 'NONE',
+  });
+}
+
+async function fundEvaluatedJob(
+  client: PushChain, deployment: JobEvaluatorConfig, jobId: bigint,
+  rulesId: `0x${string}`, reviewedSpec: PrePostJobSpec, reviewedBudget: bigint,
+  maxReadFee: bigint,
+) {
+  const jobs = client.job.withEvaluator(deployment);
+  // Hash the criteria the client reviewed, rather than accepting a freshly read replacement.
+  const expectedSpecHash = keccak256(PushChain.utils.job.prePost.encodeJobSpec(reviewedSpec));
+  return jobs.fund(jobId, {
+    rulesId, expectedBudget: reviewedBudget,
+    evaluation: { expectedSpecHash, maxReadFee },
+  });
+}
+
+function submitAfterWork(
+  provider: PushChain, deployment: JobEvaluatorConfig, jobId: bigint,
+  executionBlocks: Record<string, bigint>,
+) {
+  // Include the receipt block for every destination where work was performed.
+  const options: SubmitJobOptions = { deliverable: 'work completed', executionBlocks };
+  return provider.job.withEvaluator(deployment).submit(jobId, options);
+}
+```
+
+Configure `{ profile: 'pre-post-v1', evaluator, hook }` with verified deployment addresses. Optional `kernel` and `startBlock` select a standalone kernel, and optional `evaluatorCodeHash` / `hookCodeHash` pin its executable code. `withEvaluator` returns a separate namespace. Before using the evaluator, the SDK checks its code and kernel/hook wiring at one block; jobs on other evaluators retain their manual/unknown status. No future evaluator address is assumed or installed as a default.
+
+Use `quoteEvaluation(jobId)` to inspect the initial PRE and POST read costs, existing prepaid PC, current spec hash and minimum top-up. Funding requires the reviewed budget/hash and `maxReadFee`, checks the quote against that cap, and atomically batches token approvals, PC prepayment and kernel funding through the client AGW. The wallet must hold the payment tokens and PC. `prefundAmount` can explicitly add headroom within the cap. The cap bounds the observed quote and additional PC sent; it is not a contract-level cap on future spending from an existing prepaid pool. Transaction gas and later retry fees are separate. Fee increases can make funding revert atomically; the SDK does not automatically increase an approved payment.
+
+`submit` fixes POST measurement blocks and tries to dispatch reads. Pass optional `executionBlocks` with the destination receipt blocks: the SDK checks that each named chain is in the frozen POST criteria, Push has tracked at least that block, and the observation is fresh. An unmet height returns `EXECUTION_BLOCK_NOT_TRACKED` before signing; a stale observation returns `TRACKED_HEIGHT_STALE`. This is a preflight check using the configured evaluator's UniversalCore, not a new on-chain guarantee. It does not approve multi-chain cards or bind additional rules. Dispatch is best effort, so inspect status and use `jobs.verify(jobId)` when reads were not sent. It chooses snapshot recovery before evaluation, `retryEvaluation` for submitted undecided jobs, or public `settle` for a decided verdict the kernel could not apply. Explicit `action` may be `retrySnapshot`, `retryEvaluation` or `settle`. Retries preserve recorded blocks and require the client or provider; a client AGW uses its owner's batch. A PC addition must be explicit through `value` and bounded by `maxReadFee`. No hook-only verification method is called directly. Owner-side retries can change the recorded owner-touch observation; that observation is reported separately from the verdict.
+
+Status includes the actual frozen criteria, phase-aware answers, request IDs, heights, single evidence hashes, readiness, prepaid PC, verdict and settlement state. Watch delivers evaluator/hook events with the same cursor/reorg rules as kernel events. `claimReadFees` returns unspent evaluator PC to the recorded client after the job ends. Mutable proposals remain deferred; namespace creation/funding accepts immutable criteria only.
+
+The new paid `prePost.previewJobSpec` requires explicit historical `blockNumbers` for PRE reads, so a current observation cannot silently stand in for a baseline. Both phases use the paid-read fee cap and authenticated request-ID recovery. Percentage checks use exact cross-multiplication; a tiny loss cannot round into a passing zero. Missing data/overflow stays unknown, and nonpositive percentage denominators fail as in the evaluator. Oversized answers and forged array lengths are unreadable.
+
+This branch's marketplace contract predates the live v2 card/rules interface. The new template codec and evaluator/kernel integration are available locally; the v2 `client.market` provider/open/deposit adapter continues targeting its deployed schema until a compatible marketplace builder/interface and rollout are supplied. Do not register a new-format template through the legacy adapter. Local acceptance uses real kernel, hook, evaluator, Read State and AGW contracts, mocked tracked chain metadata and manually delivered consensus results; it does not establish a live automatic-evaluator rollout.
+
+The demo app and the pasted conversation use different deployment addresses, and both demo stacks retain timing-first JobSpecs. They must not be configured as `pre-post-v1`. The marketplace CEA registry is aligned with SDK/vault/gateway factories and proxy implementations on all four supported chains as of Donut block 24663931.
+
 ## E2E validation
 
 From the repository root:
@@ -195,6 +255,10 @@ From the repository root:
 ```sh
 # Real deployed stack on an isolated Anvil fork; no private keys or public-chain writes.
 node node_modules/jest/bin/jest.js --config packages/core/jest.marketplace-local.config.ts --runInBand
+# New evaluator/kernel/AGW on an isolated local chain, with no public RPC execution.
+# Requires the reviewed core-contracts checkout and Foundry/cached compilers.
+AGW_LOCAL_DIR=$(bash packages/core/scripts/agw-local/prepare.sh | tail -1) \
+  node node_modules/jest/bin/jest.js --config packages/core/jest.evaluator-local.config.ts --runInBand
 # Read-only live Donut acceptance.
 node node_modules/ts-node/dist/bin.js --compiler-options '{"module":"commonjs"}' packages/core/__e2e__/ci/run.ts --group marketplace
 # Explicit funded smoke, using packages/core/.env: fresh provider/card/owner/wallet, then cancel/revoke/deactivate.

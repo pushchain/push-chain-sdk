@@ -1,6 +1,5 @@
 import { publicRules } from './public-rule';
 import { getAddress, type Address } from 'viem';
-import { AgenticCapability, requireCapability } from './capabilities';
 import { resolveWalletGeneration, type AgenticGeneration } from './deployments';
 import { AGENTIC_ERROR_CODE, AgenticError } from './errors';
 import {
@@ -133,7 +132,6 @@ export class AgenticWalletHandle implements AgenticWallet {
         throw err;
       }
     }
-    requireCapability(gen.capabilities, AgenticCapability.WALLET_READS);
     return walletInfo(
       this.runtime.reader,
       gen,

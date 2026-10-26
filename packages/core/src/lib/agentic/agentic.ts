@@ -1,5 +1,4 @@
 import { publicRules } from './public-rule';
-import { AgenticCapability, requireCapability } from './capabilities';
 import { currentGeneration } from './deployments';
 import { createWallet } from './management/create';
 import { emitAgentic } from './management/common';
@@ -28,7 +27,6 @@ export class AgenticNamespaceImpl implements AgenticNamespace {
     index?: number;
   }): Promise<{ address: AgenticAddress; index: number; deployed: boolean }> {
     const gen = currentGeneration(this.runtime.network);
-    requireCapability(gen.capabilities, AgenticCapability.WALLET_READS);
     const owner = this.runtime.signerPushAccount();
     const r = await deriveForOwner(
       this.runtime.reader,
@@ -60,7 +58,6 @@ export class AgenticNamespaceImpl implements AgenticNamespace {
 
   async list(): Promise<{ wallets: WalletSummary[] }> {
     const gen = currentGeneration(this.runtime.network);
-    requireCapability(gen.capabilities, AgenticCapability.WALLET_READS);
     const wallets = await listForOwner(
       this.runtime.reader,
       gen,

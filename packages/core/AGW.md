@@ -1,6 +1,6 @@
 # Agentic wallets on Push Chain
 
-This branch implements the SDK-only October 12 feedback against the deployed Donut v6 contracts. The runtime targets v6 only; existing v5 wallets are not silently adapted.
+This SDK targets the deployed AGW v6 contracts on Push Donut.
 
 ## Connect
 
@@ -174,7 +174,7 @@ Native historical terms with lifetime limits or differing per-action expiries th
 
 Connect with `PushChain.initialize(signer, { agenticWallet: address })` to send from the wallet. Signer identity determines the owner or agent door. Native agent arrays are atomic and every call passes policy checks. `from` cannot be overridden. Responses identify the wallet as `from` and signer as `origin`, including wait/replay results.
 
-Updates assert existing spend, delete the old rule and grant its replacement atomically. Native updates assert each action separately: a rule with N native actions records N+4 checkpoints on current v5. Agent execution records no owner checkpoint. Direct `setLabel` records none.
+Updates assert existing spend, delete the old rule and grant its replacement atomically. Native updates assert each action separately: a rule with N native actions records N+4 checkpoints on current v6. Agent execution records no owner checkpoint. Direct `setLabel` records none.
 
 ## V6 deployment and creation
 
@@ -184,7 +184,7 @@ The runtime uses factory `0xFBBEB6a365178fAaA81A9789a5f64b300c37e5bc` and URP `0
 
 For outbound sends on either door, the wallet approves the gateway inside the transaction after policy authorization, executes the outbound, and clears remaining allowance. No separate approval or SDK allowance check is needed; GATEWAY_ALLOWANCE_INSUFFICIENT is removed. Approval/cleanup uses the contract's best-effort token calls. To stop an agent, delete its rules; clearing the gateway allowance does not disable an otherwise valid rule.
 
-The wire encoder uses uint32 maximum for unlimited native calls and 255 for unspecified Solana account count. Neither uses the retired zero sentinel. The envelope remains version 1. Existing v5 wallets and addresses do not become v6 wallets.
+The wire encoder uses uint32 maximum for unlimited native calls and 255 for unspecified Solana account count. Neither uses the retired zero sentinel. The envelope remains version 1.
 
 `rules.delete` is the public name; on-chain `revokeRules` names/events remain unchanged. Revert errors retain decoded details and cause. Core transaction response fields used by other SDK routes are not globally removed.
 

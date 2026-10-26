@@ -10,7 +10,6 @@ import {
 import { resolveSvmCallForCea } from '../../orchestrator/svm-idl/resolve';
 import type { AgenticRuntime } from '../runtime';
 import type { AgenticExecutionContext } from '../context';
-import { AgenticCapability, requireCapability } from '../capabilities';
 import { selectRuleForSend } from '../reads/rules';
 import { readSvmConfig } from '../reads/svm';
 import { Snapshot } from '../reads/snapshot';
@@ -36,13 +35,6 @@ export async function sendPublicSvm(
 ) {
   const gen = actx.generation,
     wallet = actx.wallet;
-  requireCapability(gen.capabilities, AgenticCapability.UNIVERSAL_SVM_RULES);
-  requireCapability(
-    gen.capabilities,
-    actx.door === 'agent'
-      ? AgenticCapability.AGENT_EXECUTE
-      : AgenticCapability.OWNER_EXECUTE
-  );
   const to = p.to as { address: string; chain: CHAIN };
   const target = svmKey(to.address);
   if (Array.isArray(p.data))

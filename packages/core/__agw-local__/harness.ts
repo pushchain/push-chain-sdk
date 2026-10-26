@@ -2,7 +2,7 @@
  * Local AGW contract harness — REVIEW ONLY.
  *
  * Starts anvil as a stand-in Push LOCALNET (chainId 9000, the SDK's
- * CHAIN_INFO[PUSH_LOCALNET].chainId), deploys the REAL pinned v5
+ * CHAIN_INFO[PUSH_LOCALNET].chainId), deploys the REAL pinned v6
  * contracts (SmartSession, AgentValidator, UniversalRulesPolicy behind a
  * TransparentUpgradeableProxy, AGW implementation, AGWFactory behind an
  * ERC1967Proxy) from an isolated build prepared by

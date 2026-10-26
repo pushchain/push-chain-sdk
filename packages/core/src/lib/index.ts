@@ -26,6 +26,11 @@ export type {
   JobWatchOptions,
   CreateJobOptions,
   FundJobOptions,
+  SubmitJobOptions,
+  JobEvaluatorConfig,
+  JobEvaluation,
+  JobEvaluationQuote,
+  VerifyJobOptions,
 } from './job/types';
 export type {
   JobSpec,
@@ -290,8 +295,10 @@ export type {
   PresetCategory,
   PresetAsset,
   PresetOptions,
-  ReadyPresetOptions,
+  PresetOptionsWithAgent,
   PresetRuleTemplate,
   PresetResult,
   AgenticPresets,
 } from './agentic';
+
+export type * from './job-spec/pre-post/types';

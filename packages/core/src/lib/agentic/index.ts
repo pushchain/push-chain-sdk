@@ -36,7 +36,7 @@ export type {
   PresetCategory,
   PresetAsset,
   PresetOptions,
-  ReadyPresetOptions,
+  PresetOptionsWithAgent,
   PresetRuleTemplate,
   PresetResult,
   AgenticPresets,

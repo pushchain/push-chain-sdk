@@ -1,5 +1,4 @@
 import type { Address, Log } from 'viem';
-import { AgenticCapability, requireCapability } from '../capabilities';
 import type { AgenticGeneration } from '../deployments';
 import type { ChainReader } from '../contracts/reader';
 import { AGENTIC_ERROR_CODE, AgenticError } from '../errors';
@@ -20,7 +19,6 @@ export async function readCheckpoints(
   wallet: Address,
   sinceBlock?: bigint
 ): Promise<{ checkpoints: Checkpoint[]; count: bigint; blockNumber: bigint }> {
-  requireCapability(gen.capabilities, AgenticCapability.CHECKPOINTS);
   let lastError: AgenticError | undefined;
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const snap = await Snapshot.at(reader);

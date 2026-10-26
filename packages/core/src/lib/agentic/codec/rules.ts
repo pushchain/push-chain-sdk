@@ -6,7 +6,6 @@ import {
   type Address,
   type Hex,
 } from 'viem';
-import { AgenticCapability, requireCapability } from '../capabilities';
 import { AGENTIC_ERROR_CODE, AgenticError, ruleErrorContext } from '../errors';
 import type {
   NativeRule,
@@ -61,7 +60,6 @@ export interface RuleEncodeContext {
   pushChainNamespace: string;
   validator: Address;
   rulesPolicy: Address;
-  capabilities: ReadonlySet<AgenticCapability>;
   nowSeconds: number;
   gateway?: Address;
   universal?: ReadonlyMap<UniversalRule, ResolvedUniversalRule>;
@@ -141,10 +139,6 @@ export function prepareRules(
       }
 
       if (isSolanaRule(rule)) {
-        requireCapability(
-          ctx.capabilities,
-          AgenticCapability.UNIVERSAL_SVM_RULES
-        );
         const terms = ctx.svm?.get(rule);
         if (!terms || !ctx.gateway)
           throw new AgenticError(
@@ -177,7 +171,6 @@ export function prepareRules(
       if (isUniversalRule(rule)) {
         return encodeUniversalRule(rule, ctx);
       }
-      requireCapability(ctx.capabilities, AgenticCapability.NATIVE_RULES);
       const actions = nativeRuleToActionTerms(rule as NativeRule, ctx).map(
         (a) => a.terms
       );

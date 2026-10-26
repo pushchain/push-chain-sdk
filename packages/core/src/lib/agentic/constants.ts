@@ -1,3 +1,4 @@
+import { PRE_POST_CONSTANTS } from '../job-spec/pre-post/codec';
 import { JOB_VOCABULARY, PRINCIPAL } from '../job-spec/constants';
 import { DONUT_MARKETPLACE } from '../market/deployment';
 /** Public vocabulary. JOB.ADDRESS is the explicit per-chain job integration surface. */
@@ -6,6 +7,7 @@ export const AGENTIC = Object.freeze({
   PRINCIPAL,
   JOB: Object.freeze({
     ...JOB_VOCABULARY,
+    PRE_POST: PRE_POST_CONSTANTS,
     ADDRESS: Object.freeze({
       'eip155:42101': Object.freeze({
         KERNEL: DONUT_MARKETPLACE.kernel,

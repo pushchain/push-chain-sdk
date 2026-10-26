@@ -18,7 +18,7 @@ beforeEach(() => {
 afterEach(resetAgenticGenerations);
 const gen = () => currentGeneration(PUSH_NETWORK.TESTNET_DONUT);
 
-describe('v5 wallet labels', () => {
+describe('v6 wallet labels', () => {
   it('allows empty, 64 ASCII bytes and sixteen four-byte emoji without altering the label', () => {
     for (const label of ['', 'a'.repeat(64), '🙂'.repeat(16), '  label  ']) {
       expect(() => assertLabel(label)).not.toThrow();

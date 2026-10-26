@@ -1,6 +1,5 @@
 import { validatePins } from './pins';
 import { getAddress, isAddress, type Address } from 'viem';
-import { AgenticCapability, requireCapability } from '../capabilities';
 import {
   AGENTIC_ERROR_CODE,
   AgenticError,
@@ -150,15 +149,7 @@ export function encodeUniversalRule(
   rule: UniversalRule,
   ctx: RuleEncodeContext
 ): PreparedRule {
-  if (rule.chainNamespace.startsWith('solana:'))
-    requireCapability(ctx.capabilities, AgenticCapability.UNIVERSAL_SVM_RULES);
   validateUniversalRuleShape(rule, ctx.nowSeconds);
-  requireCapability(
-    ctx.capabilities,
-    rule.chainNamespace.startsWith('solana:')
-      ? AgenticCapability.UNIVERSAL_SVM_RULES
-      : AgenticCapability.UNIVERSAL_EVM_RULES
-  );
   const resolved = ctx.universal?.get(rule);
   if (!resolved || !ctx.gateway)
     throw invalid(

@@ -2,7 +2,7 @@
  * Scenarios 7 and 8 — positive-amount EVM universal execution from the
  * wallet, and destination failure classification.
  *
- * Rules are created through the public v5 UniversalRule SDK path. Destination
+ * Rules are created through the public AGW Rule SDK path. Destination
  * receipt/replay checks remain opt-in funded live tests.
  *
  * creditRevert accounting is inert on the current executor (gap G07): a
@@ -147,7 +147,7 @@ d('agw universal evm', () => {
       rulesId,
       destinationAccount: cea,
     });
-    f.evidence('v5-evm-outbound-submitted', {
+    f.evidence('v6-evm-outbound-submitted', {
       wallet,
       cea,
       pushTx: tx.hash,

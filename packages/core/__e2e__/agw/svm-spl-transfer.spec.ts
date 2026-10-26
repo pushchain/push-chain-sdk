@@ -82,7 +82,7 @@ d('agw svm spl transfer', () => {
       (await f.push.getBalance({ address: f.ownerAddress })) < parseEther('22')
     )
       throw new Error('Insufficient bounded PC fixture funds');
-    const made = await f.owner.agentic.create('v5-spl-owner-transfer', {
+    const made = await f.owner.agentic.create('v6-spl-owner-transfer', {
       rules: [],
     });
     await f.fundPC(made.wallet, parseEther('21'));
@@ -131,7 +131,7 @@ d('agw svm spl transfer', () => {
       },
     });
     expect(tx.agentic?.destinationInstruction).toBeUndefined();
-    f.evidence('v5-spl-owner-submitted', {
+    f.evidence('v6-spl-owner-submitted', {
       wallet: made.wallet,
       hash: tx.hash,
       mint: mint.toBase58(),
@@ -207,7 +207,7 @@ d('agw svm spl transfer', () => {
     expect(
       (await replay.wait({ outboundTimeoutMs: 600_000 })).externalTxHash
     ).toBe(receipt.externalTxHash);
-    f.evidence('v5-spl-owner-delivered', {
+    f.evidence('v6-spl-owner-delivered', {
       wallet: made.wallet,
       hash: tx.hash,
       destinationHash: receipt.externalTxHash,

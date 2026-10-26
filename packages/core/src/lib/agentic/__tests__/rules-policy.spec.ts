@@ -6,7 +6,6 @@ import { encodeUniversalTerms } from '../codec/universal-terms';
 import { buildSession, encodeEnvelope, encodeSession } from '../codec/session';
 import { prepareRules } from '../codec/rules';
 import { validateUniversalRuleShape } from '../codec/universal';
-import { V6_CAPABILITIES } from '../deployments';
 import { AGENTIC_ERROR_CODE } from '../errors';
 import { internalAgenticUtils } from '../utils';
 import type {
@@ -22,7 +21,6 @@ const ctx = {
   pushChainNamespace: PUSH_NS,
   validator: ADDR.validator,
   rulesPolicy: ADDR.policy,
-  capabilities: V6_CAPABILITIES,
   nowSeconds: NOW,
   forbiddenTargets: [
     ADDR.factory,
@@ -146,8 +144,8 @@ describe('prepareRules — spec 1.b checks before any signature', () => {
   });
 });
 
-describe('universal rules — validated, then capability-gated (A01, A05)', () => {
-  it('structural validation runs before the capability gate', () => {
+describe('universal rules — validation and resolved runtime context', () => {
+  it('refuses malformed rules before preparing a session', () => {
     expect(() =>
       validateUniversalRuleShape(universal({ allowedCalls: [] }), NOW)
     ).toThrow(/1\.\.32/);
@@ -300,7 +298,7 @@ describe('internal generation codecs (pure)', () => {
     );
   });
 
-  it('pure decoding resolves known v5 assets and preserves the exact beneficiary offset', () => {
+  it('pure decoding resolves known v6 assets and preserves the exact beneficiary offset', () => {
     const inputToken = MOVEABLE_TOKEN_CONSTANTS.ETHEREUM_SEPOLIA.USDC;
     const prc20 = getPRC20Address(inputToken, {
       network: PUSH_NETWORK.TESTNET_DONUT,
