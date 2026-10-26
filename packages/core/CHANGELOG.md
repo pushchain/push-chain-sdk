@@ -1,3 +1,9 @@
+@pushchain/core@6.0.27-alpha.8 (2026-10-26)
+
+- feat: integrate PRE/POST jobs and simplify AGW v6
+
+---
+
 @pushchain/core@6.0.27-alpha.7 (2026-10-24)
 
 - feat: ship working AGW presets, tokens-only rules and MOVEABLE ALL
