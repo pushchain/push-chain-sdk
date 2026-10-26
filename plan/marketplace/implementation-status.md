@@ -32,7 +32,7 @@ Registry summaries do not decode an unverified provider's template. A malformed 
 | Surface | Current behavior / next requirement |
 | --- | --- |
 | Deposit execution boundary | Open/unexpired and unused enabled permission; authenticated state/event/input history required. PC target is not a whole-job quote. Live principal and BSC-origin inbound bridging pass; independent concurrent funding clients must coordinate. |
-| Automatic evaluator / job.verify | Explicit capability error. Current evaluator is manual; the linked evaluator has a different ABI/wire. No baseline, frozen-spec or verdict data is invented. |
+| Automatic evaluator / job.verify | Explicit capability error. Current evaluator is manual. Both `feat/universal-evaluator@46e7902` and linked `8059817` differ from the deployed wire; [October 26 check](research/evaluator-branch-2026-10-26/README.md) records the existing APIs and remaining rollout dependency. No baseline, frozen-spec or verdict data is invented. |
 | Replacement criteria / non-NONE cards | Refused before writes. Expected-spec-hash acceptance must be delivered with compatible contracts before mutable negotiation. |
 | Contract/delegated owners | Real reference ERC-1271 and compatible/incompatible 7702 acceptance passes; external EVM UEA transport passes live. Custom vendors supply their own signer transport. Incompatible signatures fail simulation before broadcast; undeployed external UEAs/missing typed signing fail before prompting. |
 | Relayer, recurring jobs, ratings, non-EVM cards/evaluation | No successful placeholder or invented service. Remain outside this checkpoint. |

@@ -4,6 +4,12 @@ Running history for work continued on `feat/agw-sdk-v4`, covering AGW, marketpla
 
 For each meaningful checkpoint, add a dated entry with the change, decisions, validation, remaining work and relevant commit/evidence links. Keep earlier entries as history and mark superseded decisions explicitly. Distinguish implemented code, planning, local/fork checks, funded execution, Git delivery and package publication. Git history for this file records the exact commit introducing each checkpoint.
 
+## 2026-10-26 — explicit universal-evaluator branch check
+
+Fetched `feat/universal-evaluator@46e7902` and compared its JobSpec, hook and evaluator with the deployed marketplace and the previously reviewed Notion-linked `8059817`. The branch defines funding spec-hash protection and concrete snapshot/verification/retry APIs, but its wire remains incompatible with the deployed marketplace. Narrowed the second [team question](marketplace/questions.md) to the target commit and compatible deployment/ABI delivery.
+
+**Validation:** 69 focused local contract tests pass, with 64 runs per fuzz test. Controlled ABI vectors confirm the marketplace/branch mismatch. A fresh read-only Donut probe at block 24655950 confirms the marketplace still points to the EOA evaluator. [Evidence and API mapping](marketplace/research/evaluator-branch-2026-10-26/README.md). No SDK runtime changes, funded E2Es or deployments.
+
 ## 2026-10-24 — team answers: working presets, tokens-only rules, ALL
 
 **Implemented:**

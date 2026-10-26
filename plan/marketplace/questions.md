@@ -8,12 +8,10 @@ The SDK and marketplace registry use different CEA factories on **Sepolia, Base 
 
 [Current address comparison](implementation-status.md#destination-rollout-mismatch)
 
-## 2. Which JobSpec format and evaluator should the SDK integrate?
+## 2. Which JobSpec/evaluator version should the SDK target?
 
-The deployed marketplace uses a manual EOA evaluator. Its JobSpec format is incompatible with the linked evaluator implementation, including field order and enum values. `client.job.verify` is therefore disabled.
+We checked `feat/universal-evaluator@46e7902` and the Notion-linked `8059817`. Neither JobSpec format matches the deployed marketplace. The live marketplace still uses a manual EOA evaluator, so `client.job.verify` remains disabled.
 
-**Please provide:**
+**Please confirm the target JobSpec commit and share compatible marketplace/hook/evaluator deployment addresses and ABIs for Push Donut.**
 
-- The final shared JobSpec Solidity definition or commit.
-- Compatible hook/evaluator deployment addresses and ABIs for Push Donut.
-- The public function signatures the SDK should call to verify and retry evaluation.
+[Branch comparison and existing verification/retry APIs](research/evaluator-branch-2026-10-26/README.md)

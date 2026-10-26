@@ -1,0 +1,11 @@
+{
+  "observedAt": "2026-10-26T07:54:12.825Z",
+  "blockNumber": "24655950",
+  "marketplace": "0x9071ebE01B75123A91e88eB6ec4BF163F3fE9BF4",
+  "evaluator": "0x1afC81396f1bb36F91f74506284952b81e4bd47c",
+  "evaluatorCodeBytes": 0,
+  "hook": "0xDe7A94e510b6C571DE7880d441349689F73A32b3",
+  "hookEvaluator": {
+    "error": "Execution reverted for an unknown reason."
+  }
+}

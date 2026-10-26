@@ -1,0 +1,37 @@
+{
+  "checkedOn": "2026-10-26",
+  "branch": "feat/universal-evaluator",
+  "source": "46e79024562fc995a68bb17df3d31c58c1a2a178",
+  "marketplaceSource": "443b4e2dd9ca5dd9ffc8efebdfcecd619dd66c47",
+  "sdkBaseline": "988fe5b12234cec2fd2e48c2ba94d81bdc1fc12d",
+  "command": "forge test --match-contract '^(UniversalHookTest|UniversalEvaluatorTest|JobSpecLibrariesTest)$' --fuzz-runs 64 --json",
+  "exitCode": 0,
+  "suites": {
+    "test/8183-tests/JobSpecLibraries.t.sol:JobSpecLibrariesTest": {
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "test/8183-tests/UniversalEvaluator.t.sol:UniversalEvaluatorTest": {
+      "passed": 33,
+      "failed": 0,
+      "skipped": 0
+    },
+    "test/8183-tests/UniversalHook.t.sol:UniversalHookTest": {
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "rawResultsSha256": "5d33cf8c901d4601ecfa93ba5d8c6fe3df857c79f54ed08320cdb1e4527bcb27",
+  "compressedResultsSha256": "1915d27950da8b58198b5a1dc9adb33feb6d8c7d222e25b903fc1fcf2a6ac97c",
+  "sourceSha256": {
+    "src/agentic-commerce-8183/libraries/JobSpecTypes.sol": "022001061304c8b8166db47ea6c0d5dd9aaad113c6613e8ca8d8194ca831150c",
+    "src/agentic-commerce-8183/libraries/JobSpecBuilder.sol": "18e6f8bf697167662274b25521b5e686f5e53ef6e260b8ef793fa75314e26065",
+    "src/agentic-commerce-8183/interfaces/IUniversalEvaluator.sol": "37ebf95ab208dc2eda06bb9179e311f2da269df4fb4ddc06b207267a37faef79",
+    "src/agentic-commerce-8183/hooks/UniversalHook.sol": "25eb9c85adebc8634364c4e9c6c3cb7eb183b0f9c7c8273129b5c2cb6370724b",
+    "src/agentic-commerce-8183/evaluator/UniversalEvaluator.sol": "d8731687f58c832660ccf45e7c61e0aafbb8ba537549b16779ab3ef034570b72",
+    "scripts/agentic-commerce-8183/UniversalEvaluatorDeploy.sol": "24aa25e991f436f0b98ccf8399d1cd805b02094130537d9a53750c731fd8ca7d"
+  },
+  "scope": "69 local contract tests; fuzz runs reduced to 64. Evaluator tests use mocked external dependencies. Read-only live deployment probe is separate; no funded E2E, deployment or SDK runtime change."
+}

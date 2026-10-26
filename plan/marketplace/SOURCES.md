@@ -26,6 +26,8 @@ Page exports **exclude comments**. Current All discussions panels on pages 2, 6,
 
 ## Repeatable review
 
+October 26 follow-up: fetched and checked `feat/universal-evaluator@46e79024562fc995a68bb17df3d31c58c1a2a178` explicitly. It is an ancestor of the previously linked `8059817`, with a third JobSpec layout. [Source comparison, 69 focused contract tests and fresh read-only deployment probe](research/evaluator-branch-2026-10-26/README.md). This supplements the October 20 baseline; it does not replace the deployed marketplace schema.
+
 1. Export the stack index with subpages again; retain ZIP and hashes. Match pages by stable ID. Keep comments separate.
 2. Fetch `sdk-iteration-v1`; record full SHA before analysis and recheck remote head before sharing questions. Never save authenticated remote URLs in evidence.
 3. Archive the exact source and pinned dependencies into an isolated workspace. Do not switch the SDK or sibling contract working trees.
