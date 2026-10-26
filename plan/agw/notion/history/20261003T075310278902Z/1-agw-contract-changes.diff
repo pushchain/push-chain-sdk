@@ -1,0 +1,82 @@
+--- notion/1-agw-contract-changes.md (previous)
++++ notion/1-agw-contract-changes.md (refreshed)
+@@ -279,6 +279,79 @@
+ 
+ **Not in this change set** (belongs to 8183, listed so nobody looks for it here): the fund hook's key-match and expiry checks, the marketplace, the evaluator.
+ 
++# 4c. What the SDK rule shape changes in the contracts (PROPOSED 2026-10-02)
++
++Page 5 (SDK: AGW) settled the shape of a cross-chain rule in `client.agentic.create`. Three of those SDK changes touch the contracts. Nothing else on page 5 does. Names are the post-rename names from section 3; struct changes are to the universal terms URP decodes from the rules envelope.
++
++**1. One rule can move several tokens: `assets: AssetCap[]` replaces `asset`, `maxAmountPerCall`, `maxAmountTotal`.**
++
++The SDK takes each asset as the token's address on the rule's chain (`MOVEABLE.TOKEN.<CHAIN>.<SYMBOL>` or the native marker) and resolves it to the PRC20 on Push before encoding, so the contract keeps storing PRC20 addresses. The spend counter becomes per asset.
++
++```diff
++// universal EVM terms (and SvmTerms, same change)
++- address asset; uint256 maxAmountPerCall; uint256 maxAmountTotal;
+++ AssetCap[] assets;                                        // 0..MAX_ASSETS; empty = call contracts, move nothing
+++ struct AssetCap { address token; uint256 maxPerCall; uint256 maxTotal; }   // token: PRC20 on Push; maxTotal 0 = no total cap
+++ uint8 constant MAX_ASSETS = 8;
++
++// metering
++~ amount gate: the token being moved must be one of assets[]; per-call and running total checked against that entry
++~ _spent[configId] becomes per token: mapping(address token => uint256 spent)
++~ assertSpent(configId, account) returns the per-token totals; the existing single-amount overload goes
++~ OutboundMetered carries the token
++```
++
++**2. `maxGasPerCall` replaces `maxPCPerCall`.**
++
++Rename only. Same meaning: the PC (wei) the wallet may pass as `msg.value` on one outbound for the destination leg. The gate that checks it does not change.
++
++```diff
++- uint256 maxPCPerCall;
+++ uint256 maxGasPerCall;
++```
++
++**3. The struct, as it ends up.**
++
++SDK side, what `create` takes per rule (page 5, 3.b). `agent` and `ref` go to `grantRules`, the rest is encoded into the rules envelope.
++
++```tsx
++interface UniversalRule {
++  agent: Address;                       // Push address: EOA, or the UEA of an external key
++  ref?: Hex;                            // emitted in RulesGranted, not interpreted
++  chainNamespace: ForeignChainNamespace;
++  assets: AssetCap[];                   // tokens the agent may move on chainNamespace; 0..8
++  maxGasPerCall: bigint;                // PC (wei) per outbound for the destination leg
++  validUntil: number;
++  allowedCalls: AllowedCall[];
++}
++
++interface AssetCap {
++  token: MoveableToken | Address;       // the other chain's token address (MOVEABLE.TOKEN.<CHAIN>.<SYMBOL>) or the native marker
++  maxPerCall: bigint;
++  maxTotal?: bigint;
++}
++```
++
++Contract side, what URP decodes from the envelope body for an `eip155` namespace (`SvmTerms` takes the same `assets` and `maxGasPerCall` fields).
++
++```solidity
++struct AssetCap {
++    address token;                      // PRC20 on Push, resolved by the SDK from the other chain's address
++    uint256 maxPerCall;
++    uint256 maxTotal;                   // 0 = no running cap
++}
++
++struct UniversalTerms {
++    uint48        validUntil;
++    bytes32       expectedCEA;
++    AssetCap[]    assets;               // 0..MAX_ASSETS; empty = call contracts, move nothing
++    uint256       maxGasPerCall;        // PC (wei) per outbound
++    AllowedCall[] allowedCalls;         // unchanged
++}
++
++uint8 constant MAX_ASSETS = 8;
++```
++
+ # 5. Open for review on this page
+ 
+ 1. D3: removing the validator. Needs the v3 branch check on how SmartSession's engine is entered (signature path vs a sender-gated call into the same policy checks). If the engine cannot be entered without a signature, the fallback is a validator that accepts a trivial signature from the sender, which keeps the identity model and loses nothing but elegance.

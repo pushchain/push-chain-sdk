@@ -1,0 +1,43 @@
+{
+  "review_date": "2026-10-03",
+  "sdk_production_revision": "167fdc6243ecfe5d97735a6124662c7d2084d126",
+  "planning_commit": "46f9e669d001624cb8b7a594bfed3a9aafb139f1",
+  "agw_source_pin": "e704d5b58fd1d30ce02bc0ad74dccfbdb37804f9",
+  "runs": [
+    {
+      "log": "jest.log",
+      "command": "node node_modules/jest/bin/jest.js --config packages/core/jest.config.ts --runInBand --runTestsByPath packages/core/src/lib/orchestrator/__tests__/context-helpers-tracker.spec.ts packages/core/src/lib/orchestrator/__tests__/send-transaction-progress-hook.spec.ts packages/core/src/lib/read-state/__tests__/read-params.spec.ts packages/core/src/lib/orchestrator/__tests__/errors.spec.ts packages/core/src/lib/read-state/__tests__/public-surface.spec.ts packages/core/src/lib/orchestrator/__tests__/push-chain-native-multicall.spec.ts",
+      "suites": 6,
+      "passed": 126,
+      "failed": 0,
+      "success": true,
+      "duration_seconds": 6.048,
+      "sha256": "2135a06ef43a05dff8c33e8e359c76bf64075eaabca57171b45fe75c929ee308"
+    },
+    {
+      "log": "response.log",
+      "command": "node node_modules/jest/bin/jest.js --config packages/core/jest.config.ts --runInBand --runTestsByPath packages/core/src/lib/orchestrator/__tests__/gateway-uea-account.spec.ts packages/core/src/lib/orchestrator/__tests__/outbound-confirmation-gate.spec.ts packages/core/src/lib/orchestrator/__tests__/response-builder-push-revert.spec.ts packages/core/src/lib/orchestrator/__tests__/track-transaction-guard.spec.ts",
+      "suites": 4,
+      "passed": 57,
+      "failed": 0,
+      "success": true,
+      "duration_seconds": 4.191,
+      "sha256": "71e516304406ec21b9ae1939f1251a589ec1c15230838b6fab6aad7e072cc729"
+    }
+  ],
+  "total_tests": 183,
+  "passed": 183,
+  "failed": 0,
+  "scope": "Existing mock-based SDK unit tests; no AGW implementation or live settlement verified.",
+  "allowance_experiment": {
+    "command": "forge test --offline --root <isolated-e704d5b-copy> --match-contract AllowanceReviewTest --match-test test_Allowance_ -vv",
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "fixture": "AllowanceReview.t.sol",
+    "fixture_sha256": "06857f3941be26f73981682108e6a95c29caa64b4432156fbb53c2cfb8cc02bd",
+    "log": "allowance.log",
+    "log_sha256": "f80c94f78a2d829cd1eb35e2fcae1b75fa9e1fc0569a3370e7023f5d60764451",
+    "scope": "Real pinned AGW/engine/URP with authored token/gateway transferFrom and burn fixtures; not production gateway or live settlement."
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "observedAt": "2026-10-20T12:29:52.424Z",
+  "block": "24451338",
+  "card": {
+    "cardId": "3",
+    "version": "1",
+    "active": false
+  },
+  "jobs": [
+    {
+      "jobId": "2",
+      "status": 4,
+      "budget": "0",
+      "client": "0x3dA787ac28639116EDe5Fd34CFce0820e74f91f1",
+      "owner": "0xFeC7BB20316c4BB85EE0517958F7A80BA0c59b68",
+      "rulesId": "0xf7789ce3dc79b3a52ec15584ae208e3cc987e95f27d520c424c5284e9a124f47",
+      "permissionEnabled": false
+    },
+    {
+      "jobId": "3",
+      "status": 4,
+      "budget": "0",
+      "client": "0x1772FE5B6C48F1A0D78F65342dF62C99F25C094F",
+      "owner": "0x5C2029EbBAC9F5643775CB60a7609d0e8D57412D",
+      "rulesId": "0xf7789ce3dc79b3a52ec15584ae208e3cc987e95f27d520c424c5284e9a124f47",
+      "permissionEnabled": false
+    }
+  ],
+  "openings": [
+    {
+      "jobId": "2",
+      "txHash": "0x5ccf837039ea26439624c48f187715de40684a069f4d41b3bf63b0dcbd70fe60",
+      "blockNumber": "24451140",
+      "agw": "0x3dA787ac28639116EDe5Fd34CFce0820e74f91f1",
+      "owner": "0xFeC7BB20316c4BB85EE0517958F7A80BA0c59b68"
+    },
+    {
+      "jobId": "3",
+      "txHash": "0x261fee7f7ade8d13527345af4184f22e4b4e8010a9ef000d16f7ca2cd3157aa9",
+      "blockNumber": "24451172",
+      "agw": "0x1772FE5B6C48F1A0D78F65342dF62C99F25C094F",
+      "owner": "0x5C2029EbBAC9F5643775CB60a7609d0e8D57412D"
+    }
+  ]
+}

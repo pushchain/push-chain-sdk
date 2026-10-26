@@ -1,0 +1,171 @@
+PASS core packages/core/src/lib/universal/account/account.spec.ts (6.113 s)
+  ● Console
+
+    console.warn
+      [PushChain] convertOriginToExecutor() is deprecated. Use deriveExecutorAccount() instead.
+
+      207 | ): Promise<ExecutorAccountInfo> {
+      208 |   if (!_convertOriginToExecutorWarned) {
+    > 209 |     console.warn(
+          |             ^
+      210 |       '[PushChain] convertOriginToExecutor() is deprecated. Use deriveExecutorAccount() instead.'
+      211 |     );
+      212 |     _convertOriginToExecutorWarned = true;
+
+      at Object.convertOriginToExecutor (src/lib/universal/account/account.ts:209:13)
+      at Object.<anonymous> (src/lib/universal/account/account.spec.ts:80:52)
+
+    console.warn
+      [PushChain] convertExecutorToOrigin() is deprecated. Use resolveControllerAccount() instead.
+
+      425 | ): Promise<OriginAccountInfo> {
+      426 |   if (!options?._internal && !_convertExecutorToOriginWarned) {
+    > 427 |     console.warn(
+          |             ^
+      428 |       '[PushChain] convertExecutorToOrigin() is deprecated. Use resolveControllerAccount() instead.'
+      429 |     );
+      430 |     _convertExecutorToOriginWarned = true;
+
+      at convertExecutorToOrigin (src/lib/universal/account/account.ts:427:13)
+      at Object.<anonymous> (src/lib/universal/account/account.spec.ts:106:38)
+
+PASS core packages/core/src/lib/vm-client/evm-client.batch-gas.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/block-results-client.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/push-chain-tx-retry.spec.ts
+PASS core packages/core/src/lib/push-client/push-client.archive-fallback.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/outbound-confirmation-gate.spec.ts
+PASS core packages/core/src/lib/utils.spec.ts
+  ● Console
+
+    console.log
+      1.5
+
+      at Object.<anonymous> (src/lib/utils.spec.ts:973:17)
+
+    console.log
+      1.5
+
+      at Object.<anonymous> (src/lib/utils.spec.ts:977:17)
+
+    console.log
+      1.23
+
+      at Object.<anonymous> (src/lib/utils.spec.ts:982:17)
+
+PASS core packages/core/src/lib/orchestrator/__tests__/route-handlers-evm-r3-native-eoa.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/send.spec.ts
+PASS core packages/core/src/lib/universal-tx-detector/__tests__/scenarios.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/route-detector.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/payload-builders.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/cascade-composition.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/read-executor.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/outbound-timeout-clamp.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/push-chain-native-multicall.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/r2-outbound-revert-flow.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/signing-payload.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/route-handlers-svm-r3.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/context-helpers-tracker.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/read-types.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/rescue-svm-confirmation.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/gateway-uea-account.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/outbound-response.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/tx-transformer-gas.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/cascade-builder-progress-hook.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/tx-transformer-multichain.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/cascade-svm-rent.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/public-surface.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/response-builder-push-revert.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/send-transaction-progress-hook.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/web2-compat.spec.ts
+PASS core packages/core/src/lib/orchestrator/internals/pc20/__tests__/gate.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/pc20-request-recipient.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/inbound-tracker-derivation.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/account-status.spec.ts
+PASS core packages/core/src/lib/orchestrator/internals/pc20/__tests__/inbound-payload.spec.ts
+PASS core packages/core/src/lib/orchestrator/internals/pc20/__tests__/funds-only-burn-guard.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/codec.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/outbound-svm-confirmation.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/r1-error-classification.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/terminal-suppression.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/source-hash-resolution.spec.ts
+PASS core packages/core/src/lib/progress-hook/__tests__/r1-spec-strings.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/ucallback-codec.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/outbound-error-classification.spec.ts
+PASS core packages/core/src/lib/universal/signer/signer.spec.ts
+PASS core packages/core/src/lib/progress-hook/__tests__/response-invariant.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/read-tracker.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/svm-wire-fixture.spec.ts
+PASS core packages/core/src/lib/orchestrator/svm-idl/ix-encoder.spec.ts
+PASS core packages/core/src/lib/constants/__tests__/svm-gateway-idl.spec.ts
+PASS core packages/core/src/lib/orchestrator/svm-idl/build-payload.spec.ts
+PASS core packages/core/src/lib/orchestrator/svm-idl/registry.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/reads-context.spec.ts
+PASS core packages/core/src/lib/orchestrator/svm-idl/resolve.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/management.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/response-surface.spec.ts
+PASS core packages/core/src/lib/progress-hook/__tests__/read-tx-spec-strings.spec.ts
+PASS core packages/core/src/lib/orchestrator/svm-idl/normalize-address.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/max-pc-for-gas.spec.ts
+PASS core packages/core/src/lib/orchestrator/internals/pc20/__tests__/tracking.spec.ts
+PASS core packages/core/src/lib/universal-tx-detector/__tests__/cascade.spec.ts
+PASS core packages/core/src/lib/progress-hook/__tests__/r3-spec-strings.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/svm-internals.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/error-decoder.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/r3-execute-order.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/cascade-event-hook-bridge.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/native-batch-response.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/registry.spec.ts
+PASS core packages/core/src/lib/orchestrator/internals/pc20/__tests__/resolver.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/svm-rent.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/svm-backend.spec.ts
+PASS core packages/core/src/lib/orchestrator/internals/pc20/__tests__/export.spec.ts
+PASS core packages/core/src/lib/orchestrator/internals/pc20/__tests__/svm-rent-pc20.spec.ts
+PASS core packages/core/src/lib/universal-tx-detector/__tests__/detector-svm.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/preflight.spec.ts
+PASS core packages/core/src/lib/formatters.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/gas-usd-sizer.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/track-transaction-guard.spec.ts
+PASS core packages/core/src/lib/orchestrator/internals/pc20/__tests__/chain-namespace.spec.ts
+PASS core packages/core/src/lib/universal-tx-detector/__tests__/detector.spec.ts
+PASS core packages/core/src/lib/progress-hook/__tests__/multichain-hooks.spec.ts
+PASS core packages/core/src/lib/push-client/push-client.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/execute-standard-required-funds.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/gas-calculator.spec.ts
+PASS core packages/core/src/lib/progress-hook/__tests__/r2-spec-strings.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/r3-error-classification.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/svm-idl.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/r1-error-emission.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/pc20-tracked-leg.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/svm-account.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/spec-builder.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/read-params.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/rules-policy.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/revalidate-read.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/result-decoder.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/envelope-evm.spec.ts
+PASS core packages/core/src/lib/orchestrator/internals/__tests__/signing.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/envelope-svm.spec.ts
+PASS core packages/core/src/lib/universal-tx-detector/__tests__/detector-svm-log-index.spec.ts
+PASS core packages/core/src/lib/orchestrator/internals/pc20/__tests__/address-codec.spec.ts
+PASS core packages/core/src/lib/constants/__tests__/token-constants.spec.ts
+PASS core packages/core/src/lib/orchestrator/internals/pc20/__tests__/svm.spec.ts
+PASS core packages/core/src/lib/universal-tx-detector/__tests__/child-inbounds.spec.ts
+PASS core packages/core/src/lib/universal-tx-detector/__tests__/normalize.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/abi-selectors.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/preflight.spec.ts
+PASS core packages/core/src/lib/universal-tx-detector/__tests__/auto-detect.spec.ts
+PASS core packages/core/src/lib/vm-client/evm-client.chain-symbol.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/pc20-tracked-leg-svm.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/validate.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/read-events.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/envelope-web2.spec.ts
+PASS core packages/core/src/lib/vm-client/evm-client.dynamic-gas.spec.ts
+PASS core packages/core/src/lib/read-state/__tests__/budget.spec.ts
+PASS core packages/core/src/lib/universal-tx-detector/__tests__/classify.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/errors.spec.ts
+
+Test Suites: 1 skipped, 118 passed, 118 of 119 total
+Tests:       12 skipped, 1999 passed, 2011 total
+Snapshots:   0 total
+Time:        63.777 s
+Ran all test suites.

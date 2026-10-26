@@ -1,0 +1,10 @@
+DEXES eip155:11155111: destination factory eth_call passed; Push unavailable-in-registry
+DEXES eip155:84532: destination factory eth_call passed; Push unavailable-in-registry
+DEXES eip155:421614: destination factory eth_call passed; Push unavailable-in-registry
+DEXES eip155:97: destination factory eth_call passed; Push unavailable-in-registry
+LENDING eip155:11155111: destination factory eth_call passed; Push unavailable-in-registry
+LENDING eip155:421614: destination factory eth_call passed; Push unavailable-in-registry
+LENDING eip155:84532: destination factory eth_call passed; Push unavailable-in-registry
+LENDING eip155:97: destination factory eth_call passed; Push unavailable-in-registry
+STAKING eip155:11155111: destination factory eth_call passed; Push unavailable-in-registry
+Read-only report: /tmp/preset-release-acceptance.json; 9/9 passed.

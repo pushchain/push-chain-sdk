@@ -1,0 +1,10 @@
+PASS core packages/core/src/lib/orchestrator/__tests__/outbound-timeout-clamp.spec.ts
+  waitForOutboundTx initial-wait clamp
+    ✓ throws OutboundTimeoutError within the clamped budget (100ms) (102 ms)
+    ✓ throws with elapsedMs matching the override (not the default) (201 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       2 passed, 2 total
+Snapshots:   0 total
+Time:        2.606 s, estimated 6 s
+Ran all test suites within paths "packages/core/src/lib/orchestrator/__tests__/outbound-timeout-clamp.spec.ts".

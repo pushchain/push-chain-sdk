@@ -1,0 +1,117 @@
+[
+  {
+    "type": "function",
+    "name": "build",
+    "inputs": [
+      {
+        "name": "jobSpecTemplate",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "ctx",
+        "type": "tuple",
+        "internalType": "struct BuildContext",
+        "components": [
+          {
+            "name": "agw",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "principal",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "executeBy",
+            "type": "uint48",
+            "internalType": "uint48"
+          },
+          {
+            "name": "settleWindow",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "params",
+            "type": "int256[]",
+            "internalType": "int256[]"
+          },
+          {
+            "name": "origin",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          }
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "error",
+    "name": "FillOutOfBounds",
+    "inputs": [
+      {
+        "name": "read",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "fill",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ParamCountMismatch",
+    "inputs": [
+      {
+        "name": "expected",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "actual",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ParamOutOfRange",
+    "inputs": [
+      {
+        "name": "index",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "value",
+        "type": "int256",
+        "internalType": "int256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "TargetOverflow",
+    "inputs": [
+      {
+        "name": "check",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  }
+]

@@ -1,0 +1,58 @@
+{
+  "at": "2026-10-06T07:32:23.955Z",
+  "wallet": "0x4612ad240cd66A77b921693BbbB356d1B8219b2c",
+  "cea": "Fuas2d6gmyPEpKgvBEHGhNgu99Nx8xVWmmf6cVFp4feY",
+  "program": "8yNqjrMnFiFbVTVQcKij8tNWWTMdFkrDf9abCGgc2sgx",
+  "readOnlySimulation": true,
+  "transactionsSent": 0,
+  "slot": 508018651,
+  "result": {
+    "accounts": null,
+    "err": {
+      "InstructionError": [
+        0,
+        {
+          "Custom": 6002
+        }
+      ]
+    },
+    "fee": 5000,
+    "innerInstructions": null,
+    "loadedAccountsDataSize": 280057,
+    "loadedAddresses": {
+      "readonly": [],
+      "writable": []
+    },
+    "logs": [
+      "Program 8yNqjrMnFiFbVTVQcKij8tNWWTMdFkrDf9abCGgc2sgx invoke [1]",
+      "Program log: Instruction: Decrement",
+      "Program log: AnchorError caused by account: counter. Error Code: Unauthorized. Error Number: 6002. Error Message: Unauthorized.",
+      "Program log: Left:",
+      "Program log: BesWssuCiGE3EqeGRFamuouvAxJDUCdWH6NPHpAFPMBa",
+      "Program log: Right:",
+      "Program log: Fuas2d6gmyPEpKgvBEHGhNgu99Nx8xVWmmf6cVFp4feY",
+      "Program 8yNqjrMnFiFbVTVQcKij8tNWWTMdFkrDf9abCGgc2sgx consumed 5387 of 200000 compute units",
+      "Program 8yNqjrMnFiFbVTVQcKij8tNWWTMdFkrDf9abCGgc2sgx failed: custom program error: 0x1772"
+    ],
+    "postBalances": [
+      615335949,
+      4280640,
+      1141440,
+      0
+    ],
+    "postTokenBalances": [],
+    "preBalances": [
+      615340949,
+      4280640,
+      1141440,
+      0
+    ],
+    "preTokenBalances": [],
+    "replacementBlockhash": {
+      "blockhash": "EyLpG12Ns8fdRbN6CzowR5CYRU6TPErXvwHRNf4ojYYQ",
+      "lastValidBlockHeight": 495260925
+    },
+    "returnData": null,
+    "unitsConsumed": 5387
+  }
+}

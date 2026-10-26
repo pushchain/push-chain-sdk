@@ -1,0 +1,61 @@
+{
+  "block": "23991912",
+  "selectors": {
+    "label()": {
+      "selector": "0xcb4774c4",
+      "presentInRuntime": true
+    },
+    "setLabel(string)": {
+      "selector": "0xbf530969",
+      "presentInRuntime": true
+    },
+    "initializeAccount(string)": {
+      "selector": "0x767df6cb",
+      "presentInRuntime": true
+    }
+  },
+  "wallets": [],
+  "derivation": {
+    "owner": "0xa89523351BE1e2De64937AA9AF61Ae06eAd199C7",
+    "index": "0",
+    "local": "0x9E1e228d5Fb19e4c33fd8aF96de8492Ef59b6612",
+    "predicted": "0x9E1e228d5Fb19e4c33fd8aF96de8492Ef59b6612",
+    "matches": true
+  },
+  "deploySimulations": [
+    {
+      "name": "default",
+      "success": true,
+      "wallet": "0x9E1e228d5Fb19e4c33fd8aF96de8492Ef59b6612"
+    },
+    {
+      "name": "64Bytes",
+      "success": true,
+      "wallet": "0x9E1e228d5Fb19e4c33fd8aF96de8492Ef59b6612"
+    },
+    {
+      "name": "65Bytes",
+      "success": false,
+      "errorName": "LabelTooLong",
+      "args": [
+        "65"
+      ],
+      "message": "The contract function \"deployWallet\" reverted."
+    },
+    {
+      "name": "16Emoji",
+      "success": true,
+      "wallet": "0x9E1e228d5Fb19e4c33fd8aF96de8492Ef59b6612"
+    },
+    {
+      "name": "17Emoji",
+      "success": false,
+      "errorName": "LabelTooLong",
+      "args": [
+        "68"
+      ],
+      "message": "The contract function \"deployWallet\" reverted."
+    }
+  ],
+  "totalDeployedWalletEvents": 0
+}

@@ -1,0 +1,17 @@
+PASS core packages/core/src/lib/orchestrator/__tests__/outbound-svm-confirmation.spec.ts
+  ✓ confirms pending Cosmos signature EyFYDWDhksPYpRk3DLzeW4izQagJZte6bKCQFagLYBdtJyaEyjbQpAWCbqDhHVymzjPJ4vdeHG1HHQp1qi6FhZD through Solana RPC (3 ms)
+  ✓ confirms pending Cosmos signature 0x0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c through Solana RPC (4 ms)
+  ✓ waits through processed status before finalization (2 ms)
+  ✓ reports a confirmed signature error as failure, preserving the hash (1 ms)
+  ✓ keeps wrong-cluster pending until timeout (21 ms)
+  ✓ keeps missing pending until timeout (21 ms)
+  ✓ keeps processed-error pending until timeout (20 ms)
+  ✓ keeps rpc-error pending until timeout (20 ms)
+  ✓ keeps malformed-hash pending until timeout (20 ms)
+  ✓ keeps an authoritative Cosmos revert ahead of the RPC tiebreaker (1 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       10 passed, 10 total
+Snapshots:   0 total
+Time:        2.544 s
+Ran all test suites within paths "packages/core/src/lib/orchestrator/__tests__/outbound-svm-confirmation.spec.ts".

@@ -1,0 +1,38 @@
+PASS core packages/core/src/lib/orchestrator/__tests__/outbound-confirmation-gate.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/response-surface.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/preset-default-tokens.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/preset-catalog.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/preset-default-policy.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/presets.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/outbound-response.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/preset-routes.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/preset-operation-limits.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/labels.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/outbound-svm-confirmation.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/svm-internals.spec.ts
+PASS core packages/core/src/lib/orchestrator/svm-idl/build-payload.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/send.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/public-rule.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/management.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/runtime-token-chain.spec.ts
+PASS core packages/core/src/lib/orchestrator/svm-idl/resolve.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/svm-backend.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/svm-idl.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/reads-context.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/native-batch-response.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/svm-quote.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/native-multi-action.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/svm-wire-fixture.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/prc20-source-encoding.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/rules-policy.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/codec.spec.ts
+PASS core packages/core/src/lib/orchestrator/svm-idl/registry.spec.ts
+PASS core packages/core/src/lib/vm-client/evm-client.batch-gas.spec.ts
+PASS core packages/core/src/lib/orchestrator/svm-idl/ix-encoder.spec.ts
+PASS core packages/core/src/lib/orchestrator/svm-idl/normalize-address.spec.ts
+
+Test Suites: 32 passed, 32 total
+Tests:       417 passed, 417 total
+Snapshots:   0 total
+Time:        7.869 s, estimated 8 s
+Ran all test suites matching /agentic|outbound-(confirmation-gate|svm-confirmation)|svm-idl|evm-client.batch-gas/i.

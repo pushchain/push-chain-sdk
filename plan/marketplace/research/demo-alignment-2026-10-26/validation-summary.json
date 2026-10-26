@@ -1,0 +1,65 @@
+{
+  "checkedOn": "2026-10-26",
+  "sdkHead": "e61c96068b18d6961411267e215658ecc035c09f",
+  "delivery": "Local uncommitted/unpushed changes, including preceding evaluator integration and AGW cleanup",
+  "demoCommit": "0d765e06418f1678f77ecd6434603ceecd5a708f",
+  "contractHeads": {
+    "sdk-iteration-v1": "443b4e2dd9ca5dd9ffc8efebdfcecd619dd66c47",
+    "feat/universal-evaluator-demo-jobs": "f974840f23af2ac3fe6274edd292771677965f32",
+    "feat/universal-evaluator-pre-post-reads": "8666c2ac2304ffd97a7ada121170c397d0f6125d"
+  },
+  "unit": {
+    "passed": 2306,
+    "failed": 0,
+    "skipped": 12
+  },
+  "localEvaluatorSdk": {
+    "passed": 9,
+    "failed": 0
+  },
+  "readOnlyProbe": {
+    "exitCode": 0,
+    "block": "24663931",
+    "ceaMatches": 4,
+    "demoStacksChecked": 2,
+    "jobsPerStack": 4,
+    "writes": 0
+  },
+  "build": "pass",
+  "types": [
+    "library build",
+    "full spec",
+    "evaluator-local"
+  ],
+  "lint": "Changed production files: zero errors/warnings",
+  "api": {
+    "compiledMatchesSource": true,
+    "baseline": "b1597b91a25dbf7f691f589b4e1e154add604315",
+    "note": "Historical baseline includes earlier AGW/marketplace work; not every reported API change originates in this checkpoint."
+  },
+  "package": "CJS/ESM, declaration examples and npm-content checks pass",
+  "marketplaceGuideBlocks": 9,
+  "scenarioSelection": {
+    "scenarios": 76,
+    "files": 40,
+    "distinctTests": 81,
+    "verified": true,
+    "execution": false
+  },
+  "checksums": {
+    "unit-results.json.gz": {
+      "rawSha256": "f4441538dafe97081724af90b94b70cf2c1c6a6770955765b5de941bd06ce43d",
+      "gzipSha256": "54dbf5769646225a1e63df45e753a2769b14e70d1d2d4c6a38b2f12dd180bb8a"
+    },
+    "api-comparison.json.gz": {
+      "rawSha256": "bfa364ac4bdb87a0fe1f28a554e5e2dd86f7725bf6e8ec5f0a801e1d17c24675",
+      "gzipSha256": "619c5a044f4b6eb27e22059be0b30b83b6ce54681c91d9b971b046eb9ef0f988"
+    }
+  },
+  "remaining": [
+    "Format/marketplace integration approval and deployment addresses",
+    "Whether card/open timing inputs remain",
+    "Multi-chain card scope, final structs, binding and fee model"
+  ],
+  "scope": "Actual local contracts with controlled metadata/consensus values; read-only live routing/state inspection. No new live E2E, funded transaction, deployment, upgrade, publication, commit, push or team message."
+}

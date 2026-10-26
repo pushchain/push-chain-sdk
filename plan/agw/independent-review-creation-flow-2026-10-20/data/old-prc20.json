@@ -1,0 +1,118 @@
+{
+  "at": "2026-10-20T16:35:54.980Z",
+  "block": "24457398",
+  "tokens": {
+    "USDC.eth.old": {
+      "address": "0x387b9C8Db60E74999aAAC5A2b7825b400F12d68E",
+      "SOURCE_CHAIN_NAMESPACE": "eip155:11155111",
+      "decimals": "6",
+      "symbol": "USDC.eth.old",
+      "name": "USDC.eth.old",
+      "totalSupply": "1320454406768",
+      "sourceWord": "0x0000000000000000000000001c7d4b196cb0c7b01d743fbc6116a902379c7238",
+      "outboundQuote": {
+        "gasToken": "0x2971824Db68229D087931155C2b8bB820B275809",
+        "gasFee": "550009000000",
+        "protocolFee": "0",
+        "chain": "eip155:11155111",
+        "gasLimitUsed": "500000"
+      }
+    },
+    "USDC.base.old": {
+      "address": "0x84B62e44F667F692F7739Ca6040cD17DA02068A8",
+      "SOURCE_CHAIN_NAMESPACE": "eip155:84532",
+      "decimals": "6",
+      "symbol": "USDC.base.old",
+      "name": "USDC.base.old",
+      "totalSupply": "1201126991000",
+      "sourceString": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "outboundQuote": {
+        "gasToken": "0xc7007af2B24D4eb963fc9633B0c66e1d2D90Fc21",
+        "gasFee": "3300000000000",
+        "protocolFee": "0",
+        "chain": "eip155:84532",
+        "gasLimitUsed": "500000"
+      }
+    },
+    "USDC.arb.old": {
+      "address": "0xa261A10e94aE4bA88EE8c5845CbE7266bD679DD6",
+      "SOURCE_CHAIN_NAMESPACE": "eip155:421614",
+      "decimals": "6",
+      "symbol": "USDC.arb.old",
+      "name": "USDC.arb.old",
+      "totalSupply": "1200157300000",
+      "sourceString": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+      "outboundQuote": {
+        "gasToken": "0xc0a821a1AfEd1322c5e15f1F4586C0B8cE65400e",
+        "gasFee": "11025300000000",
+        "protocolFee": "0",
+        "chain": "eip155:421614",
+        "gasLimitUsed": "500000"
+      }
+    },
+    "USDT.eth.old": {
+      "address": "0xCA0C5E6F002A389E1580F0DB7cd06e4549B5F9d3",
+      "SOURCE_CHAIN_NAMESPACE": "eip155:11155111",
+      "decimals": "6",
+      "symbol": "USDT.eth",
+      "name": "USDT.eth",
+      "totalSupply": "11788104181748262940",
+      "sourceWord": "0x0000000000000000000000007169d38820dfd117c3fa1f22a697dba58d90ba06",
+      "outboundQuote": {
+        "gasToken": "0x2971824Db68229D087931155C2b8bB820B275809",
+        "gasFee": "550009000000",
+        "protocolFee": "0",
+        "chain": "eip155:11155111",
+        "gasLimitUsed": "500000"
+      }
+    },
+    "USDT.arb.old": {
+      "address": "0x76Ad08339dF606BeEDe06f90e3FaF82c5b2fb2E9",
+      "SOURCE_CHAIN_NAMESPACE": "eip155:421614",
+      "decimals": "6",
+      "symbol": "USDT.arb",
+      "name": "USDT.arb",
+      "totalSupply": "1299969202105",
+      "sourceString": "0x1419d7C74D234fA6B73E06A2ce7822C1d37922f0",
+      "outboundQuote": {
+        "gasToken": "0xc0a821a1AfEd1322c5e15f1F4586C0B8cE65400e",
+        "gasFee": "11025300000000",
+        "protocolFee": "0",
+        "chain": "eip155:421614",
+        "gasLimitUsed": "500000"
+      }
+    },
+    "USDT.base.old": {
+      "address": "0x2C455189D2af6643B924A981a9080CcC63d5a567",
+      "SOURCE_CHAIN_NAMESPACE": "eip155:84532",
+      "decimals": "6",
+      "symbol": "USDT.base",
+      "name": "USDT.base",
+      "totalSupply": "1200000000003199951237442",
+      "sourceString": "0x9FF5a186f53F6E6964B00320Da1D2024DE11E0cB",
+      "outboundQuote": {
+        "gasToken": "0xc7007af2B24D4eb963fc9633B0c66e1d2D90Fc21",
+        "gasFee": "3300000000000",
+        "protocolFee": "0",
+        "chain": "eip155:84532",
+        "gasLimitUsed": "500000"
+      }
+    },
+    "USDT.bsc.old": {
+      "address": "0x2f98B4235FD2BA0173a2B056D722879360B12E7b",
+      "SOURCE_CHAIN_NAMESPACE": "eip155:97",
+      "decimals": "6",
+      "symbol": "USDT.bsc",
+      "name": "USDT.bsc",
+      "totalSupply": "1999997960033",
+      "sourceString": "0xBC14F348BC9667be46b35Edc9B68653d86013DC5",
+      "outboundQuote": {
+        "gasToken": "0x7a9082dA308f3fa005beA7dB0d203b3b86664E36",
+        "gasFee": "27500000000000",
+        "protocolFee": "0",
+        "chain": "eip155:97",
+        "gasLimitUsed": "500000"
+      }
+    }
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "checkedOn": "2026-10-26",
+  "source": "8666c2ac2304ffd97a7ada121170c397d0f6125d",
+  "branch": "feat/universal-evaluator-pre-post-reads",
+  "command": "forge test --match-contract '(UniversalEvaluator.*Test|UniversalHook.*Test|JobSpecLibrariesTest|JobSpecBuilderTest|UniversalMarketplaceConformanceTest)' --fuzz-runs 64 --json",
+  "exitCode": 0,
+  "passed": 170,
+  "failed": 0,
+  "skipped": 0,
+  "suites": {
+    "test/8183-tests/JobSpecBuilder.t.sol:JobSpecBuilderTest": {
+      "Success": 11,
+      "Failure": 0,
+      "Skipped": 0
+    },
+    "test/8183-tests/JobSpecLibraries.t.sol:JobSpecLibrariesTest": {
+      "Success": 24,
+      "Failure": 0,
+      "Skipped": 0
+    },
+    "test/8183-tests/UniversalEvaluator.criteria.t.sol:UniversalEvaluatorCriteriaTest": {
+      "Success": 27,
+      "Failure": 0,
+      "Skipped": 0
+    },
+    "test/8183-tests/UniversalEvaluator.deploy.t.sol:UniversalEvaluatorDeployTest": {
+      "Success": 5,
+      "Failure": 0,
+      "Skipped": 0
+    },
+    "test/8183-tests/UniversalEvaluator.gas.t.sol:UniversalEvaluatorGasTest": {
+      "Success": 4,
+      "Failure": 0,
+      "Skipped": 0
+    },
+    "test/8183-tests/UniversalEvaluator.settleFallback.t.sol:UniversalEvaluatorSettleFallbackTest": {
+      "Success": 1,
+      "Failure": 0,
+      "Skipped": 0
+    },
+    "test/8183-tests/UniversalEvaluator.t.sol:UniversalEvaluatorTest": {
+      "Success": 40,
+      "Failure": 0,
+      "Skipped": 0
+    },
+    "test/8183-tests/UniversalHook.binding.t.sol:UniversalHookBindingTest": {
+      "Success": 32,
+      "Failure": 0,
+      "Skipped": 0
+    },
+    "test/8183-tests/UniversalHook.designProofs.t.sol:UniversalHookDesignProofsTest": {
+      "Success": 1,
+      "Failure": 0,
+      "Skipped": 0
+    },
+    "test/8183-tests/UniversalHook.t.sol:UniversalHookTest": {
+      "Success": 21,
+      "Failure": 0,
+      "Skipped": 0
+    },
+    "test/8183-tests/UniversalMarketplace.conformance.t.sol:UniversalMarketplaceConformanceTest": {
+      "Success": 4,
+      "Failure": 0,
+      "Skipped": 0
+    }
+  },
+  "rawResultsSha256": "14a4722d126b4aa817266ccb2bba1d88e3f161125309cf14eb06a16b499bf663",
+  "compressedResultsSha256": "ca8c79da528a7d45a117658ced787198ad175a91b5047a4eb3b20f03e1609965",
+  "sourceSha256": {
+    "src/agentic-commerce-8183/libraries/JobSpecTypes.sol": "be6cf48fd6c4ed56c789ad7eaae96df7b55566ae55dae26d50aaa3d6aa348cbf",
+    "src/agentic-commerce-8183/libraries/Types.sol": "79bcf6d87d841ff45b916cc376bc914a5fb2c4dfec86dd4bdce04fe84ef1da6d",
+    "src/agentic-commerce-8183/libraries/JobSpecBuilder.sol": "2654299f3ca9a58653e06e008af103a8104f41ae38f2b69a1da0f72a4f7b3368",
+    "src/agentic-commerce-8183/interfaces/IUniversalEvaluator.sol": "1799060546906d2ee31eece55ebac29b7f731060b62cc6c668bae15c96309f61",
+    "src/agentic-commerce-8183/hooks/UniversalHook.sol": "eeb3f4e4dfde57a985a8e8fb09b00b559478f79063e4917fb91cea617050e333",
+    "src/agentic-commerce-8183/evaluator/UniversalEvaluator.sol": "a894f14820dbfda9e1fe7cdab23b7e418bbbb02f774b9a0fc691b052c135d06a",
+    "scripts/agentic-commerce-8183/UniversalEvaluatorDeploy.sol": "2ac0663e3a8dc22eb32426c845340bcba701bfc583b2d2449d3f38371d544cc6"
+  },
+  "scope": "Local contract tests with mocked external dependencies, including 27 criteria cases, deploy/wiring, gas and settlement fallback checks. 64 runs per fuzz test. No SDK runtime changes, funded E2Es or deployments."
+}

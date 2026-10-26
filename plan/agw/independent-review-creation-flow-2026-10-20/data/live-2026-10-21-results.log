@@ -1,0 +1,16 @@
+2026-10-21T02:23:41Z
+│ Push master (Donut) │ PC        │  58.2500 │ 967421.5716 │   ✓    │
+│ Push master (Donut) │ pUSDT.sol │ 0.002500 │  10006.8109 │   ✓    │
+PASS core-e2e __e2e__/agw/svm-agent-spl.spec.ts (241.627 s)
+    ✓ 1. exact wallet ATA and amount constraints survive create and two omitted-gas deliveries (237025 ms)
+Tests:       1 passed, 1 total
+2026-10-21T02:27:58Z
+2026-10-21T02:27:58Z
+│ Push master (Donut) │ PC    │ 132.0000 │ 967380.0700 │   ✓    │
+PASS core-e2e __e2e__/agw/gas-live.spec.ts (752.143 s)
+    ✓ 1. Sepolia first-use and subsequent execution (200864 ms)
+    ✓ 2. Base Sepolia first-use and subsequent execution (194183 ms)
+    ✓ 3. Arbitrum Sepolia first-use and subsequent execution (173553 ms)
+    ✓ 4. BNB testnet first-use and subsequent execution (182185 ms)
+Tests:       4 passed, 4 total
+2026-10-21T02:40:43Z

@@ -1,0 +1,68 @@
+{
+  "checkedOn": "2026-10-26",
+  "sdkHead": "e61c96068b18d6961411267e215658ecc035c09f",
+  "delivery": "local uncommitted and unpushed cleanup on top of local evaluator work",
+  "agwSource": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+  "units": {
+    "pass": 2302,
+    "failed": 0,
+    "skipped": 12
+  },
+  "agwLocal": {
+    "pass": 108,
+    "failed": 0,
+    "suites": 14
+  },
+  "evaluatorLocal": {
+    "pass": 8,
+    "failed": 0
+  },
+  "build": "pass",
+  "types": [
+    "full spec",
+    "AGW-local",
+    "evaluator-local"
+  ],
+  "productionLint": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "testLint": {
+    "warnings": 3,
+    "unchangedFromCommittedBaseline": true
+  },
+  "guides": {
+    "AGW": 8,
+    "MARKETPLACE": 9
+  },
+  "package": "CJS/ESM, declaration examples and npm contents pass",
+  "publicApi": {
+    "compiledMatchesSource": true,
+    "comparisonBaseline": "b1597b91a25dbf7f691f589b4e1e154add604315",
+    "intentionalRemoval": "ReadyPresetOptions",
+    "replacement": "PresetOptionsWithAgent",
+    "compatibilityAlias": false
+  },
+  "scenarioVerification": {
+    "scenarios": 76,
+    "files": 40,
+    "distinctTests": 81,
+    "passed": true,
+    "fundedExecution": false
+  },
+  "checksums": {
+    "unit-results.json.gz": {
+      "rawSha256": "d9c739d044733ae66b2c3031a35c62de7b94347cfe337aaebb2115e96656c8cd",
+      "gzipSha256": "12cb573b27e67fa2a0b94bceaa449d7dff868631e6001f80ed988df66403ca65"
+    },
+    "api-comparison.json.gz": {
+      "rawSha256": "6d8659ff9ecb657340d6cd558c859e62421c4f871425727d42d2ecf8470dc49a",
+      "gzipSha256": "aabed74a1f707786c17fe2808bd62a83790130a0da33e88167ad8d1d8735ab98"
+    }
+  },
+  "limits": [
+    "Local gateway/core/destination services are fixtures.",
+    "No live broadcasts, contract deployment of record, publication, commit or push.",
+    "The earlier marketplace-fork RPC limitation is not reclassified as a pass."
+  ]
+}

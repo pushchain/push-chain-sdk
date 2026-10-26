@@ -1,0 +1,17 @@
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__agw-local__/svm-backend.spec.ts
+  142:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  170:18  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  229:28  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  403:18  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  427:23  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  471:22  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  543:61  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__agw-local__/svm-differential.spec.ts
+   74:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  212:20  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  265:18  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  384:20  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+✖ 11 problems (0 errors, 11 warnings)

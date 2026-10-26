@@ -1,0 +1,24 @@
+{
+  "chainId": 1,
+  "block": "26194814",
+  "contracts": [
+    {
+      "name": "Lido stETH",
+      "address": "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84",
+      "bytes": 1035,
+      "codeHash": "0xb9c1c929064cd21734c102a698e68bf617feefcfa5a9f62407c45401546736bf"
+    },
+    {
+      "name": "Lido wstETH",
+      "address": "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0",
+      "bytes": 6492,
+      "codeHash": "0x630181884786c962140041cffa3acffbf39d8c93bde1a62b7b55046e57400557"
+    },
+    {
+      "name": "Lido withdrawal queue",
+      "address": "0x889edC2eDab5f40e902b864aD4d7AdE8E412F9B1",
+      "bytes": 2497,
+      "codeHash": "0x9bc25fa4b2f98d56db4aa4156a6dc98360ccd4ef9c7bc7f891797b0024272100"
+    }
+  ]
+}
