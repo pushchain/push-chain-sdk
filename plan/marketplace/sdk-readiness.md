@@ -18,9 +18,15 @@ October 20, 2026, `feat/agw-sdk-v4`. Scope: deployed UniversalMarketplace v2, AG
 
 There is no remaining implementation item in this scoped checklist waiting for an SDK-only follow-up. The evidence distinguishes local simulation, fork execution and live transactions; it does not substitute one for another.
 
+## October 26 — confirmed next evaluator target
+
+Nilesh corrected the branch to `feat/universal-evaluator-pre-post-reads`, checked at `8666c2a` in [contracts PR #132](https://github.com/pushchain/push-chain-core-contracts/pull/132). Source selection is resolved. **SDK migration work for this target is pending and can proceed locally:** versioned JobSpec/template codecs and PRE/POST authoring, summed checks and logic, spec-hash/fee-aware funding, evaluator verification/retry/settlement and status/watch integration. [Exact differences and acceptance scope](research/evaluator-pre-post-2026-10-26/README.md).
+
+The October 20 completion claim above applies to the deployed manual-evaluator v2 scope. It does not claim support for this newer target. Existing deployed encodings must remain compatible; switching them silently would break current cards/jobs.
+
 ## External contract/deployment boundary
 
-- **`job.verify` and automatic evaluation:** a compatible hook/evaluator, agreed shared JobSpec schema and callable verify/retry interface must be delivered. The current marketplace evaluator is an EOA. Live paid tests use fresh controlled evaluators on plain kernel jobs; they do not replace or impersonate the marketplace evaluator.
+- **Automatic-evaluation live rollout:** compatible marketplace/hook/evaluator deployment addresses and the rollout commit are still needed for Donut acceptance. The target source and callable APIs are now known; they do not block local SDK implementation. The current marketplace evaluator is an EOA. Earlier live paid tests use fresh controlled evaluators on plain kernel jobs; they do not replace or impersonate the marketplace evaluator.
 - **Three CEA rollouts:** align marketplace and routing manifests for Sepolia, Base Sepolia and Arbitrum Sepolia. Both tables currently answer but derive different accounts. BSC works. Changing SDK globals without coordinated routing evidence would redirect account derivation.
 
 Only these current dependencies should go to the team. [Ready-to-share questions](questions.md).

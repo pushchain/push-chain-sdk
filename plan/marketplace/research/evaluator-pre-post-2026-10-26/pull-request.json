@@ -1,0 +1,8 @@
+{
+  "number": 132,
+  "title": "PRE/POST reads and two-read checks for the universal evaluator",
+  "url": "https://github.com/pushchain/push-chain-core-contracts/pull/132",
+  "body": "- JobSpec: `nodes` \u2192 `logic`; an unset mutability flag now means BOTH.\n- `Read.at` (PRE / POST execution). `Check.left` / `right` are lists of reads, each side summed: CMP `\u03a3left op target`, NUM / PCT `\u03a3left` against `\u03a3right`, across chains and moments. Up to 32 reads and 64 terms.\n- Evaluator: PRE reads go out at `fund`, POST at `submit`. `snapshotOf` / `snapshotRequestOf` removed; `evidenceOf` returns one hash. `JobSpecLib.validate` is now a linked library (evaluator 23.5 KB).\n- Hook: deployed fresh with the evaluator (`scripts/agentic-commerce-8183`). `initializeV2` and RulesBindingHook removed; UniversalHook does the rules binding, and its errors are all in `UniversalHookErrors` (same selectors).\n- Tests: 27 end-to-end criteria cases, judge truth tables, a max-terms gas case, deploy tests; marketplace gas ceilings re-measured.",
+  "headRefOid": "8666c2ac2304ffd97a7ada121170c397d0f6125d",
+  "baseRefName": "feat/universal-evaluator"
+}

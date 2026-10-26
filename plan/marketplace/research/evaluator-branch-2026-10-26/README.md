@@ -1,5 +1,7 @@
 # Explicit evaluator branch check — October 26, 2026
 
+**Later correction:** Nilesh identified `feat/universal-evaluator-pre-post-reads` as the current branch. [The corrected target and SDK migration scope](../evaluator-pre-post-2026-10-26/README.md) supersede this older branch as the integration target. The source comparisons and test evidence below remain historical facts.
+
 The previous review used Notion-linked evaluator `8059817591cca16c59f1cc154f475f51e1736a67`. This follow-up explicitly fetched `feat/universal-evaluator`, whose head is [`46e79024562fc995a68bb17df3d31c58c1a2a178`](https://github.com/pushchain/push-chain-core-contracts/tree/46e79024562fc995a68bb17df3d31c58c1a2a178). Git merge-base confirms that head is an ancestor of `8059817`, not a newer replacement. `sdk-iteration-v1` remains at deployment pin `443b4e2dd9ca5dd9ffc8efebdfcecd619dd66c47`. Neither working tree was switched or edited.
 
 ## JobSpec comparison

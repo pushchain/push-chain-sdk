@@ -4,6 +4,12 @@ Running history for work continued on `feat/agw-sdk-v4`, covering AGW, marketpla
 
 For each meaningful checkpoint, add a dated entry with the change, decisions, validation, remaining work and relevant commit/evidence links. Keep earlier entries as history and mark superseded decisions explicitly. Distinguish implemented code, planning, local/fork checks, funded execution, Git delivery and package publication. Git history for this file records the exact commit introducing each checkpoint.
 
+## 2026-10-26 — corrected current evaluator branch
+
+Nilesh's correction names `feat/universal-evaluator-pre-post-reads`, fetched at `8666c2a` and matched to open contracts PR #132. This supersedes the older branch as the next SDK target. The source now removes JobSpec timing fields and exposes `retryEvaluation` to client or provider. Recorded the full migration scope; source selection no longer blocks local SDK work. Narrowed the second team question to compatible Donut rollout details.
+
+**Validation:** 170 local contract tests pass across 11 suites, including PRE/POST criteria, builder conformance, hook binding, deployment, gas and settlement fallback; fuzz tests run 64 iterations. ABI examples confirm the new schema differs from both deployed v2 and the earlier `8059817` snapshot. [Evidence and migration tasks](marketplace/research/evaluator-pre-post-2026-10-26/README.md). Documentation/evidence only; the SDK runtime migration is pending. No funded E2Es or deployments.
+
 ## 2026-10-26 — explicit universal-evaluator branch check
 
 Fetched `feat/universal-evaluator@46e7902` and compared its JobSpec, hook and evaluator with the deployed marketplace and the previously reviewed Notion-linked `8059817`. The branch defines funding spec-hash protection and concrete snapshot/verification/retry APIs, but its wire remains incompatible with the deployed marketplace. Narrowed the second [team question](marketplace/questions.md) to the target commit and compatible deployment/ABI delivery.

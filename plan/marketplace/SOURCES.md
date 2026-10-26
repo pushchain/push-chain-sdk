@@ -26,6 +26,8 @@ Page exports **exclude comments**. Current All discussions panels on pages 2, 6,
 
 ## Repeatable review
 
+October 26 correction from Nilesh, supplied by the user: the current branch is `feat/universal-evaluator-pre-post-reads`, not `feat/universal-evaluator`. Fetched head `8666c2ac2304ffd97a7ada121170c397d0f6125d` matches open [contracts PR #132](https://github.com/pushchain/push-chain-core-contracts/pull/132). This establishes the next SDK integration target; the older branch and `8059817` remain historical comparisons. [Current source check, migration scope and 170 passing local contract tests](research/evaluator-pre-post-2026-10-26/README.md).
+
 October 26 follow-up: fetched and checked `feat/universal-evaluator@46e79024562fc995a68bb17df3d31c58c1a2a178` explicitly. It is an ancestor of the previously linked `8059817`, with a third JobSpec layout. [Source comparison, 69 focused contract tests and fresh read-only deployment probe](research/evaluator-branch-2026-10-26/README.md). This supplements the October 20 baseline; it does not replace the deployed marketplace schema.
 
 1. Export the stack index with subpages again; retain ZIP and hashes. Match pages by stable ID. Keep comments separate.

@@ -8,10 +8,10 @@ The SDK and marketplace registry use different CEA factories on **Sepolia, Base 
 
 [Current address comparison](implementation-status.md#destination-rollout-mismatch)
 
-## 2. Which JobSpec/evaluator version should the SDK target?
+## 2. When will the compatible marketplace/evaluator stack be available on Push Donut?
 
-We checked `feat/universal-evaluator@46e7902` and the Notion-linked `8059817`. Neither JobSpec format matches the deployed marketplace. The live marketplace still uses a manual EOA evaluator, so `client.job.verify` remains disabled.
+Nilesh confirmed `feat/universal-evaluator-pre-post-reads` ([contracts PR #132](https://github.com/pushchain/push-chain-core-contracts/pull/132)) as the current branch. The SDK can implement against this source; the existing Donut marketplace uses a different JobSpec format and a manual evaluator.
 
-**Please confirm the target JobSpec commit and share compatible marketplace/hook/evaluator deployment addresses and ABIs for Push Donut.**
+**Please share the rollout commit and addresses for the compatible marketplace, hook and evaluator on Push Donut.**
 
-[Branch comparison and existing verification/retry APIs](research/evaluator-branch-2026-10-26/README.md)
+[Checked source and SDK migration scope](research/evaluator-pre-post-2026-10-26/README.md)
