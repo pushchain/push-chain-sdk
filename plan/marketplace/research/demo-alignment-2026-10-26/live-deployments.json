@@ -1,0 +1,276 @@
+{
+  "observedAt": "2026-10-26T13:26:31.000Z",
+  "pushBlock": "24663931",
+  "sampleWallet": "0x3fE044FD8c3EDc0e7ab18cF35Eda254B4eC15F55",
+  "marketplace": {
+    "address": "0x9071ebE01B75123A91e88eB6ec4BF163F3fE9BF4",
+    "kernel": {
+      "value": "0x977cf1AC973E9eC4332791d531507575006157Ed"
+    },
+    "hook": {
+      "value": "0xDe7A94e510b6C571DE7880d441349689F73A32b3"
+    },
+    "evaluator": {
+      "value": "0x1afC81396f1bb36F91f74506284952b81e4bd47c"
+    },
+    "paymentToken": {
+      "value": "0x7A58048036206bB898008b5bBDA85697DB1e5d66"
+    },
+    "evaluatorCode": {
+      "value": {
+        "bytes": 0,
+        "hash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+      }
+    }
+  },
+  "cea": [
+    {
+      "chain": "eip155:11155111",
+      "sdkFactory": "0x5E191fbBe22F8866C5e4250557664fCE760e8870",
+      "marketplaceDeployment": {
+        "value": [
+          "0x5E191fbBe22F8866C5e4250557664fCE760e8870",
+          "0x425291f35BA1A94Bd2dcC2dC097c2B55700A1fB6"
+        ]
+      },
+      "marketplaceCEA": {
+        "value": "0x20dc068A03fF074199Fe0a992209feF1feEa1B36"
+      },
+      "externalBlock": {
+        "value": "11998275"
+      },
+      "vaultFactory": {
+        "value": "0x5E191fbBe22F8866C5e4250557664fCE760e8870"
+      },
+      "gatewayFactory": {
+        "value": "0x5E191fbBe22F8866C5e4250557664fCE760e8870"
+      },
+      "sdkImplementation": {
+        "value": "0x425291f35BA1A94Bd2dcC2dC097c2B55700A1fB6"
+      },
+      "sdkCEA": {
+        "value": "0x20dc068A03fF074199Fe0a992209feF1feEa1B36"
+      },
+      "matches": true
+    },
+    {
+      "chain": "eip155:84532",
+      "sdkFactory": "0x7e8CeeDA043ED1460540616103dD57581a66C856",
+      "marketplaceDeployment": {
+        "value": [
+          "0x7e8CeeDA043ED1460540616103dD57581a66C856",
+          "0xe816b67B73c47e51E4B263c9149675b589E8e741"
+        ]
+      },
+      "marketplaceCEA": {
+        "value": "0xcB1e5EfFBee2f0d973a61dEF8eB84A7c5c5aBD42"
+      },
+      "externalBlock": {
+        "value": "50496632"
+      },
+      "vaultFactory": {
+        "value": "0x7e8CeeDA043ED1460540616103dD57581a66C856"
+      },
+      "gatewayFactory": {
+        "value": "0x7e8CeeDA043ED1460540616103dD57581a66C856"
+      },
+      "sdkImplementation": {
+        "value": "0xe816b67B73c47e51E4B263c9149675b589E8e741"
+      },
+      "sdkCEA": {
+        "value": "0xcB1e5EfFBee2f0d973a61dEF8eB84A7c5c5aBD42"
+      },
+      "matches": true
+    },
+    {
+      "chain": "eip155:421614",
+      "sdkFactory": "0x65572FFa81c230360a8a53C1682C7f0Ee321E5E7",
+      "marketplaceDeployment": {
+        "value": [
+          "0x65572FFa81c230360a8a53C1682C7f0Ee321E5E7",
+          "0xe27c8f93b4e01C9557b41C702Fa2634B9e5728CE"
+        ]
+      },
+      "marketplaceCEA": {
+        "value": "0x85e886D21927d823F741ceA540eDa7371CCf1175"
+      },
+      "externalBlock": {
+        "value": "323032731"
+      },
+      "vaultFactory": {
+        "value": "0x65572FFa81c230360a8a53C1682C7f0Ee321E5E7"
+      },
+      "gatewayFactory": {
+        "value": "0x65572FFa81c230360a8a53C1682C7f0Ee321E5E7"
+      },
+      "sdkImplementation": {
+        "value": "0xe27c8f93b4e01C9557b41C702Fa2634B9e5728CE"
+      },
+      "sdkCEA": {
+        "value": "0x85e886D21927d823F741ceA540eDa7371CCf1175"
+      },
+      "matches": true
+    },
+    {
+      "chain": "eip155:97",
+      "sdkFactory": "0x3f1B16e0B072d472951C4563d29d3da6a3EE3Ce8",
+      "marketplaceDeployment": {
+        "value": [
+          "0x3f1B16e0B072d472951C4563d29d3da6a3EE3Ce8",
+          "0x0ff5d8b7d9Ac3ee2Ad420e9b70Ed6Dc465f593e9"
+        ]
+      },
+      "marketplaceCEA": {
+        "value": "0xD45b2eC62F27552e2213Ce0B7a0B08cbf1A8c1a9"
+      },
+      "externalBlock": {
+        "value": "139045367"
+      },
+      "vaultFactory": {
+        "value": "0x3f1B16e0B072d472951C4563d29d3da6a3EE3Ce8"
+      },
+      "gatewayFactory": {
+        "value": "0x3f1B16e0B072d472951C4563d29d3da6a3EE3Ce8"
+      },
+      "sdkImplementation": {
+        "value": "0x0ff5d8b7d9Ac3ee2Ad420e9b70Ed6Dc465f593e9"
+      },
+      "sdkCEA": {
+        "value": "0xD45b2eC62F27552e2213Ce0B7a0B08cbf1A8c1a9"
+      },
+      "matches": true
+    }
+  ],
+  "stacks": {
+    "conversation": {
+      "kernel": "0x449C11cAFe57d8d9079058FeEef8e9E7E1DCBcE0",
+      "hook": "0xbee0B01773Dc742887f04bED58BD1B5Aa457ED96",
+      "evaluator": "0x2a73944D79E052bAF553F59fA1c7C23f3491845c",
+      "getters": {
+        "kernelToken": {
+          "value": "0x8E1eD40770cd197c80048cB3a86D3c8173cd560D"
+        },
+        "jobCounter": {
+          "value": "14"
+        },
+        "hookKernel": {
+          "value": "0x449C11cAFe57d8d9079058FeEef8e9E7E1DCBcE0"
+        },
+        "hookEvaluator": {
+          "value": "0x2a73944D79E052bAF553F59fA1c7C23f3491845c"
+        },
+        "agwFactory": {
+          "value": "0xFBBEB6a365178fAaA81A9789a5f64b300c37e5bc"
+        },
+        "sessionEngine": {
+          "value": "0xf63DC0628fe1B25049FE3E3a3585Ef051CB98c1d"
+        },
+        "evaluatorKernel": {
+          "value": "0x449C11cAFe57d8d9079058FeEef8e9E7E1DCBcE0"
+        },
+        "evaluatorHook": {
+          "value": "0xbee0B01773Dc742887f04bED58BD1B5Aa457ED96"
+        }
+      },
+      "jobs": [
+        {
+          "id": "1",
+          "status": 3,
+          "descriptionHash": "0xfafee4629d238c1a161c2c57e64b70ed710d970ac6853cd2d0d09512126e7f11",
+          "timingFirstCanonical": true,
+          "reads": 4,
+          "currentProfileCanonical": false
+        },
+        {
+          "id": "2",
+          "status": 3,
+          "descriptionHash": "0x098ee8855eaf1ac1e7d1f3670dab63f1083bea1164de0343e382dc4e436a39f8",
+          "timingFirstCanonical": true,
+          "reads": 5,
+          "currentProfileCanonical": false
+        },
+        {
+          "id": "3",
+          "status": 3,
+          "descriptionHash": "0xccb39df4ed7f7f522af83f529f2e81962b028c6c989459f59373c8793b610197",
+          "timingFirstCanonical": true,
+          "reads": 6,
+          "currentProfileCanonical": false
+        },
+        {
+          "id": "4",
+          "status": 3,
+          "descriptionHash": "0x00e620c6d92c32629e5ad5a62683224e78630ca474e317ee5ef72a2d2198323d",
+          "timingFirstCanonical": true,
+          "reads": 4,
+          "currentProfileCanonical": false
+        }
+      ]
+    },
+    "downloadedDemo": {
+      "kernel": "0x4F9bbb7d75900DAc1631504BCf3047B199D7B1E0",
+      "hook": "0x360C1D85574580aa1B1213816C777fE3868D5BEC",
+      "evaluator": "0x7D6208f2008a54f6B1F613d3BF27008f6aEA4Ce3",
+      "getters": {
+        "kernelToken": {
+          "value": "0x8E1eD40770cd197c80048cB3a86D3c8173cd560D"
+        },
+        "jobCounter": {
+          "value": "8"
+        },
+        "hookKernel": {
+          "value": "0x4F9bbb7d75900DAc1631504BCf3047B199D7B1E0"
+        },
+        "hookEvaluator": {
+          "value": "0x7D6208f2008a54f6B1F613d3BF27008f6aEA4Ce3"
+        },
+        "agwFactory": {
+          "value": "0xFBBEB6a365178fAaA81A9789a5f64b300c37e5bc"
+        },
+        "sessionEngine": {
+          "value": "0xf63DC0628fe1B25049FE3E3a3585Ef051CB98c1d"
+        },
+        "evaluatorKernel": {
+          "value": "0x4F9bbb7d75900DAc1631504BCf3047B199D7B1E0"
+        },
+        "evaluatorHook": {
+          "value": "0x360C1D85574580aa1B1213816C777fE3868D5BEC"
+        }
+      },
+      "jobs": [
+        {
+          "id": "1",
+          "status": 4,
+          "descriptionHash": "0xdf7317c55c4c10cf7a8b0b793d032fa4aba67295f4b9fc086f3d48d1b2a025a1",
+          "timingFirstCanonical": true,
+          "reads": 4,
+          "currentProfileCanonical": false
+        },
+        {
+          "id": "2",
+          "status": 3,
+          "descriptionHash": "0xbe25e713b6ad9630136bf3d4ae578a3960ac8d2e4fa3a367442887041345ab07",
+          "timingFirstCanonical": true,
+          "reads": 4,
+          "currentProfileCanonical": false
+        },
+        {
+          "id": "3",
+          "status": 3,
+          "descriptionHash": "0x999ccfb4f1088026d26a10c8c99d5df031fd72300284755d337c05fddf2480a1",
+          "timingFirstCanonical": true,
+          "reads": 5,
+          "currentProfileCanonical": false
+        },
+        {
+          "id": "4",
+          "status": 3,
+          "descriptionHash": "0x4e4e17789c6fe9ca0afa34fa74faec4525595a42649394d62596755072206e75",
+          "timingFirstCanonical": true,
+          "reads": 6,
+          "currentProfileCanonical": false
+        }
+      ]
+    }
+  }
+}

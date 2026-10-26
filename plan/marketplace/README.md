@@ -1,17 +1,19 @@
 # Agentic marketplace SDK planning
 
-October 26 update: Nilesh confirmed `feat/universal-evaluator-pre-post-reads` as the current evaluator branch. [Checked target, SDK migration work and local contract validation](research/evaluator-pre-post-2026-10-26/README.md). This resolves the source-selection question; implementing the newer profile locally can proceed before its Donut deployment. The completion figures below describe the existing deployed v2 scope.
+October 26 update: Nilesh confirmed `feat/universal-evaluator-pre-post-reads` as the current evaluator branch. [Checked target, SDK migration work and local contract validation](research/evaluator-pre-post-2026-10-26/README.md). The explicit evaluator/kernel profile is now implemented locally; see [SDK validation and the remaining marketplace/rollout boundary](research/sdk-evaluator-local-2026-10-26/README.md). The completion figures below describe the existing deployed v2 scope.
 
 Updated October 20, 2026. **SDK-only work is complete for the current EVM v2 scope:** see [readiness and external boundaries](sdk-readiness.md) and [coverage/acceptance](implementation-status.md). 28 of the 29 named APIs are implemented; `job.verify` awaits compatible contracts. Real token deposits, origin bridging and native/AGW payouts pass live. The initial contract-only research below remains history. No package was published.
 
 **Build against deployed UniversalMarketplace v2, pinned at `sdk-iteration-v1@443b4e2dd9ca5dd9ffc8efebdfcecd619dd66c47`.** The six supplied Notion pages were exported again through signed-in Chrome, and their visible discussion panels were reviewed. The older marketplace pages in `plan/agw/notion` remain historical.
+
+October 26 demo follow-up: CEA alignment is verified on all four chains. The downloaded demo still uses timing-first criteria on a different stack; its successful jobs do not establish compatibility with the new format. [Findings, submit safeguards and current open decisions](research/demo-alignment-2026-10-26/README.md).
 
 ## Start here
 
 | Document | Purpose |
 | --- | --- |
 | [SDK development history](../SDK-CHANGELOG.md) | Running checkpoints, decisions, validation and Git delivery on feat/agw-sdk-v4 |
-| [Implementation status](implementation-status.md) | Implemented SDK methods, explicit placeholders, current CEA mismatch and passing local/live coverage |
+| [Implementation status](implementation-status.md) | Implemented SDK methods, explicit placeholders, CEA alignment and passing local/live coverage |
 | [Verified baseline](current-baseline.md) | Deployment, capabilities, exact wire, and shipped versus future behavior |
 | [Source inventory](SOURCES.md) | Fresh exports, immutable contract pins, comments and source priority |
 | [Spec/contract gaps](analysis/spec-and-contract-gaps.md) | Concrete mismatches, ownership and effect on delivery |

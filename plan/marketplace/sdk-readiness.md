@@ -20,16 +20,17 @@ There is no remaining implementation item in this scoped checklist waiting for a
 
 ## October 26 — confirmed next evaluator target
 
-Nilesh corrected the branch to `feat/universal-evaluator-pre-post-reads`, checked at `8666c2a` in [contracts PR #132](https://github.com/pushchain/push-chain-core-contracts/pull/132). Source selection is resolved. **SDK migration work for this target is pending and can proceed locally:** versioned JobSpec/template codecs and PRE/POST authoring, summed checks and logic, spec-hash/fee-aware funding, evaluator verification/retry/settlement and status/watch integration. [Exact differences and acceptance scope](research/evaluator-pre-post-2026-10-26/README.md).
+Nilesh corrected the branch to `feat/universal-evaluator-pre-post-reads`, pinned at `8666c2a` in [contracts PR #132](https://github.com/pushchain/push-chain-core-contracts/pull/132). **The SDK evaluator/kernel integration is implemented locally:** explicit PRE/POST codecs/templates and authoring, exact summed-check previews, scoped evaluator configuration, reviewed spec-hash/PC-aware atomic funding, retries/settlement/refund and evaluator status/watch. Default v2 encoding and the deployed marketplace adapter are retained. [Implementation and acceptance evidence](research/sdk-evaluator-local-2026-10-26/README.md).
 
-The October 20 completion claim above applies to the deployed manual-evaluator v2 scope. It does not claim support for this newer target. Existing deployed encodings must remain compatible; switching them silently would break current cards/jobs.
+The contract branch's marketplace predates the live v2 card/rules ABI. A compatible marketplace integration commit is still needed to wire its new template through v2 card registration/open/deposit. This is distinct from the locally implemented helpers and kernel lifecycle; the SDK does not silently revive the older marketplace/owner-approval interface. Mutable criteria negotiation remains deferred.
 
 ## External contract/deployment boundary
 
-- **Automatic-evaluation live rollout:** compatible marketplace/hook/evaluator deployment addresses and the rollout commit are still needed for Donut acceptance. The target source and callable APIs are now known; they do not block local SDK implementation. The current marketplace evaluator is an EOA. Earlier live paid tests use fresh controlled evaluators on plain kernel jobs; they do not replace or impersonate the marketplace evaluator.
-- **Three CEA rollouts:** align marketplace and routing manifests for Sepolia, Base Sepolia and Arbitrum Sepolia. Both tables currently answer but derive different accounts. BSC works. Changing SDK globals without coordinated routing evidence would redirect account derivation.
+- **Automatic-evaluation live rollout:** compatible marketplace/hook/evaluator deployment addresses and the rollout commit are still needed for Donut acceptance. The source/API integration is locally implemented. Matching the new builder to the v2 marketplace interface and delivering its Donut rollout remain contract work. The current marketplace evaluator is an EOA. Earlier live paid tests use fresh controlled evaluators on plain kernel jobs; they do not replace or impersonate the marketplace evaluator.
 
-Only these current dependencies should go to the team. [Ready-to-share questions](questions.md).
+CEA rollout alignment was verified on all four chains at block 24663931 and is no longer pending. Marketplace timing retention and multi-chain card scope remain team decisions; Aman's preference does not settle the contract format. [Demo review and new submit guard](research/demo-alignment-2026-10-26/README.md).
+
+Only the unresolved decisions/deployment handoff should go to the team. [Ready-to-share questions](questions.md).
 
 ## Later scope and release action
 

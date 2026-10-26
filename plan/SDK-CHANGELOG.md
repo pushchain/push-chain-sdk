@@ -4,6 +4,34 @@ Running history for work continued on `feat/agw-sdk-v4`, covering AGW, marketpla
 
 For each meaningful checkpoint, add a dated entry with the change, decisions, validation, remaining work and relevant commit/evidence links. Keep earlier entries as history and mark superseded decisions explicitly. Distinguish implemented code, planning, local/fork checks, funded execution, Git delivery and package publication. Git history for this file records the exact commit introducing each checkpoint.
 
+## 2026-10-26 — commit v4 and implementation-only v5
+
+Committed the evaluator/marketplace work and AGW cleanup as `ad75da0e` on `feat/agw-sdk-v4` and cherry-picked the same implementation as `1076106b` on `feat/agw-sdk-v5`. Planning/research stays on v4. V5's existing `6.0.27-alpha.7` package metadata, release changelog, lockfile and inherited plan tree are unchanged; only the new implementation/test/consumer-doc paths were applied.
+
+Made the PRE/POST unit fixture self-contained under `packages/core/src/lib/job-spec/__fixtures__`, so the tests do not require excluded plan evidence. Its 20 focused tests pass. V5 independently passes 2,306 units (12 existing skips), nine local evaluator SDK scenarios, build/API/package and both guide checks. [Branch delivery evidence](marketplace/research/git-delivery-2026-10-26/README.md). Package publication remains separate.
+
+## 2026-10-26 — demo review, resolved CEA rollout and submit safeguards
+
+Reviewed the user's downloaded `marketplace_demo` snapshot, matching seven entrypoints to `0d765e0`. Its config uses a different demo deployment from the pasted conversation; both stacks still store timing-first criteria and the app opens directly through the kernel (`marketplace: null`). Neither establishes compatibility with the latest timing-free profile. Confirmed the single-rule fund binding and kept multi-chain card/fee/timing choices open.
+
+**Implemented locally:** optional `job.submit({ executionBlocks })` validates the frozen POST chains, tracked work blocks and observation freshness before signing. Inputs are copied before reads; early or stale tracking produces explicit retryable errors without submission. Added a real-contract cross-chain sum/measurement-height scenario. Corrected the obsolete live-readiness claim that deposit orchestration is a placeholder.
+
+**Verified:** all four marketplace CEA factories, proxy implementations, vault/gateway factory getters and sample derived addresses match at Donut block 24663931. Removed the resolved CEA question; SDK address constants and mismatch guards remain. Current questions cover approved format/stack, card/open timing fields and multi-chain card scope/format. 2,306 unit tests and nine local evaluator SDK scenarios pass; build/types, lint, package/API/guide checks and scenario selection verification pass. [Evidence and limits](marketplace/research/demo-alignment-2026-10-26/README.md). No public-chain write, contract upgrade/deployment, commit, push or publication.
+
+## 2026-10-26 — remove obsolete AGW compatibility plumbing
+
+The AGW runtime was already v6-only. Removed its all-enabled capability enum/set/check plumbing and manifest capability overrides, plus the unused non-index-bound deployment encoder. Factory/source/account/wiring checks, ownership, policy validation and spend assertions remain. Replaced the obsolete public name `ReadyPresetOptions` with `PresetOptionsWithAgent`, without an alias. Renamed v5-labelled current-contract test files, E2E case IDs/evidence labels and docs to the actual v6 target; runner mappings were updated. Current Solana token-program handling and v6 wire encoders are retained.
+
+**Validation:** 2,302 unit tests (12 existing skips), 108 local AGW contract tests and eight local evaluator SDK cases pass. Build/types, source/built API comparison, CJS/ESM/declaration/npm-content checks, both consumer guides and all 76 E2E scenario mappings pass. Production lint has zero errors/warnings; three pre-existing warnings remain in tests whose labels were corrected. [Cleanup evidence](agw/research/v6-cleanup-2026-10-26/README.md). No live transactions, commit or push; this cleanup and the preceding evaluator work remain local.
+
+## 2026-10-26 — local PRE/POST SDK implementation
+
+**Implemented locally:** explicit `utils.job.prePost` codecs/templates, phase-aware authoring/resolution/descriptions and paid previews, exact summed/percentage checks, explicit baseline pins and no-new-payment recovery. Added `job.withEvaluator` with deployment/code/wiring checks, criteria-hash acceptance and capped PC prepayment batched atomically with escrow, public retry/settlement/prepaid-refund actions, and evaluator status/watch. Existing v2 encoders/default addresses remain in use. Mutable proposals remain deferred.
+
+**Validation:** 2,302 unit tests pass (12 existing skips), plus eight SDK scenarios against actual local v6 AGW, kernel, hook, evaluator and Read State. Solidity template bytes, payout/refund, retries/expiry, settlement fallback and a legacy manual job pass. Build/types, nine guide blocks, production lint, source/built API equality and CJS/ESM/declaration/npm-content checks pass. The API checker now canonicalizes overloaded function references. The older deployed-stack fork rerun is RPC-limited: the default endpoint pruned its pinned block; the archive endpoint returned 429s. Its 11 reported failures are retained and are not counted as acceptance. [Evidence and limits](marketplace/research/sdk-evaluator-local-2026-10-26/README.md).
+
+**Boundary:** the evaluator branch's marketplace uses an older card/rules interface. Wiring the new template into current v2 register/open/deposit needs the compatible contracts integration commit/rollout; no older marketplace interface was silently substituted. Team questions remain crisp. No public-chain transaction, deployment, package publication, commit or push for this checkpoint; changes remain local as requested.
+
 ## 2026-10-26 — corrected current evaluator branch
 
 Nilesh's correction names `feat/universal-evaluator-pre-post-reads`, fetched at `8666c2a` and matched to open contracts PR #132. This supersedes the older branch as the next SDK target. The source now removes JobSpec timing fields and exposes `retryEvaluation` to client or provider. Recorded the full migration scope; source selection no longer blocks local SDK work. Narrowed the second team question to compatible Donut rollout details.

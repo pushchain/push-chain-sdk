@@ -24,6 +24,10 @@ Page exports **exclude comments**. Current All discussions panels on pages 2, 6,
 - [Pinned dependency revisions](research/2026-10-20/dependency-pins.json), including AGW `ffd567d`. Dependencies were archived at their actual submodule pins; the sibling repository's active branch was not checked out or changed. Dependency symlinks are omitted from the isolated archive.
 - [Evaluator source linked in Nilesh's October 16 comment](https://github.com/pushchain/push-chain-core-contracts/blob/8059817591cca16c59f1cc154f475f51e1736a67/src/agentic-commerce-8183/libraries/JobSpecTypes.sol): [local types](research/2026-10-20/evaluator-8059817/JobSpecTypes.sol), [local evaluator](research/2026-10-20/evaluator-8059817/UniversalEvaluator.sol). These are comparison sources, **not** the deployed marketplace schema or proof of evaluator deployment. Page 7 also links older evaluator revision `4391181`; the later `8059817` source was read for current API differences.
 
+## Demo source and follow-up evidence
+
+The user-provided `marketplace_demo-main.zip` matches `pushchain/marketplace_demo@0d765e06418f1678f77ecd6434603ceecd5a708f` on the seven reviewed entrypoints (Git blob hashes compared through the GitHub API). Its config uses the newer self-deployed demo stack, while its encoder still writes timing-first criteria. Current `sdk-iteration-v1`, `feat/universal-evaluator-demo-jobs` and `feat/universal-evaluator-pre-post-reads` heads were re-fetched. [Download provenance, fresh runtime/CEA checks and SDK changes](research/demo-alignment-2026-10-26/README.md).
+
 ## Repeatable review
 
 October 26 correction from Nilesh, supplied by the user: the current branch is `feat/universal-evaluator-pre-post-reads`, not `feat/universal-evaluator`. Fetched head `8666c2ac2304ffd97a7ada121170c397d0f6125d` matches open [contracts PR #132](https://github.com/pushchain/push-chain-core-contracts/pull/132). This establishes the next SDK integration target; the older branch and `8059817` remain historical comparisons. [Current source check, migration scope and 170 passing local contract tests](research/evaluator-pre-post-2026-10-26/README.md).

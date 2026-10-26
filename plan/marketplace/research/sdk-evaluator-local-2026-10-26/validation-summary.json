@@ -1,0 +1,76 @@
+{
+  "checkedOn": "2026-10-26",
+  "sdkHead": "e61c96068b18d6961411267e215658ecc035c09f",
+  "gitDelivery": "local uncommitted and unpushed changes",
+  "evaluatorSource": "8666c2ac2304ffd97a7ada121170c397d0f6125d",
+  "agwSource": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+  "units": {
+    "success": true,
+    "numPassedTests": 2302,
+    "numFailedTests": 0,
+    "numPendingTests": 12,
+    "numPassedTestSuites": 148,
+    "numPendingTestSuites": 1
+  },
+  "localSdk": {
+    "success": true,
+    "numPassedTests": 8,
+    "numFailedTests": 0,
+    "numPendingTests": 0
+  },
+  "legacyFork": {
+    "accepted": false,
+    "reason": "Pinned block pruned on ordinary RPC; archive retry received HTTP 429s and cascaded failures. No passing fork regression is claimed.",
+    "reportedPassed": 0,
+    "reportedFailed": 11
+  },
+  "build": "pass",
+  "types": [
+    "library build",
+    "full spec",
+    "evaluator-local",
+    "marketplace-local"
+  ],
+  "productionLint": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "marketplaceGuideBlocks": 9,
+  "package": "CJS/ESM, declaration examples and npm-content checks pass; no publication",
+  "publicApi": {
+    "compiledMatchesSource": true,
+    "comparisonBaseline": "b1597b91a25dbf7f691f589b4e1e154add604315",
+    "scope": "Historical comparison includes earlier AGW changes; not every difference belongs to this checkpoint."
+  },
+  "commands": [
+    "node node_modules/jest/bin/jest.js --config packages/core/jest.config.ts --runInBand --json",
+    "AGW_LOCAL_DIR=<pinned-prepared-v6> node node_modules/jest/bin/jest.js --config packages/core/jest.evaluator-local.config.ts --runInBand --json",
+    "NX_DAEMON=false node node_modules/nx/bin/nx.js build core --skip-nx-cache",
+    "node node_modules/typescript/bin/tsc -p packages/core/tsconfig.spec.json --noEmit",
+    "node node_modules/typescript/bin/tsc -p packages/core/tsconfig.evaluator-local.json --noEmit",
+    "node node_modules/typescript/bin/tsc -p packages/core/tsconfig.marketplace-local.json --noEmit",
+    "node packages/core/scripts/check-agw-api.js",
+    "node packages/core/scripts/check-agw-package.js",
+    "node packages/core/scripts/check-agw-docs.js packages/core/MARKETPLACE.md"
+  ],
+  "checksums": {
+    "unit-results.json.gz": {
+      "rawSha256": "c3cc51336e80c08ade04b42ac88a5e347f595a34eefc9dfee43b62111eda984f",
+      "gzipSha256": "307cb34271de846c1ecc1119a2c5fe3e6b81cd04302d34024021d5dfff92bc68"
+    },
+    "fork-rpc-limited-results.json.gz": {
+      "rawSha256": "351c828250681558467ca2439ef2eeb432150611c9606288c35eca2e656de604",
+      "gzipSha256": "b09dda93e467d44b8a44f3adc1801475f386738708cffe1a343d40c016dc7939"
+    },
+    "api-comparison.json.gz": {
+      "rawSha256": "873f0822792458b416473b2e7c41a7cc45c529507271d40674a16be4bfe67376",
+      "gzipSha256": "ca5471b0fc0c4fcaf26a8d7e38fb5ada79906d384f98864d460c8916e1c24d04"
+    }
+  },
+  "limits": [
+    "No public-chain writes, deployment or publication.",
+    "Local tracked-chain metadata is mocked; consensus responses are delivered manually.",
+    "Compatible v2 marketplace builder/interface and live evaluator rollout remain external.",
+    "Mutable criteria negotiation is deferred."
+  ]
+}

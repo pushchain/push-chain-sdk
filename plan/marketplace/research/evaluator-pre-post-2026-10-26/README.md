@@ -26,7 +26,7 @@ This resolves which source to use for the next SDK integration. The existing SDK
 6. Extend status/watch with evaluator state, frozen hash, read phases, heights, request IDs, evidence and settlement state. Use the current getters/events, not the removed snapshot API.
 7. Run meaningful unit and local real-contract SDK E2Es: canonical bytes/template resolution, both profiles, hash-swap refusal, PRE/POST sums, funding fees, retry expiry/caller restrictions, failed settlement recovery and historical manual jobs. Update consumer examples and package/API checks. Live automatic-evaluator E2Es wait for a compatible deployment.
 
-These items are the next implementation scope. This source check does not implement them or claim they are complete.
+This source-check checkpoint did not implement these tasks. The later [local SDK implementation](../sdk-evaluator-local-2026-10-26/README.md) supplies the explicit profile and evaluator/kernel lifecycle; it also records the v2 marketplace interface mismatch and remaining rollout dependency.
 
 ## Validation
 
