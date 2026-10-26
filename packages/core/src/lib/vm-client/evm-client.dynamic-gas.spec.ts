@@ -25,7 +25,7 @@ describe('EvmClient dynamic gas estimation', () => {
       .fn()
       .mockImplementation(async (unsignedTx: Uint8Array) => {
         const parsed = parseTransaction(bytesToHex(unsignedTx));
-        expect(parsed.gas).toBe(estimatedGas);
+        expect(parsed.gas).toBe(BigInt(969_600));
         expect(parsed.nonce).toBe(9);
         return Uint8Array.from(Buffer.from(TX_HASH.slice(2), 'hex'));
       });
@@ -57,9 +57,9 @@ describe('EvmClient dynamic gas estimation', () => {
     const estimatedGas = BigInt(21_062);
     const client = new EvmClient({ rpcUrls: ['http://localhost:8545'] });
     client.publicClient = {
-      getCode: jest.fn().mockResolvedValue(
-        '0xef01000106bf2f9b02f32203a83a3bdad79fe8818f3796'
-      ),
+      getCode: jest
+        .fn()
+        .mockResolvedValue('0xef01000106bf2f9b02f32203a83a3bdad79fe8818f3796'),
       estimateGas: jest.fn().mockResolvedValue(estimatedGas),
       estimateFeesPerGas: jest.fn().mockResolvedValue({
         maxFeePerGas: BigInt(10),
@@ -73,7 +73,7 @@ describe('EvmClient dynamic gas estimation', () => {
       .fn()
       .mockImplementation(async (unsignedTx: Uint8Array) => {
         const parsed = parseTransaction(bytesToHex(unsignedTx));
-        expect(parsed.gas).toBe(estimatedGas);
+        expect(parsed.gas).toBe(BigInt(25_275));
         return Uint8Array.from(Buffer.from(TX_HASH.slice(2), 'hex'));
       });
     const signer: UniversalSigner = {
@@ -137,4 +137,45 @@ describe('EvmClient dynamic gas estimation', () => {
 
     expect(client.publicClient.estimateGas).not.toHaveBeenCalled();
   });
+
+  it.each([
+    { explicitGas: undefined, expectedGas: BigInt(579_802) },
+    { explicitGas: BigInt(500_000), expectedGas: BigInt(500_000) },
+  ])(
+    'adds headroom for the observed AGW outbound estimate unless gas is explicit ($explicitGas)',
+    async ({ explicitGas, expectedGas }) => {
+      // At the same Donut block, this estimate reverted while 500,000 gas passed.
+      const client = new EvmClient({ rpcUrls: ['http://localhost:8545'] });
+      client.publicClient = {
+        estimateGas: jest.fn().mockResolvedValue(BigInt(483_168)),
+        estimateFeesPerGas: jest.fn().mockResolvedValue({
+          maxFeePerGas: BigInt(10),
+          maxPriorityFeePerGas: BigInt(1),
+        }),
+        getChainId: jest.fn().mockResolvedValue(42101),
+      } as unknown as typeof client.publicClient;
+      const signer: UniversalSigner = {
+        account: { chain: CHAIN.PUSH_TESTNET_DONUT, address: ACCOUNT },
+        signMessage: async (data) => data,
+        signAndSendTransaction: jest.fn(async (unsignedTx: Uint8Array) => {
+          expect(parseTransaction(bytesToHex(unsignedTx)).gas).toBe(
+            expectedGas
+          );
+          return Uint8Array.from(Buffer.from(TX_HASH.slice(2), 'hex'));
+        }),
+      };
+
+      await client.sendTransaction({
+        to: TARGET,
+        data: '0x12345678',
+        signer,
+        nonce: 12,
+        gas: explicitGas,
+      });
+
+      expect(client.publicClient.estimateGas).toHaveBeenCalledTimes(
+        explicitGas ? 0 : 1
+      );
+    }
+  );
 });

@@ -43,6 +43,16 @@ const CEA_AUTHORITY_NAMES = new Set([
 ]);
 
 export function resolveSvmCall(input: ResolveInput): ResolvedSvmCall {
+  return resolveCall(input);
+}
+
+/** Internal AGW seam: use its registry-derived authority, not the signer's CEA. */
+export function resolveSvmCallForCea(input: ResolveInput, ceaAuthority: `0x${string}`): ResolvedSvmCall {
+  if (!/^0x[0-9a-fA-F]{64}$/.test(ceaAuthority)) throw new Error('SVM CEA authority must be 32 bytes');
+  return resolveCall(input, ceaAuthority);
+}
+
+function resolveCall(input: ResolveInput, authority?: `0x${string}`): ResolvedSvmCall {
   const idl = getIdl(input.programAddress);
   if (!idl) {
     throw new Error(
@@ -74,11 +84,7 @@ export function resolveSvmCall(input: ResolveInput): ResolvedSvmCall {
   const programPk = new PublicKey(
     Buffer.from(input.programAddress.slice(2), 'hex')
   );
-  const { address: ceaPdaHex } = deriveSvmCeaPda(
-    input.senderUea,
-    input.targetChain,
-    true
-  );
+  const ceaPdaHex = authority ?? deriveSvmCeaPda(input.senderUea, input.targetChain, true).address;
 
   const accounts: SvmGatewayAccountMeta[] = [];
   for (const item of ix.accounts) {

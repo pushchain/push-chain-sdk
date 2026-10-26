@@ -40,10 +40,26 @@ export type PayableTokenMap = Partial<{
   DAI: PayableToken;
 }>;
 
+/** Agentic rule assets only: every token Push can send to `chain`. The SDK
+ * expands it when a rule is prepared (at most eight, each with its default
+ * limits). It is not a token and cannot be sent or paid with. */
+export interface MoveableTokenSet {
+  readonly kind: 'ALL';
+  readonly chain: CHAIN;
+}
+
+export const isMoveableTokenSet = (token: unknown): token is MoveableTokenSet =>
+  !!token &&
+  typeof token === 'object' &&
+  (token as { kind?: unknown }).kind === 'ALL';
+
 // Strongly-typed accessors that throw at runtime if a token is unavailable,
 // while providing non-undefined types at compile time.
 export class MoveableTokenAccessor {
-  constructor(private readonly tokens: Record<string, MoveableToken>) {}
+  constructor(
+    private readonly tokens: Record<string, MoveableToken>,
+    private readonly chain?: CHAIN
+  ) {}
 
   private require(name: keyof MoveableTokenMap): MoveableToken {
     const t = this.tokens[name as string];
@@ -75,6 +91,11 @@ export class MoveableTokenAccessor {
   }
   get DAI(): MoveableToken {
     return this.require('DAI');
+  }
+  /** Every routable token on this chain, for agentic rule assets only. */
+  get ALL(): MoveableTokenSet {
+    if (!this.chain) throw new Error('ALL is not available on this chain');
+    return Object.freeze({ kind: 'ALL' as const, chain: this.chain });
   }
 }
 
@@ -235,7 +256,7 @@ const TOKEN_META: Partial<Record<CHAIN, Record<string, TokenMeta>>> = {
     WETH: {
       symbol: 'WETH',
       decimals: 18,
-      address: '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+      address: '0x4200000000000000000000000000000000000006',
       mechanism: 'approve',
     },
   },
@@ -549,37 +570,43 @@ function buildMoveableTokenConstants(): MoveableTokenConstantsMap {
       toSymbolMap(MOVEABLE_TOKENS[CHAIN.ETHEREUM_SEPOLIA]) as Record<
         string,
         MoveableToken
-      >
+      >,
+      CHAIN.ETHEREUM_SEPOLIA
     ),
     ETHEREUM_MAINNET: new MoveableTokenAccessor(
       toSymbolMap(MOVEABLE_TOKENS[CHAIN.ETHEREUM_MAINNET]) as Record<
         string,
         MoveableToken
-      >
+      >,
+      CHAIN.ETHEREUM_MAINNET
     ),
     ARBITRUM_SEPOLIA: new MoveableTokenAccessor(
       toSymbolMap(MOVEABLE_TOKENS[CHAIN.ARBITRUM_SEPOLIA]) as Record<
         string,
         MoveableToken
-      >
+      >,
+      CHAIN.ARBITRUM_SEPOLIA
     ),
     BASE_SEPOLIA: new MoveableTokenAccessor(
       toSymbolMap(MOVEABLE_TOKENS[CHAIN.BASE_SEPOLIA]) as Record<
         string,
         MoveableToken
-      >
+      >,
+      CHAIN.BASE_SEPOLIA
     ),
     BNB_TESTNET: new MoveableTokenAccessor(
       toSymbolMap(MOVEABLE_TOKENS[CHAIN.BNB_TESTNET]) as Record<
         string,
         MoveableToken
-      >
+      >,
+      CHAIN.BNB_TESTNET
     ),
     SOLANA_DEVNET: new MoveableTokenAccessor(
       toSymbolMap(MOVEABLE_TOKENS[CHAIN.SOLANA_DEVNET]) as Record<
         string,
         MoveableToken
-      >
+      >,
+      CHAIN.SOLANA_DEVNET
     ),
     PUSH_TESTNET_DONUT: buildPushChainMoveableTokenAccessor(),
   };

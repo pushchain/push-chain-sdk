@@ -1,0 +1,13 @@
+{
+  "sourceRepository": "https://github.com/pushchain/push-agentic-wallets",
+  "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+  "deployedAbiEvidence": "v6 isolated source compilation; initial live code sizes/wiring checked at block 24244801",
+  "files": {
+    "wallet.json": "76705e5a25b10d3a84f867f983c3e4f5adfc881fb0d65710fb8684df2ea7abd3",
+    "factory.json": "08588f8870335492c5abeee32eec6a9bb050f81e234fdd58bbf389c6e9074a12",
+    "policy.json": "a07661d19b19656afdea560275d45669a908cd96646817884295e0017560f299",
+    "engine.json": "6e5d9cea4dbed01f06af913c1e093743b86b7432195f4a4bf90fb94b282c51b2",
+    "validator.json": "a4570ddc373241580de8742cbb3d9f2c837094c65bfd1cdd52243ca0c38196fd"
+  },
+  "note": "Policy ABI includes linked SvmRulebook errors for revert decoding; callable ABI is unchanged."
+}
