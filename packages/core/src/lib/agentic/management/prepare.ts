@@ -16,7 +16,6 @@ import {
   verifyPolicyVersion,
   type AgenticGeneration,
 } from '../deployments';
-import { AgenticCapability, requireCapability } from '../capabilities';
 import {
   AGENTIC_ERROR_CODE,
   AgenticError,
@@ -64,26 +63,11 @@ export async function prepareWalletRules(
   for (const [ruleIndex, rule] of rules.entries()) {
     try {
       if (rule && isSolanaRule(rule)) {
-        requireCapability(
-          gen.capabilities,
-          AgenticCapability.UNIVERSAL_SVM_RULES
-        );
         svm.set(rule, await preparePublicSvmRule(runtime, snap, wallet, rule));
         continue;
       }
       if (!isUniversalRule(rule)) continue;
-      if (rule.chainNamespace.startsWith('solana:'))
-        requireCapability(
-          gen.capabilities,
-          AgenticCapability.UNIVERSAL_SVM_RULES
-        );
       validateUniversalRuleShape(rule, runtime.nowSeconds());
-      requireCapability(
-        gen.capabilities,
-        rule.chainNamespace.startsWith('solana:')
-          ? AgenticCapability.UNIVERSAL_SVM_RULES
-          : AgenticCapability.UNIVERSAL_EVM_RULES
-      );
       const chain = rule.chainNamespace as CHAIN;
       if (CHAIN_INFO[chain]?.vm !== VM.EVM)
         throw new AgenticError(
@@ -174,7 +158,6 @@ export async function prepareWalletRules(
     validator: gen.addresses.sessionValidator,
     rulesPolicy: gen.addresses.rulesPolicy,
     gateway: gen.addresses.gateway,
-    capabilities: gen.capabilities,
     nowSeconds: runtime.nowSeconds(),
     forbiddenTargets: forbiddenTargets(gen, wallet),
     universal,

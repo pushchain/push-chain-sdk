@@ -1,4 +1,4 @@
-/** Public multi-action native rules on checked Donut v5; no contract deployments. */
+/** Public multi-action native rules on checked Donut v6; no contract deployments. */
 import {
   createWalletClient,
   encodeFunctionData,

@@ -1,6 +1,5 @@
 import { getAddress, type Address } from 'viem';
 import { PUSH_NETWORK } from '../constants/enums';
-import { AgenticCapability } from './capabilities';
 import { v6, type AgwContracts } from './contracts/v6';
 import type { ChainReader } from './contracts/reader';
 import { AGENTIC_ERROR_CODE, AgenticError } from './errors';
@@ -36,25 +35,8 @@ export interface AgenticGeneration {
   startBlock: bigint;
   /** Expected wallet accountId(). */
   accountId: string;
-  capabilities: ReadonlySet<AgenticCapability>;
   contracts: AgwContracts;
 }
-
-/** Capabilities the v6 ABI actually implements. Target-only features are absent. */
-export const V6_CAPABILITIES: ReadonlySet<AgenticCapability> = new Set([
-  AgenticCapability.WALLET_READS,
-  AgenticCapability.ACTIVE_RULE_READS,
-  AgenticCapability.OWNER_EXECUTE,
-  AgenticCapability.AGENT_EXECUTE,
-  AgenticCapability.NATIVE_RULES,
-  AgenticCapability.ASSERT_SPENT_NATIVE,
-  AgenticCapability.CHECKPOINTS,
-  AgenticCapability.UNIVERSAL_EVM_OUTBOUND,
-  AgenticCapability.UNIVERSAL_EVM_RULES,
-  AgenticCapability.UNIVERSAL_SVM_RULES,
-  AgenticCapability.ASSERT_SPENT_UNIVERSAL_MULTI,
-  AgenticCapability.SET_LABEL,
-]);
 
 /**
  * V6 only. Unsupported networks fail before signing; no legacy adapter fallback.
@@ -68,7 +50,6 @@ const VERIFIED_DEPLOYMENTS: readonly AgenticGeneration[] = [
     addresses: DONUT_V6_ADDRESSES,
     startBlock: DONUT_V6_START_BLOCK,
     accountId: 'push.agw.1.0.0',
-    capabilities: V6_CAPABILITIES,
     contracts: v6,
   },
 ];
@@ -81,9 +62,7 @@ const registry: AgenticGeneration[] = [...VERIFIED_DEPLOYMENTS];
  * from the package entry point.
  */
 export function registerAgenticGeneration(
-  input: Omit<AgenticGeneration, 'contracts' | 'capabilities'> & {
-    capabilities?: ReadonlySet<AgenticCapability>;
-  }
+  input: Omit<AgenticGeneration, 'contracts'>
 ): AgenticGeneration {
   if (input.id !== v6.id || input.sourceCommit !== V6_SOURCE_COMMIT) {
     throw new AgenticError(
@@ -101,7 +80,6 @@ export function registerAgenticGeneration(
       sessionValidator: getAddress(input.addresses.sessionValidator),
       gateway: getAddress(input.addresses.gateway),
     },
-    capabilities: input.capabilities ?? V6_CAPABILITIES,
     contracts: v6,
   };
   const existing = registry.findIndex(
@@ -120,7 +98,7 @@ export function resetAgenticGenerations(): void {
   verifiedWiring.clear();
 }
 
-/** Grant compatibility check; the unrestricted owner door does not consult URP. */
+/** Require the supported policy version before granting permissions. */
 export async function verifyPolicyVersion(
   reader: ChainReader,
   gen: AgenticGeneration

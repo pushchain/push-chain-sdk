@@ -14,14 +14,31 @@
 import '@e2e/shared/setup';
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { createPublicClient, createWalletClient, defineChain, http, parseEther, type Address, type Hex, type PublicClient } from 'viem';
+import {
+  createPublicClient,
+  createWalletClient,
+  defineChain,
+  http,
+  parseEther,
+  type Address,
+  type Hex,
+  type PublicClient,
+} from 'viem';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { PushChain } from '../../src';
 import { CHAIN_INFO } from '../../src/lib/constants/chain';
 import { CHAIN, PUSH_NETWORK } from '../../src/lib/constants/enums';
-import { registerAgenticGeneration, resetAgenticGenerations } from '../../src/lib/agentic/deployments';
+import {
+  registerAgenticGeneration,
+  resetAgenticGenerations,
+} from '../../src/lib/agentic/deployments';
 import { createEvmPushClient } from '@e2e/shared/evm-client';
-import { AgwPrerequisiteError, loadAgwManifest, verifyAgwManifest, type AgwManifest } from './_manifest';
+import {
+  AgwPrerequisiteError,
+  loadAgwManifest,
+  verifyAgwManifest,
+  type AgwManifest,
+} from './_manifest';
 
 export const AGW_E2E_ENABLED = process.env['AGW_E2E'] === '1';
 
@@ -32,7 +49,10 @@ export interface AgwFixture {
   ownerAddress: Address;
   agentKey: Hex;
   agentAddress: Address;
-  agent(wallet: Address, progressHook?: (e: unknown) => void): Promise<PushChain>;
+  agent(
+    wallet: Address,
+    progressHook?: (e: unknown) => void
+  ): Promise<PushChain>;
   fundPC(to: Address, amount: bigint): Promise<void>;
   /** Funds the generated agent; already done unless setup deferred it. */
   fundAgent(): Promise<void>;
@@ -41,7 +61,11 @@ export interface AgwFixture {
 }
 
 const pushChainFor = (network: PUSH_NETWORK) =>
-  network === PUSH_NETWORK.MAINNET ? CHAIN.PUSH_MAINNET : network === PUSH_NETWORK.LOCALNET ? CHAIN.PUSH_LOCALNET : CHAIN.PUSH_TESTNET_DONUT;
+  network === PUSH_NETWORK.MAINNET
+    ? CHAIN.PUSH_MAINNET
+    : network === PUSH_NETWORK.LOCALNET
+    ? CHAIN.PUSH_LOCALNET
+    : CHAIN.PUSH_TESTNET_DONUT;
 
 /**
  * Strict prerequisite gate: throws (failing beforeAll, hence every test) when
@@ -78,10 +102,13 @@ export async function setupAgw(
     addresses: manifest.addresses,
     startBlock: manifest.startBlock,
     accountId: manifest.accountId,
-    capabilities: manifest.capabilities,
   });
 
-  const { pushClient: owner, account } = await createEvmPushClient({ chain, privateKey: pushKey, network: manifest.network });
+  const { pushClient: owner, account } = await createEvmPushClient({
+    chain,
+    privateKey: pushKey,
+    network: manifest.network,
+  });
   const agentKey = generatePrivateKey();
   const agentAddress = privateKeyToAccount(agentKey).address;
   const fundPC = async (to: Address, amount: bigint) => {
@@ -89,7 +116,8 @@ export async function setupAgw(
     const r = await tx.wait();
     if (r.status !== 1) throw new Error(`funding ${to} failed`);
   };
-  const fundAgent = () => fundPC(agentAddress, parseEther(process.env['AGW_E2E_AGENT_PC'] ?? '0.5'));
+  const fundAgent = () =>
+    fundPC(agentAddress, parseEther(process.env['AGW_E2E_AGENT_PC'] ?? '0.5'));
   // Deferred callers check their prerequisites first, so a blocked case spends nothing.
   if (!options.deferAgentFunding) await fundAgent();
 
@@ -99,7 +127,13 @@ export async function setupAgw(
     appendFileSync(
       join(logDir, 'agw-evidence.jsonl'),
       JSON.stringify(
-        { name, at: new Date().toISOString(), network: manifest.network, sourceCommit: manifest.sourceCommit, ...data },
+        {
+          name,
+          at: new Date().toISOString(),
+          network: manifest.network,
+          sourceCommit: manifest.sourceCommit,
+          ...data,
+        },
         (_k, v) => (typeof v === 'bigint' ? v.toString() : v)
       ) + '\n'
     );
@@ -111,7 +145,8 @@ export async function setupAgw(
     ownerAddress: account.address,
     agentKey,
     agentAddress,
-    agent: (wallet, progressHook) => evmClient(agentKey, chain, manifest.network, wallet, progressHook),
+    agent: (wallet, progressHook) =>
+      evmClient(agentKey, chain, manifest.network, wallet, progressHook),
     fundPC,
     fundAgent,
     evidence,
@@ -133,10 +168,13 @@ export async function evmClient(
     account: privateKeyToAccount(key),
     transport: http(CHAIN_INFO[origin].defaultRPC[0]),
   });
-  const signer = await PushChain.utils.signer.toUniversalFromKeypair(walletClient, {
-    chain: origin,
-    library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
-  });
+  const signer = await PushChain.utils.signer.toUniversalFromKeypair(
+    walletClient,
+    {
+      chain: origin,
+      library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+    }
+  );
   return PushChain.initialize(signer, {
     network,
     ...(agenticWallet ? { agenticWallet } : {}),

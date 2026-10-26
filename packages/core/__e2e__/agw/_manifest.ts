@@ -6,13 +6,12 @@
  * Manifest shape:
  * {
  *   "network": "TESTNET_DONUT",
- *   "generation": "v5",
+ *   "generation": "v6",
  *   "sourceCommit": "<40-hex AGW commit>",
  *   "startBlock": "<decimal>",
  *   "accountId": "push.agw.1.0.0",
  *   "addresses": { "factory", "walletImplementation", "sessionEngine",
  *                  "rulesPolicy", "sessionValidator", "gateway" },
- *   "capabilities": ["nativeRules", ...]   // optional; defaults to the generation's
  * }
  */
 import { readFileSync } from 'node:fs';
@@ -25,8 +24,6 @@ import {
   toFunctionSelector,
 } from 'viem';
 import { PUSH_NETWORK } from '../../src/lib/constants/enums';
-import { AgenticCapability } from '../../src/lib/agentic/capabilities';
-import { V6_CAPABILITIES } from '../../src/lib/agentic/deployments';
 import { v6 } from '../../src/lib/agentic/contracts/v6';
 import {
   DONUT_V6_ADDRESSES,
@@ -35,8 +32,8 @@ import {
 } from '../../src/lib/agentic/contracts/donut-v6';
 
 export const AGW_PREREQ_HINT =
-  'AGW live E2E needs checked v5 wiring, signer keys and testnet funding. ' +
-  'The default is the checked Donut v6 manifest; custom manifests must match the v5 source.';
+  'AGW live E2E needs checked v6 wiring, signer keys and testnet funding. ' +
+  'The default is the checked Donut v6 manifest; custom manifests must match the v6 source.';
 
 export interface AgwManifest {
   network: PUSH_NETWORK;
@@ -52,7 +49,6 @@ export interface AgwManifest {
     sessionValidator: Address;
     gateway: Address;
   };
-  capabilities: ReadonlySet<AgenticCapability>;
 }
 
 export class AgwPrerequisiteError extends Error {
@@ -73,7 +69,6 @@ export function loadAgwManifest(
       startBlock: DONUT_V6_START_BLOCK,
       accountId: 'push.agw.1.0.0',
       addresses: DONUT_V6_ADDRESSES,
-      capabilities: V6_CAPABILITIES,
     };
   let raw: Record<string, unknown>;
   try {
@@ -83,6 +78,10 @@ export function loadAgwManifest(
       `cannot read manifest ${path}: ${(cause as Error).message}`
     );
   }
+  if ('capabilities' in raw)
+    throw new AgwPrerequisiteError(
+      'v6 manifests do not accept capability overrides'
+    );
   const network = raw['network'] as PUSH_NETWORK;
   if (!Object.values(PUSH_NETWORK).includes(network))
     throw new AgwPrerequisiteError(`unknown network ${String(network)}`);
@@ -109,15 +108,6 @@ export function loadAgwManifest(
     if (!isAddress(a[k] ?? '', { strict: false }))
       throw new AgwPrerequisiteError(`addresses.${k} is missing or invalid`);
   }
-  const caps = Array.isArray(raw['capabilities'])
-    ? new Set(
-        (raw['capabilities'] as string[]).map((c) => {
-          if (!V6_CAPABILITIES.has(c as AgenticCapability))
-            throw new AgwPrerequisiteError(`unknown capability ${c}`);
-          return c as AgenticCapability;
-        })
-      )
-    : V6_CAPABILITIES;
   return {
     network,
     generation: 'v6',
@@ -127,7 +117,6 @@ export function loadAgwManifest(
     addresses: Object.fromEntries(
       keys.map((k) => [k, getAddress(a[k])])
     ) as AgwManifest['addresses'],
-    capabilities: caps,
   };
 }
 

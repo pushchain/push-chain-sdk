@@ -69,7 +69,7 @@ const NOW = 1_700_000_000;
 const target = getAddress('0x0000000000000000000000000000000000007a76');
 const agent = getAddress('0x00000000000000000000000000000000000000a9');
 
-describe('IDs against contract-generated vectors (v5)', () => {
+describe('IDs against contract-generated vectors (v6)', () => {
   it.each(vectors.rulesId)(
     'rulesId(agent, nonce) = engine.getPermissionId — nonce $grantNonce',
     (v) => {

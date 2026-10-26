@@ -1,6 +1,6 @@
 import { readNativeCounters } from '../__e2e__/shared/agw-state';
 /**
- * Real-contract checks for the harder AGW paths (pinned v5 on anvil).
+ * Real-contract checks for the harder AGW paths (pinned v6 on anvil).
  * The universal-outbound block drives the SDK's composer with a runtime whose
  * CEA and fee quote are local stand-ins (no destination chain or price feeds
  * exist here); URP still decides every gate on the composed request.

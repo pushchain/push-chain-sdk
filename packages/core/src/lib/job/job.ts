@@ -1,3 +1,16 @@
+import { DONUT_MARKETPLACE } from '../market/deployment';
+import {
+  evaluatorConfig,
+  matchesEvaluator,
+  validateEvaluator,
+  evaluationQuote,
+  evaluationStatus,
+  evaluationSpec,
+} from './evaluation';
+import { EVALUATOR_ABI } from './UniversalEvaluator';
+import { EVALUATION_HOOK_ABI } from './UniversalHook';
+import { decodePrePostJobSpec } from '../job-spec/pre-post/codec';
+import type { PrePostJobSpec } from '../job-spec/pre-post/types';
 import {
   decodeEventLog,
   encodeAbiParameters,
@@ -6,6 +19,7 @@ import {
   getAbiItem,
   getAddress,
   keccak256,
+  parseAbi,
   stringToHex,
   zeroAddress,
   zeroHash,
@@ -42,6 +56,9 @@ import type {
   JobStatus,
   JobWriteOptions,
   JobWatchOptions,
+  JobEvaluatorConfig,
+  SubmitJobOptions,
+  VerifyJobOptions,
 } from './types';
 
 const STATES: JobStatus[] = [
@@ -71,8 +88,104 @@ function amount(n: bigint): void {
     throw new JobError('INVALID_AMOUNT', 'The amount must fit uint256.');
 }
 
-export class JobNamespaceImpl implements JobNamespace {
-  constructor(private readonly rt: StackRuntime) {}
+export class JobNamespaceImpl<S extends JobSpec | PrePostJobSpec = JobSpec>
+  implements JobNamespace<S>
+{
+  constructor(
+    private readonly rt: StackRuntime,
+    private readonly evaluator?: Readonly<JobEvaluatorConfig>
+  ) {}
+  withEvaluator(
+    config: JobEvaluatorConfig
+  ): JobNamespace<JobSpec | PrePostJobSpec> {
+    const c = evaluatorConfig(config);
+    let d;
+    try {
+      d = deployment(this.rt);
+    } catch (error) {
+      if (!c.kernel) throw error;
+      d = {
+        ...DONUT_MARKETPLACE,
+        marketplace: zeroAddress,
+        hook: zeroAddress,
+        evaluator: zeroAddress,
+      };
+    }
+    const customKernel =
+      !!c.kernel && getAddress(c.kernel) !== getAddress(d.kernel);
+    return new JobNamespaceImpl<JobSpec | PrePostJobSpec>(
+      {
+        ...this.rt,
+        deployment: {
+          ...d,
+          ...(customKernel
+            ? {
+                marketplace: zeroAddress,
+                hook: zeroAddress,
+                evaluator: zeroAddress,
+              }
+            : {}),
+          kernel: c.kernel ?? d.kernel,
+          startBlock: c.startBlock ?? d.startBlock,
+        },
+        jobBlocks:
+          c.kernel && getAddress(c.kernel) !== getAddress(d.kernel)
+            ? new Map()
+            : this.rt.jobBlocks,
+      },
+      c
+    );
+  }
+  private async requireEvaluator(
+    j: KernelJob,
+    s: MarketSnapshot
+  ): Promise<Readonly<JobEvaluatorConfig>> {
+    const c = this.evaluator;
+    if (!c || !matchesEvaluator(j, c))
+      return unavailable('Automatic evaluation for this job');
+    await validateEvaluator(this.rt, s, deployment(this.rt).kernel, c);
+    return c;
+  }
+  async quoteEvaluation(jobId: bigint) {
+    if (!this.evaluator)
+      return unavailable(
+        'Automatic evaluation; configure a compatible deployment with withEvaluator'
+      );
+    const s = await snapshot(this.rt),
+      j = await this.raw(jobId, s);
+    const c = await this.requireEvaluator(j, s);
+    return evaluationQuote(s, c, jobId, j);
+  }
+  async claimReadFees(jobId: bigint, options: JobWriteOptions = {}) {
+    if (!this.evaluator) return unavailable('Evaluator prepaid-fee recovery');
+    const s = await snapshot(this.rt),
+      j = await this.raw(jobId, s),
+      c = await this.requireEvaluator(j, s);
+    if (
+      j.status === 1 ||
+      j.status === 2 ||
+      (j.status === 0 && j.expiredAt > s.timestamp)
+    )
+      throw new JobError(
+        'WRONG_STATUS',
+        'Read fees are recoverable only after the job ends or an Open job expires.'
+      );
+    return write(
+      this.rt,
+      {
+        target: c.evaluator,
+        value: BigInt(0),
+        data: encodeFunctionData({
+          abi: EVALUATOR_ABI,
+          functionName: 'claimPrepaid',
+          args: [jobId],
+        }),
+      },
+      options.progressHook,
+      'JOB',
+      true
+    );
+  }
   private async raw(jobId: bigint, s: MarketSnapshot): Promise<KernelJob> {
     validId(jobId);
     const j = await s.read<KernelJob>(
@@ -85,23 +198,32 @@ export class JobNamespaceImpl implements JobNamespace {
       throw new JobError('JOB_NOT_FOUND', 'This job does not exist.');
     return j;
   }
-  private async jobAt(jobId: bigint, s: MarketSnapshot): Promise<Job> {
+  private async jobAt(jobId: bigint, s: MarketSnapshot): Promise<Job<S>> {
     const d = deployment(this.rt);
     const j = await this.raw(jobId, s);
     const paymentToken = await s.read<Address>(d.kernel, ABI, 'paymentToken');
+    const evaluated = matchesEvaluator(j, this.evaluator);
+    let evaluatedFacts:
+      | Awaited<ReturnType<typeof evaluationStatus>>
+      | undefined;
+    if (evaluated) {
+      const c = await this.requireEvaluator(j, s);
+      evaluatedFacts = await evaluationStatus(s, c, jobId, j);
+    }
     let spec: JobSpec | undefined;
     let decodeError: string | undefined;
-    if (j.description !== '0x') {
+    if (!evaluated && j.description !== '0x') {
       try {
         spec = decodeJobSpec(j.description, { format: 'spec' }) as JobSpec;
       } catch (e) {
         decodeError = (e as Error).message;
       }
     }
-    const rulesId =
-      getAddress(j.hook) === getAddress(d.hook)
-        ? await s.read<Hex>(d.hook, RULES_HOOK_ABI, 'rulesOfJob', [jobId])
-        : undefined;
+    const rulesId = evaluated
+      ? await s.read<Hex>(j.hook, EVALUATION_HOOK_ABI, 'rulesOfJob', [jobId])
+      : d.hook !== zeroAddress && getAddress(j.hook) === getAddress(d.hook)
+      ? await s.read<Hex>(d.hook, RULES_HOOK_ABI, 'rulesOfJob', [jobId])
+      : undefined;
     let deliverable: Hex | undefined;
     if (j.status >= 2) {
       const logs = await scanLogs(
@@ -138,16 +260,17 @@ export class JobNamespaceImpl implements JobNamespace {
       ...(rulesId && rulesId !== zeroHash ? { rulesId } : {}),
       ...(spec ? { jobSpec: { spec, bytes: j.description } } : {}),
       ...(decodeError ? { jobSpecDecodeError: decodeError } : {}),
-      evaluation: {
+      evaluation: evaluatedFacts?.evaluation ?? {
         available: false,
         reason:
           getAddress(j.evaluator) === getAddress(d.evaluator)
             ? 'MANUAL_EVALUATOR'
             : 'UNVERIFIED_EVALUATOR',
       },
-    };
+      ...(evaluatedFacts ? { jobSpec: evaluatedFacts.jobSpec } : {}),
+    } as Job<S>;
   }
-  async status(jobId: bigint): Promise<Job> {
+  async status(jobId: bigint): Promise<Job<S>> {
     return this.jobAt(jobId, await snapshot(this.rt));
   }
   async list(
@@ -157,7 +280,7 @@ export class JobNamespaceImpl implements JobNamespace {
       status?: JobStatus;
       fromJobId?: bigint;
     } = {}
-  ): Promise<{ jobs: Job[] }> {
+  ): Promise<{ jobs: Job<S>[] }> {
     const s = await snapshot(this.rt);
     const count = await s.read<bigint>(
       deployment(this.rt).kernel,
@@ -166,7 +289,7 @@ export class JobNamespaceImpl implements JobNamespace {
     );
     const from = options.fromJobId ?? BigInt(1);
     validId(from);
-    const jobs: Job[] = [];
+    const jobs: Job<S>[] = [];
     for (let i = from; i <= count; i += BigInt(8)) {
       const rows = await Promise.all(
         Array.from(
@@ -203,10 +326,35 @@ export class JobNamespaceImpl implements JobNamespace {
         'TOKEN_MISMATCH',
         'The job token must equal this kernel’s payment token.'
       );
+    if (
+      !options.jobSpec &&
+      this.evaluator &&
+      getAddress(options.evaluator) === getAddress(this.evaluator.evaluator) &&
+      getAddress(options.hook) === getAddress(this.evaluator.hook)
+    )
+      throw new JobError(
+        'INVALID_JOB_SPEC',
+        'An evaluated job requires an explicitly encoded pre-post-v1 JobSpec.'
+      );
     if (options.jobSpec) {
-      const spec = decodeJobSpec(options.jobSpec, {
-        format: 'spec',
-      }) as JobSpec;
+      const evaluated = matchesEvaluator(
+        { ...options, description: options.jobSpec, status: 0 },
+        this.evaluator
+      );
+      if (evaluated)
+        await this.requireEvaluator(
+          {
+            ...options,
+            client: this.rt.account(),
+            status: 0,
+            budget: BigInt(0),
+            description: options.jobSpec,
+          },
+          s
+        );
+      const spec = evaluated
+        ? decodePrePostJobSpec(options.jobSpec, { format: 'spec' })
+        : (decodeJobSpec(options.jobSpec, { format: 'spec' }) as JobSpec);
       if (spec.allowedMutability !== 'NONE')
         unavailable('Mutable job criteria');
       if (spec.origin !== zeroHash)
@@ -214,7 +362,7 @@ export class JobNamespaceImpl implements JobNamespace {
           'INVALID_JOB_SPEC',
           'A plain job must have a zero marketplace origin.'
         );
-      if (spec.failFinalAt >= options.expiredAt)
+      if ('failFinalAt' in spec && spec.failFinalAt >= options.expiredAt)
         throw new JobError(
           'INVALID_JOB_SPEC',
           'The failure deadline must precede expiry.'
@@ -292,12 +440,22 @@ export class JobNamespaceImpl implements JobNamespace {
     );
   }
   async fund(jobId: bigint, options: FundJobOptions = {}) {
-    options = { ...options };
+    options = {
+      ...options,
+      ...(options.evaluation ? { evaluation: { ...options.evaluation } } : {}),
+    };
     const rt = this.rt;
     const d = deployment(rt);
     const s = await snapshot(rt);
     const j = await this.raw(jobId, s);
     this.open(j, s.timestamp);
+    const evaluated = matchesEvaluator(j, this.evaluator);
+    const c = evaluated ? await this.requireEvaluator(j, s) : undefined;
+    if (options.evaluation && !c)
+      throw new JobError(
+        'EVALUATOR_MISMATCH',
+        'Evaluation funding options require the configured evaluator and hook.'
+      );
     const gen = currentGeneration(rt.agw.network);
     const isWallet = await s.read<boolean>(
       gen.addresses.factory,
@@ -316,12 +474,14 @@ export class JobNamespaceImpl implements JobNamespace {
     } else if (getAddress(j.client) !== getAddress(rt.agw.signerPushAccount()))
       throw new JobError('NOT_CLIENT', 'Connect this job’s client.');
     let expected = options.expectedBudget;
-    const cardId = await s.read<bigint>(
-      d.marketplace,
-      MARKETPLACE_ABI,
-      'cardOfJob',
-      [jobId]
-    );
+    const cardId =
+      !evaluated &&
+      d.marketplace !== zeroAddress &&
+      getAddress(j.hook) === getAddress(d.hook)
+        ? await s.read<bigint>(d.marketplace, MARKETPLACE_ABI, 'cardOfJob', [
+            jobId,
+          ])
+        : BigInt(0);
     let rulesId = options.rulesId;
     if (cardId) {
       const [version, view, recordedRules] = await Promise.all([
@@ -358,7 +518,10 @@ export class JobNamespaceImpl implements JobNamespace {
         { expectedBudget: expected, currentBudget: j.budget }
       );
     let optParams: Hex = '0x';
-    if (getAddress(j.hook) === getAddress(d.hook)) {
+    if (
+      evaluated ||
+      (d.hook !== zeroAddress && getAddress(j.hook) === getAddress(d.hook))
+    ) {
       if (!isWallet || !rulesId || !/^0x[\da-f]{64}$/i.test(rulesId))
         throw new JobError(
           'RULES_REQUIRED',
@@ -380,7 +543,12 @@ export class JobNamespaceImpl implements JobNamespace {
           'The live rule must authorize this provider through the job expiry.'
         );
       if (
-        await s.read<bigint>(d.hook, RULES_HOOK_ABI, 'activeJobOf', [j.client])
+        await s.read<bigint>(
+          j.hook,
+          evaluated ? EVALUATION_HOOK_ABI : RULES_HOOK_ABI,
+          'activeJobOf',
+          [j.client]
+        )
       )
         throw new JobError(
           'WALLET_HAS_ACTIVE_JOB',
@@ -426,6 +594,71 @@ export class JobNamespaceImpl implements JobNamespace {
         });
       }
     }
+    if (c) {
+      if (!rulesId)
+        throw new JobError(
+          'RULES_REQUIRED',
+          'The evaluated job requires its rulesId.'
+        );
+      const acceptance = options.evaluation;
+      if (!acceptance || !/^0x[\da-f]{64}$/i.test(acceptance.expectedSpecHash))
+        throw new JobError(
+          'EXPECTED_SPEC_HASH_REQUIRED',
+          'Pass the exact criteria hash you reviewed before funding.'
+        );
+      amount(acceptance.maxReadFee);
+      const quote = await evaluationQuote(s, c, jobId, j);
+      if (
+        quote.specHash.toLowerCase() !==
+        acceptance.expectedSpecHash.toLowerCase()
+      )
+        throw new JobError(
+          'SPEC_HASH_MISMATCH',
+          'The current criteria differ from the criteria you reviewed.'
+        );
+      const selected = decodePrePostJobSpec(j.description, { format: 'spec' });
+      if (selected.allowedMutability !== 'NONE')
+        return unavailable('Mutable job criteria');
+      const topUp = acceptance.prefundAmount ?? quote.topUp;
+      amount(topUp);
+      if (
+        quote.required > acceptance.maxReadFee ||
+        topUp > acceptance.maxReadFee
+      )
+        throw new JobError(
+          'READ_FEE_EXCEEDED',
+          'The quoted reads or explicit PC addition exceed maxReadFee.'
+        );
+      if (quote.prepaid + topUp < quote.required)
+        throw new JobError(
+          'INSUFFICIENT_READ_FEES',
+          'Prepay enough PC for the baseline and evaluation reads.'
+        );
+      if (
+        (await rt.agw.reader.getBalance({
+          address: j.client,
+          blockNumber: s.blockNumber,
+        })) < topUp
+      )
+        throw new JobError(
+          'INSUFFICIENT_FUNDS',
+          'The job wallet needs PC for evaluator reads.'
+        );
+      if (topUp > BigInt(0))
+        calls.push({
+          target: c.evaluator,
+          value: topUp,
+          data: encodeFunctionData({
+            abi: EVALUATOR_ABI,
+            functionName: 'prefund',
+            args: [jobId],
+          }),
+        });
+      optParams = encodeAbiParameters(
+        [{ type: 'bytes32' }, { type: 'bytes32' }, { type: 'bytes' }],
+        [rulesId, acceptance.expectedSpecHash, '0x']
+      );
+    }
     calls.push({
       target: d.kernel,
       value: BigInt(0),
@@ -454,11 +687,35 @@ export class JobNamespaceImpl implements JobNamespace {
       { progressHook: options.progressHook }
     );
   }
-  async submit(
-    jobId: bigint,
-    options: JobWriteOptions & { deliverable: Hex | string }
-  ) {
-    options = { ...options };
+  async submit(jobId: bigint, options: SubmitJobOptions) {
+    options = {
+      ...options,
+      ...(options.executionBlocks
+        ? { executionBlocks: { ...options.executionBlocks } }
+        : {}),
+    };
+    if (options.executionBlocks !== undefined) {
+      const entries = Object.entries(options.executionBlocks);
+      if (
+        entries.length < 1 ||
+        entries.length > 32 ||
+        entries.some(
+          ([chain, block]) =>
+            !/^eip155:[1-9]\d*$/.test(chain) ||
+            typeof block !== 'bigint' ||
+            block <= BigInt(0) ||
+            block >= BigInt(1) << BigInt(64)
+        )
+      )
+        throw new JobError(
+          'INVALID_EXECUTION_BLOCKS',
+          'Provide 1..32 destination chains with positive uint64 execution blocks.'
+        );
+      if (!this.evaluator)
+        return unavailable(
+          'Submit execution-block checks; configure the compatible evaluator first'
+        );
+    }
     const s = await snapshot(this.rt);
     const j = await this.raw(jobId, s);
     this.provider(j);
@@ -467,6 +724,68 @@ export class JobNamespaceImpl implements JobNamespace {
         'WRONG_STATUS',
         'Only an unexpired Funded job can be submitted.'
       );
+    if (options.executionBlocks !== undefined) {
+      const c = await this.requireEvaluator(j, s);
+      const [{ spec, bytes }, frozenHash, core, maxAge] = await Promise.all([
+        evaluationSpec(s, c, jobId, j),
+        s.read<Hex>(c.evaluator, EVALUATOR_ABI, 'specHashOf', [jobId]),
+        s.read<Address>(c.evaluator, EVALUATOR_ABI, 'UNIVERSAL_CORE'),
+        s.read<bigint>(c.evaluator, EVALUATOR_ABI, 'MAX_HEIGHT_AGE'),
+      ]);
+      if (
+        frozenHash === zeroHash ||
+        frozenHash.toLowerCase() !== keccak256(bytes).toLowerCase()
+      )
+        throw new JobError(
+          'SPEC_HASH_MISMATCH',
+          'Execution blocks must be checked against the frozen criteria.'
+        );
+      const postChains = new Set(
+        spec.reads
+          .filter((read) => read.at === 'POST_EXECUTION')
+          .map((read) => `${read.chainNamespace}:${read.chainId}`)
+      );
+      const heightAbi = parseAbi([
+        'function chainHeightByChainNamespace(string) view returns (uint256)',
+        'function timestampObservedAtByChainNamespace(string) view returns (uint256)',
+      ]);
+      for (const [chain, requiredBlock] of Object.entries(
+        options.executionBlocks
+      )) {
+        if (!postChains.has(chain))
+          throw new JobError(
+            'EXECUTION_CHAIN_MISMATCH',
+            'An execution block must name a chain measured by the job’s POST criteria.',
+            { chain }
+          );
+        const [trackedBlock, observedAt] = await Promise.all([
+          s.read<bigint>(core, heightAbi, 'chainHeightByChainNamespace', [
+            chain,
+          ]),
+          s.read<bigint>(
+            core,
+            heightAbi,
+            'timestampObservedAtByChainNamespace',
+            [chain]
+          ),
+        ]);
+        if (
+          trackedBlock < requiredBlock ||
+          trackedBlock >= BigInt(1) << BigInt(64)
+        )
+          throw new JobError(
+            'EXECUTION_BLOCK_NOT_TRACKED',
+            'Wait for Push to track the destination work block before submitting.',
+            { chain, requiredBlock, trackedBlock, snapshotBlock: s.blockNumber }
+          );
+        if (maxAge > BigInt(0) && observedAt + maxAge < BigInt(s.timestamp))
+          throw new JobError(
+            'TRACKED_HEIGHT_STALE',
+            'Wait for a fresh destination-height update before submitting.',
+            { chain, trackedBlock, observedAt, snapshotBlock: s.blockNumber }
+          );
+      }
+    }
     const deliverable = /^0x[\da-f]{64}$/i.test(options.deliverable)
       ? (options.deliverable as Hex)
       : keccak256(stringToHex(options.deliverable));
@@ -515,18 +834,18 @@ export class JobNamespaceImpl implements JobNamespace {
       },
     ];
     if (isWallet) {
-      const wallet = await s.read<Address>(
-        d.marketplace,
-        MARKETPLACE_ABI,
-        'agwOfJob',
-        [jobId]
-      );
-      const rulesId = await s.read<Hex>(
-        d.marketplace,
-        MARKETPLACE_ABI,
-        'rulesOfJob',
-        [jobId]
-      );
+      const wallet =
+        d.marketplace === zeroAddress
+          ? zeroAddress
+          : await s.read<Address>(d.marketplace, MARKETPLACE_ABI, 'agwOfJob', [
+              jobId,
+            ]);
+      const rulesId =
+        d.marketplace === zeroAddress
+          ? zeroHash
+          : await s.read<Hex>(d.marketplace, MARKETPLACE_ABI, 'rulesOfJob', [
+              jobId,
+            ]);
       if (
         getAddress(wallet) === getAddress(j.client) &&
         rulesId !== zeroHash &&
@@ -582,12 +901,89 @@ export class JobNamespaceImpl implements JobNamespace {
       true
     );
   }
-  async verify(_jobId: bigint, _options?: JobWriteOptions): Promise<never> {
-    void _jobId;
-    void _options;
-    return unavailable(
-      'Automatic job verification; the configured evaluator is manual'
-    );
+  async verify(jobId: bigint, options: VerifyJobOptions = {}) {
+    if (!this.evaluator)
+      return unavailable(
+        'Automatic job verification; the configured evaluator is manual'
+      );
+    options = { ...options };
+    const s = await snapshot(this.rt),
+      j = await this.raw(jobId, s),
+      c = await this.requireEvaluator(j, s);
+    const { evaluation: e } = await evaluationStatus(s, c, jobId, j);
+    let action = options.action ?? 'auto';
+    if (action === 'auto')
+      action =
+        e.done && !e.applied && (e.verdict === 'PASS' || e.verdict === 'FAIL')
+          ? 'settle'
+          : !e.started && !e.ready
+          ? 'retrySnapshot'
+          : 'retryEvaluation';
+    if (!['settle', 'retrySnapshot', 'retryEvaluation'].includes(action))
+      throw new JobError(
+        'INVALID_VERIFY_ACTION',
+        'Choose snapshot retry, evaluation retry or settlement.'
+      );
+    if (
+      action === 'settle'
+        ? !e.done || e.applied || (e.verdict !== 'PASS' && e.verdict !== 'FAIL')
+        : action === 'retrySnapshot'
+        ? e.started || e.ready || (j.status !== 1 && j.status !== 2)
+        : j.status !== 2 ||
+          !e.endFixed ||
+          (e.done && e.verdict !== 'INCONCLUSIVE')
+    )
+      throw new JobError(
+        'WRONG_STATUS',
+        'This evaluation action is not available in the current job state.'
+      );
+    const value = options.value ?? BigInt(0);
+    amount(value);
+    if (value > BigInt(0)) {
+      if (options.maxReadFee === undefined)
+        throw new JobError(
+          'READ_FEE_CAP_REQUIRED',
+          'Set maxReadFee when adding PC for retries.'
+        );
+      amount(options.maxReadFee);
+      if (value > options.maxReadFee)
+        throw new JobError(
+          'READ_FEE_EXCEEDED',
+          'The retry payment exceeds maxReadFee.'
+        );
+    }
+    if (action === 'settle' && value > BigInt(0))
+      throw new JobError('INVALID_AMOUNT', 'Settlement accepts no PC payment.');
+    const call: Call = {
+      target: c.evaluator,
+      value,
+      data: encodeFunctionData({
+        abi: EVALUATOR_ABI,
+        functionName: action,
+        args: [jobId],
+      }),
+    };
+    if (
+      action !== 'settle' &&
+      getAddress(j.provider) !== getAddress(this.rt.agw.signerPushAccount())
+    ) {
+      const gen = currentGeneration(this.rt.agw.network);
+      if (
+        await s.read<boolean>(
+          gen.addresses.factory,
+          gen.contracts.abis.factory,
+          'isWallet',
+          [j.client]
+        )
+      )
+        return ownerBatch(this.rt, j.client, [call], options.progressHook);
+      if (getAddress(j.client) !== getAddress(this.rt.agw.signerPushAccount()))
+        throw new JobError(
+          'NOT_CLIENT_OR_PROVIDER',
+          'Only this job’s client or provider can retry evaluation.'
+        );
+    }
+    return write(this.rt, call, options.progressHook, 'JOB', true);
   }
   watch(
     jobId: bigint,
@@ -595,6 +991,44 @@ export class JobNamespaceImpl implements JobNamespace {
     options: JobWatchOptions = {}
   ): () => void {
     validId(jobId);
-    return watchJob(this.rt, jobId, callback, { ...options });
+    return watchJob(
+      this.rt,
+      jobId,
+      callback,
+      { ...options },
+      this.evaluator
+        ? async () => {
+            const s = await snapshot(this.rt),
+              j = await this.raw(jobId, s);
+            if (!matchesEvaluator(j, this.evaluator)) return [];
+            const c = await this.requireEvaluator(j, s);
+            return [
+              {
+                address: c.evaluator,
+                abi: EVALUATOR_ABI,
+                names: [
+                  'SpecFrozenHere',
+                  'SnapshotRequested',
+                  'SnapshotAnswered',
+                  'SnapshotReady',
+                  'EndBlocksFixed',
+                  'ReadsSent',
+                  'ReadsNotSent',
+                  'ReadAnswered',
+                  'Verified',
+                  'SettleFailed',
+                  'Prefunded',
+                  'PrepaidRefunded',
+                ],
+              },
+              {
+                address: c.hook,
+                abi: EVALUATION_HOOK_ABI,
+                names: ['SpecFrozen', 'SpecReplaced', 'RulesBound'],
+              },
+            ];
+          }
+        : undefined
+    );
   }
 }

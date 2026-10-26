@@ -35,7 +35,7 @@ const chain = CHAIN.ETHEREUM_SEPOLIA;
 const counter = EVM_CHAIN_FIXTURES.find((x) => x.chain === chain)!.contracts
   .counter as `0x${string}`;
 
-d('agw v5 multi-asset', () => {
+d('agw v6 multi-asset', () => {
   let f: AgwFixture;
   beforeAll(async () => {
     f = await setupAgw();
@@ -60,7 +60,7 @@ d('agw v5 multi-asset', () => {
       ],
       allowedCalls: [{ target: counter, selector: 'increment()' as const }],
     };
-    const created = await f.owner.agentic.create('v5-two-token', {
+    const created = await f.owner.agentic.create('v6-two-token', {
       rules: [rule],
     });
     const w = f.owner.agentic.wallet(created.wallet);
@@ -99,7 +99,7 @@ d('agw v5 multi-asset', () => {
     expect((await w.rules.list()).rules.map((x) => x.rulesId)).toEqual([
       replacement.rules[0].rulesId,
     ]);
-    f.evidence('v5-two-token-replacement', {
+    f.evidence('v6-two-token-replacement', {
       wallet: created.wallet,
       oldId: created.rulesIds[0],
       newId: replacement.rules[0].rulesId,
@@ -107,7 +107,7 @@ d('agw v5 multi-asset', () => {
     });
   });
   it('2. empty user assets routes a call-only outbound with zero token spend', async () => {
-    const created = await f.owner.agentic.create('v5-call-only', {
+    const created = await f.owner.agentic.create('v6-call-only', {
       rules: [
         {
           agent: f.agentAddress,
@@ -153,7 +153,7 @@ d('agw v5 multi-asset', () => {
       ],
     });
     expect(cfg.assets.map((x) => x.spent)).toEqual([BigInt(0)]);
-    f.evidence('v5-call-only', {
+    f.evidence('v6-call-only', {
       wallet: created.wallet,
       pushTx: tx.hash,
       externalTx: receipt.externalTxHash,
@@ -182,7 +182,7 @@ d('agw v5 multi-asset', () => {
       if (available < amounts[i] + BigInt(1))
         throw new Error('Insufficient master funds for two-asset fixture');
     }
-    const made = await f.owner.agentic.create('v5-independent-budgets', {
+    const made = await f.owner.agentic.create('v6-independent-budgets', {
       rules: [
         {
           agent: f.agentAddress,
@@ -268,7 +268,7 @@ d('agw v5 multi-asset', () => {
               args: [cea],
             });
       const tx = await agent.universal.sendTransaction(params(i));
-      f.evidence('v5-budget-outbound-submitted', {
+      f.evidence('v6-budget-outbound-submitted', {
         wallet: made.wallet,
         rulesId: made.rulesIds[0],
         token: tokens[i],
@@ -338,7 +338,7 @@ d('agw v5 multi-asset', () => {
       expect(await spent()).toEqual(expected);
       hashes.push(tx.hash, receipt.externalTxHash!);
     }
-    f.evidence('v5-independent-token-budgets', {
+    f.evidence('v6-independent-token-budgets', {
       wallet: made.wallet,
       rulesId: made.rulesIds[0],
       tokens,

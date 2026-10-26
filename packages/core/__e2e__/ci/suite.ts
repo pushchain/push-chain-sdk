@@ -1078,18 +1078,18 @@ export const SCENARIOS: Scenario[] = [
     env: { AGW_E2E: '1' },
   },
   {
-    id: 'agw-v5-multi-asset',
+    id: 'agw-multi-asset',
     group: 'agw',
-    file: '__e2e__/agw/v5-multiasset.spec.ts',
-    grep: 'agw v5 multi-asset 1\\. public create',
+    file: '__e2e__/agw/multiasset.spec.ts',
+    grep: 'agw v6 multi-asset 1\\. public create',
     needs: { masterPC: '2' },
     env: { AGW_E2E: '1' },
   },
   {
-    id: 'agw-v5-call-only',
+    id: 'agw-call-only',
     group: 'agw',
-    file: '__e2e__/agw/v5-multiasset.spec.ts',
-    grep: 'agw v5 multi-asset 2\\. empty user assets',
+    file: '__e2e__/agw/multiasset.spec.ts',
+    grep: 'agw v6 multi-asset 2\\. empty user assets',
     needs: { masterPC: '25' },
     env: { AGW_E2E: '1' },
   },
@@ -1166,10 +1166,10 @@ export const SCENARIOS: Scenario[] = [
   })),
 
   {
-    id: 'agw-v5-independent-token-budgets',
+    id: 'agw-independent-token-budgets',
     group: 'agw',
-    file: '__e2e__/agw/v5-multiasset.spec.ts',
-    grep: 'agw v5 multi-asset 3\\.',
+    file: '__e2e__/agw/multiasset.spec.ts',
+    grep: 'agw v6 multi-asset 3\\.',
     needs: {
       masterPC: '45',
       masterPETH: '0.000001000000000001',

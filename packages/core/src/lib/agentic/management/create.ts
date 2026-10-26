@@ -2,7 +2,6 @@ import { assertNoDuplicateRules } from './duplicates';
 import { getAddress, type Address, type Hex } from 'viem';
 import { PROGRESS_HOOK } from '../../progress-hook/progress-hook.types';
 import type { MultiCall } from '../../orchestrator/orchestrator.types';
-import { AgenticCapability, requireCapability } from '../capabilities';
 import { currentGeneration, verifyFactoryWiring } from '../deployments';
 import { deriveWallet, rulesId as computeRulesId } from '../codec/ids';
 import { prepareWalletRules } from './prepare';
@@ -36,7 +35,6 @@ export async function createWallet(
   }
   assertCanSign(runtime, 'agentic.create');
   const gen = currentGeneration(runtime.network);
-  requireCapability(gen.capabilities, AgenticCapability.WALLET_READS);
   await verifyFactoryWiring(runtime.reader, gen);
 
   const owner = runtime.signerPushAccount();

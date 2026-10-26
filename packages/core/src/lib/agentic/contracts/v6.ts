@@ -25,12 +25,7 @@ import type { NativeTermsWire } from '../codec/native';
 import type { UniversalTermsWire } from '../codec/universal-terms';
 import type { SvmTermsWire } from '../codec/svm-terms';
 
-/**
- * Contract adapter for the reviewed v6 ABI generation. All version-
- * sensitive encoding, decoding and view names live here; callers never touch
- * a raw ABI. A future generation gets its own adapter implementing the same
- * interface.
- */
+/** Encoding, decoding and view names for the supported AGW v6 contracts. */
 
 export interface Call {
   target: Address;
@@ -132,13 +127,6 @@ export const v6 = {
   },
 
   // ---------------------------------------------------------------- encoders
-  encodeDeployWallet(label: string): Hex {
-    return encodeFunctionData({
-      abi: AGW_FACTORY_ABI,
-      functionName: 'deployWallet',
-      args: [label],
-    });
-  },
   /**
    * Index-bound deployment for an owner calling the factory itself.
    * deployWalletWithSig skips signature checks when msg.sender == intent.owner

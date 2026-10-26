@@ -131,6 +131,12 @@ function snapshot(entry) {
     if (kind === 'typeof ') {
       const type = checker.getTypeOfSymbolAtLocation(symbol, decl);
       const calls = type.getCallSignatures();
+      // Declarations can retain an overloaded function as `typeof import(...)`
+      // while source renders the same call signatures inline.
+      if (calls.length > 1)
+        return normal(`{ ${calls.map((call) => checker.signatureToString(
+          call, file, ts.TypeFormatFlags.NoTruncation
+        )).join('; ')}; }`);
       if (calls.length === 1)
         return normal(
           checker.signatureToString(

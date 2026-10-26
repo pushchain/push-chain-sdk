@@ -1,4 +1,11 @@
-import { decodeEventLog, getAbiItem, getAddress, type Log } from 'viem';
+import {
+  decodeEventLog,
+  getAbiItem,
+  getAddress,
+  type Log,
+  type Abi,
+  type Address,
+} from 'viem';
 import { JOB_KERNEL_ABI as ABI } from '../market/contracts/AgenticCommerce';
 import { deployment, type StackRuntime } from '../market/runtime';
 import { JobError } from '../market/errors';
@@ -30,7 +37,10 @@ export function watchJob(
   rt: StackRuntime,
   jobId: bigint,
   callback: (event: JobEvent) => void,
-  options: JobWatchOptions
+  options: JobWatchOptions,
+  evaluationSources?: () => Promise<
+    { address: Address; abi: Abi; names: string[] }[]
+  >
 ): () => void {
   const d = deployment(rt);
   let stopped = false;
@@ -98,21 +108,34 @@ export function watchJob(
       const end = next + BigInt(999) < head ? next + BigInt(999) : head;
       if (next <= end) {
         const start = next;
+        const sources = [
+          { address: d.kernel, abi: ABI as Abi, names: [...names] as string[] },
+          ...(evaluationSources ? await evaluationSources() : []),
+        ];
+        if (stopped) return;
         const groups = await Promise.all(
-          names.map((name) =>
-            rt.agw.reader.getLogs({
-              address: d.kernel,
-              event: getAbiItem({ abi: ABI, name }),
-              args: { jobId },
-              fromBlock: start,
-              toBlock: end,
-            })
+          sources.flatMap((source) =>
+            source.names.map((name) =>
+              rt.agw.reader.getLogs({
+                address: source.address,
+                event: getAbiItem({
+                  abi: source.abi,
+                  name,
+                }) as import('viem').AbiEvent,
+                args: { jobId },
+                fromBlock: start,
+                toBlock: end,
+              })
+            )
           )
         );
         if (stopped) return;
         const unique = new Map<
           string,
-          { log: Log; event: ReturnType<typeof decodeEventLog> }
+          {
+            log: Log;
+            event: { eventName: string; args: Record<string, unknown> };
+          }
         >();
         for (const log of groups.flat()) {
           if (log.removed)
@@ -120,8 +143,11 @@ export function watchJob(
               'WATCH_REORG',
               'The RPC returned a removed job log. Reload status before continuing.'
             );
+          const source = sources.find(
+            (x) => getAddress(x.address) === getAddress(log.address)
+          );
           if (
-            getAddress(log.address) !== getAddress(d.kernel) ||
+            !source ||
             log.blockNumber === null ||
             log.logIndex === null ||
             log.blockNumber < start ||
@@ -132,14 +158,14 @@ export function watchJob(
               'The RPC returned an unmined or out-of-range job log.'
             );
           const event = decodeEventLog({
-            abi: ABI,
+            abi: source.abi,
             data: log.data,
             topics: log.topics,
             strict: true,
-          });
+          }) as unknown as { eventName: string; args: Record<string, unknown> };
           if (
             (event.args as { jobId?: bigint }).jobId !== jobId ||
-            !names.includes(event.eventName as (typeof names)[number])
+            !source.names.includes(event.eventName)
           )
             throw new JobError(
               'INCONSISTENT_READ',
@@ -178,9 +204,9 @@ export function watchJob(
           };
           notify({
             jobId,
-            kind: kinds[
-              names.indexOf(event.eventName as (typeof names)[number])
-            ],
+            kind: names.includes(event.eventName as (typeof names)[number])
+              ? kinds[names.indexOf(event.eventName as (typeof names)[number])]
+              : event.eventName,
             txHash: log.transactionHash ?? undefined,
             blockNumber,
             data: event.args,

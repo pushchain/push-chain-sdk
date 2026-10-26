@@ -78,7 +78,8 @@ beforeAll(async () => {
       '--chain-id',
       '42101',
       '--fork-url',
-      process.env['MARKET_FORK_RPC'] ?? 'https://evm.donut.rpc.push.org/',
+      process.env['MARKET_FORK_RPC'] ??
+        'https://archive.evm.donut.rpc.push.org/',
       '--fork-block-number',
       '24447347',
       '--timeout',

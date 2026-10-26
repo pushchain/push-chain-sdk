@@ -59,7 +59,7 @@ const accounts = [
   { pubkey: ATA, isWritable: true },
 ];
 
-describe('v5 internal SVM wire codec', () => {
+describe('v6 internal SVM wire codec', () => {
   it('round-trips ordered per-token caps and all four data-pin modes', () => {
     const t = base();
     t.dataPins = [

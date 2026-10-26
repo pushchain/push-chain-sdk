@@ -5,7 +5,6 @@ import type {
   MultiCall,
   UniversalTxResponse,
 } from '../../orchestrator/orchestrator.types';
-import { AgenticCapability, requireCapability } from '../capabilities';
 import { type AgenticGeneration } from '../deployments';
 import { rulesId as computeRulesId } from '../codec/ids';
 import { prepareWalletRules } from './prepare';
@@ -281,7 +280,6 @@ export async function updateRules(
       'rules.update needs at least one { rulesId, rule } pair'
     );
   }
-  requireCapability(gen.capabilities, AgenticCapability.OWNER_EXECUTE);
   const oldIds = params.rules.map((p) => p.rulesId.toLowerCase());
   if (new Set(oldIds).size !== oldIds.length) {
     throw new AgenticError(
@@ -304,10 +302,6 @@ export async function updateRules(
         `rule ${pair.rulesId} is not enabled on ${wallet}`
       );
     if (old.mode === MODE_NATIVE) {
-      requireCapability(
-        gen.capabilities,
-        AgenticCapability.ASSERT_SPENT_NATIVE
-      );
       const guards = [];
       for (const action of old.actionIds) {
         const spend = await readNativeSpend(snap, gen, wallet, old, action);
@@ -322,10 +316,6 @@ export async function updateRules(
       }
       assertions.push(guards);
     } else {
-      requireCapability(
-        gen.capabilities,
-        AgenticCapability.ASSERT_SPENT_UNIVERSAL_MULTI
-      );
       const spend = await readUniversalSpend(snap, gen, wallet, old);
       assertions.push([
         {
@@ -431,7 +421,6 @@ export async function setLabel(
 ): Promise<UniversalTxResponse> {
   assertLabel(label);
   assertCanSign(runtime, 'setLabel');
-  requireCapability(gen.capabilities, AgenticCapability.SET_LABEL);
   return finish(runtime, hook, 'setLabel', async () => {
     await assertOwner(runtime, gen, wallet, await Snapshot.at(runtime.reader));
     const tx = await sendOwnerCalls(

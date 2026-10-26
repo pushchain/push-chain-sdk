@@ -44,11 +44,8 @@ describe('marketplace deployed v2 read-only', () => {
     expect(BigInt(cards.cards.length)).toBe(count);
     expect(Array.isArray(jobs.jobs)).toBe(true);
   });
-  it('returns explicit placeholders for unavailable verification and deposit orchestration', async () => {
+  it('keeps automatic verification unavailable on the default manual evaluator', async () => {
     await expect(sdk.job.verify(BigInt(1))).rejects.toMatchObject({
-      code: 'CAPABILITY_UNAVAILABLE',
-    });
-    await expect(sdk.market.deposit(BigInt(1))).rejects.toMatchObject({
       code: 'CAPABILITY_UNAVAILABLE',
     });
   });

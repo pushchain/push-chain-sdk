@@ -1,4 +1,4 @@
-/** Public SDK labels against checked Donut v5; fresh wallets only. */
+/** Public SDK labels against checked Donut v6; fresh wallets only. */
 import {
   decodeEventLog,
   createWalletClient,
@@ -39,19 +39,19 @@ d('agw labels', () => {
     });
   it('1. default and custom deployment labels are stored and listed', async () => {
     const empty = await f.owner.agentic.create('', { rules: [] });
-    const custom = await f.owner.agentic.create('e2e-v5-custom', { rules: [] });
+    const custom = await f.owner.agentic.create('e2e-v6-custom', { rules: [] });
     expect((await f.owner.agentic.wallet(empty.wallet).info()).label).toBe(
       `AGW ${empty.index + 1}`
     );
     expect((await f.owner.agentic.wallet(custom.wallet).info()).label).toBe(
-      'e2e-v5-custom'
+      'e2e-v6-custom'
     );
     const { wallets } = await f.owner.agentic.list();
     expect(wallets.find((w) => w.address === empty.wallet)?.label).toBe(
       `AGW ${empty.index + 1}`
     );
     expect(wallets.find((w) => w.address === custom.wallet)?.label).toBe(
-      'e2e-v5-custom'
+      'e2e-v6-custom'
     );
     const renamed = await f.owner.agentic
       .wallet(custom.wallet)
@@ -64,7 +64,7 @@ d('agw labels', () => {
     );
     expect(await count(empty.wallet)).toBe(BigInt(0));
     expect(await count(custom.wallet)).toBe(BigInt(0));
-    f.evidence('v5-label-default-custom', {
+    f.evidence('v6-label-default-custom', {
       wallets: [empty.wallet, custom.wallet],
       indices: [empty.index, custom.index],
       hashes: [empty.tx.hash, custom.tx.hash, renamed.hash],
@@ -104,7 +104,7 @@ d('agw labels', () => {
     const reset = await w.setLabel('');
     expect((await w.info()).label).toBe(`AGW ${made.index + 1}`);
     expect(await count(made.wallet)).toBe(before);
-    f.evidence('v5-label-rename-reset', {
+    f.evidence('v6-label-rename-reset', {
       wallet: made.wallet,
       hashes: [tx.hash, reset.hash],
       checkpointsBefore: before,
@@ -137,7 +137,7 @@ d('agw labels', () => {
     expect(await f.owner.agentic.derive()).toEqual(next);
     expect((await w.info()).label).toBe('a'.repeat(64));
     expect(await count(made.wallet)).toBe(before);
-    f.evidence('v5-label-byte-boundary', {
+    f.evidence('v6-label-byte-boundary', {
       wallet: made.wallet,
       checkpoints: before,
       unchangedNextSlot: next.index,
@@ -201,7 +201,7 @@ d('agw labels', () => {
       'owner-only'
     );
     expect(await count(made.wallet)).toBe(before);
-    f.evidence('v5-label-agent-refused', {
+    f.evidence('v6-label-agent-refused', {
       wallet: made.wallet,
       checkpoints: before,
     });
@@ -240,7 +240,7 @@ d('agw labels', () => {
     const reset = await w.setLabel('');
     expect((await w.info()).label).toBe(`AGW ${made.index + 1}`);
     expect(await count(made.wallet)).toBe(before);
-    f.evidence('v5-label-uea-owner', {
+    f.evidence('v6-label-uea-owner', {
       wallet: made.wallet,
       owner: uea,
       hashes: [made.tx.hash, rename.hash, reset.hash],
@@ -290,7 +290,7 @@ d('agw labels', () => {
     const reset = await w.setLabel('');
     expect((await w.info()).label).toBe(`AGW ${made.index + 1}`);
     expect(await count(made.wallet)).toBe(before);
-    f.evidence('v5-label-solana-owner', {
+    f.evidence('v6-label-solana-owner', {
       wallet: made.wallet,
       owner: uea,
       hashes: [made.tx.hash, rename.hash, reset.hash],
@@ -387,7 +387,7 @@ d('agw labels', () => {
       )
     ).toEqual(spendAfter);
     expect(await count(made.wallet)).toBe(checkpointsBefore);
-    f.evidence('v5-label-active-rule', {
+    f.evidence('v6-label-active-rule', {
       wallet: made.wallet,
       rulesId: made.rulesIds[0],
       hashes: [first.hash, rename.hash, second.hash],
@@ -447,7 +447,7 @@ d('agw labels', () => {
     expect(receipt.logs).toHaveLength(0);
     expect((await w.info()).label).toBe('batch-before');
     expect(await count(made.wallet)).toBe(before);
-    f.evidence('v5-label-batch-rollback', {
+    f.evidence('v6-label-batch-rollback', {
       wallet: made.wallet,
       hash,
       block: receipt.blockNumber,

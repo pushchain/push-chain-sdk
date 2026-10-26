@@ -8,7 +8,7 @@ export interface Preset {
   name: string;
   chains: ForeignChainNamespace[];
 }
-/** Presets generate expiry; optional fields retain editable-template compatibility. */
+/** An editable preset template; agent is supplied before creating a wallet. */
 export type PresetRuleTemplate = Omit<Rule, 'agent' | 'validUntil'> & {
   agent?: Address;
   validUntil?: number;
@@ -36,7 +36,7 @@ export interface PresetOptions {
    * native ETH asset for every selected chain. */
   assets?: PresetAsset[];
 }
-export interface ReadyPresetOptions extends PresetOptions {
+export interface PresetOptionsWithAgent extends PresetOptions {
   agent: Address;
 }
 export interface PresetResult<
@@ -46,6 +46,9 @@ export interface PresetResult<
 }
 export interface AgenticPresets {
   list(options?: { type?: 'CATEGORY' }): { presets: Preset[] };
-  get(preset: PresetCategory, options: ReadyPresetOptions): PresetResult<Rule>;
+  get(
+    preset: PresetCategory,
+    options: PresetOptionsWithAgent
+  ): PresetResult<Rule>;
   get(preset: PresetCategory, options?: PresetOptions): PresetResult;
 }

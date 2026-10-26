@@ -2,7 +2,6 @@ import { readSvmConfig } from './svm';
 import { readGasPrc20, readSvmSourceToken } from '../contracts/prc20-metadata';
 import { getAddress, zeroAddress, type Address, type Hex } from 'viem';
 import { CHAIN } from '../../constants/enums';
-import { AgenticCapability, requireCapability } from '../capabilities';
 import type { AgenticGeneration } from '../deployments';
 import type {
   NativeConfigRead,
@@ -166,10 +165,6 @@ export async function decodeActiveRule(
 ): Promise<RulesRecord> {
   if (rule.mode === MODE_UNIVERSAL) {
     if (rule.vm === 1) {
-      requireCapability(
-        gen.capabilities,
-        AgenticCapability.UNIVERSAL_SVM_RULES
-      );
       const stored = await readSvmConfig(
         snap,
         gen,
@@ -228,7 +223,6 @@ export async function decodeActiveRule(
         AGENTIC_ERROR_CODE.RULE_READ_FAILED,
         'unknown universal VM'
       );
-    requireCapability(gen.capabilities, AgenticCapability.UNIVERSAL_EVM_RULES);
     const chain = chainFromHash(rule.chainHash, pushChainNamespace);
     if (!chain || !chain.startsWith('eip155:'))
       throw new AgenticError(
@@ -458,7 +452,6 @@ export async function listRules(
   wallet: Address,
   pushChainNamespace: string
 ): Promise<RulesRecord[]> {
-  requireCapability(gen.capabilities, AgenticCapability.ACTIVE_RULE_READS);
   const active = await readActiveRules(snap, gen, wallet);
   const records: RulesRecord[] = [];
   for (const r of active)
@@ -479,7 +472,6 @@ export async function getRule(
   rulesId: Hex,
   pushChainNamespace: string
 ): Promise<RulesRecord> {
-  requireCapability(gen.capabilities, AgenticCapability.ACTIVE_RULE_READS);
   const enabled = await snap.read<boolean>(
     gen.addresses.sessionEngine,
     gen.contracts.abis.engine,

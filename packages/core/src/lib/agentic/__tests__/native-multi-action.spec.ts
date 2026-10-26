@@ -14,11 +14,7 @@ import {
 } from '../codec/native';
 import { prepareRules } from '../codec/rules';
 import { decodeEnvelope, decodeSession } from '../codec/session';
-import {
-  currentGeneration,
-  resetAgenticGenerations,
-  V6_CAPABILITIES,
-} from '../deployments';
+import { currentGeneration, resetAgenticGenerations } from '../deployments';
 import { AGENTIC_ERROR_CODE } from '../errors';
 import { decodeActiveRule, readActiveRules } from '../reads/rules';
 import { Snapshot } from '../reads/snapshot';
@@ -58,7 +54,6 @@ const ctx = {
   validator: ADDR.validator,
   rulesPolicy: ADDR.policy,
   gateway: ADDR.gateway,
-  capabilities: V6_CAPABILITIES,
   nowSeconds: NOW,
   forbiddenTargets: [
     ADDR.factory,

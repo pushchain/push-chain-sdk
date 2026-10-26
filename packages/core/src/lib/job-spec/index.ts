@@ -1,3 +1,4 @@
+import { prePostJobUtils } from './pre-post';
 import {
   buildJobSpec,
   buildJobSpecTemplate,
@@ -8,6 +9,7 @@ import { describeJobSpec } from './helpers';
 import { prepareJobRead } from './read';
 import { previewJobSpec } from './preview';
 export const jobSpecUtils = Object.freeze({
+  prePost: prePostJobUtils,
   buildJobSpec,
   buildJobSpecTemplate,
   encodeJobSpec,
@@ -17,3 +19,5 @@ export const jobSpecUtils = Object.freeze({
   previewJobSpec,
 });
 export type * from './types';
+
+export type * from './pre-post';

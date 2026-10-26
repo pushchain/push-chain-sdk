@@ -100,7 +100,7 @@ describe('v6 multi-asset SDK management and execution', () => {
     };
   }
   async function setup(input = rule()) {
-    const created = await owner.agentic.create('v5', { rules: [input] });
+    const created = await owner.agentic.create('v6', { rules: [input] });
     const wallet = created.wallet,
       id = created.rulesIds[0];
     await h.publicClient.waitForTransactionReceipt({

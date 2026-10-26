@@ -16,7 +16,6 @@ import type {
 } from '../../orchestrator/orchestrator.types';
 import { isPC20Reference } from '../../orchestrator/orchestrator.types';
 import { resolveR2DestinationFundsToken } from '../../orchestrator/internals/route-handlers';
-import { AgenticCapability, requireCapability } from '../capabilities';
 import type { AgenticGeneration } from '../deployments';
 import type { Call } from '../contracts/v6';
 import { UEA_MULTICALL_PREFIX } from '../contracts/v6';
@@ -137,7 +136,6 @@ export async function composeOutbound(
   params: UniversalExecuteParams,
   opts: { ruleAssets?: readonly Address[]; door: 'owner' | 'agent' }
 ): Promise<ComposedOutbound> {
-  requireCapability(gen.capabilities, AgenticCapability.UNIVERSAL_EVM_OUTBOUND);
   const target = params.to as { address: string; chain: CHAIN };
   const chain = target.chain;
   const info = CHAIN_INFO[chain];
@@ -149,7 +147,7 @@ export async function composeOutbound(
   }
   if (info.vm !== VM.EVM) {
     throw capabilityUnavailable(
-      AgenticCapability.UNIVERSAL_SVM_RULES,
+      'universalSvmRules',
       'This composer accepts EVM destinations; use the Solana instruction route'
     );
   }

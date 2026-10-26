@@ -1,6 +1,5 @@
 import { getAddress, type Address } from 'viem';
 import { CHAIN } from '../constants/enums';
-import { AgenticCapability, requireCapability } from './capabilities';
 import { resolveWalletGeneration, type AgenticGeneration } from './deployments';
 import { AGENTIC_ERROR_CODE, AgenticError } from './errors';
 import { readActiveRules } from './reads/rules';
@@ -37,11 +36,19 @@ export async function resolveAgenticContext(
   try {
     wallet = getAddress(walletInput);
   } catch (cause) {
-    throw new AgenticError(AGENTIC_ERROR_CODE.NOT_AGENTIC_WALLET, `"${walletInput}" is not an address`, {
-      cause,
-    });
+    throw new AgenticError(
+      AGENTIC_ERROR_CODE.NOT_AGENTIC_WALLET,
+      `"${walletInput}" is not an address`,
+      {
+        cause,
+      }
+    );
   }
-  const generation = await resolveWalletGeneration(runtime.reader, runtime.network, wallet);
+  const generation = await resolveWalletGeneration(
+    runtime.reader,
+    runtime.network,
+    wallet
+  );
   const signerPushAccount = runtime.signerPushAccount();
   const snap = await Snapshot.at(runtime.reader);
   const owner = getAddress(
@@ -49,10 +56,8 @@ export async function resolveAgenticContext(
   );
   let door: AgenticDoor;
   if (owner === signerPushAccount) {
-    requireCapability(generation.capabilities, AgenticCapability.OWNER_EXECUTE);
     door = 'owner';
   } else {
-    requireCapability(generation.capabilities, AgenticCapability.AGENT_EXECUTE);
     const active = await readActiveRules(snap, generation, wallet);
     if (!active.some((r) => r.agent === signerPushAccount)) {
       throw new AgenticError(

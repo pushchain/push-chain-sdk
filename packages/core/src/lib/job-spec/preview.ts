@@ -38,8 +38,20 @@ export function bindJobPreviewAccounts(
   resolvers.set(universal, resolve);
 }
 
+/** @internal Reuse the client's configured CEA resolver for versioned authoring helpers. */
+export async function resolveJobPreviewAccount(
+  universal: object,
+  wallet: Address,
+  chain: CHAIN
+): Promise<Address | undefined> {
+  return resolvers.get(universal)?.(getAddress(wallet), chain);
+}
 /** Follow the deployed V2 type codes; uint values above int256.max cannot be compared. */
-export function decodeJobAnswer(read: JobRead, data: Hex): bigint {
+export function decodeJobAnswer(
+  read: JobRead,
+  data: Hex,
+  options?: { maxBytes?: number; strictArrayLength?: boolean }
+): bigint {
   const bytes = BigInt((data.length - 2) / 2);
   const invalid = (): never => {
     throw new JobSpecError(
@@ -47,6 +59,8 @@ export function decodeJobAnswer(read: JobRead, data: Hex): bigint {
       'The consensus bytes do not contain the selected JobSpec field.'
     );
   };
+  if (options?.maxBytes !== undefined && bytes > BigInt(options.maxBytes))
+    return invalid();
   const word = (at: bigint): bigint => {
     if (at < BigInt(0) || at + BigInt(32) > bytes) return invalid();
     return BigInt('0x' + data.slice(2 + Number(at) * 2, 66 + Number(at) * 2));
@@ -105,7 +119,15 @@ export function decodeJobAnswer(read: JobRead, data: Hex): bigint {
       )
     );
   }
-  if (node.code === 9) return BigInt.asIntN(256, value);
+  if (node.code === 9) {
+    if (
+      options?.strictArrayLength &&
+      value >
+        (bytes - base - BigInt(32)) / (BigInt(32) * head(node.children[0]))
+    )
+      return invalid();
+    return BigInt.asIntN(256, value);
+  }
   if (
     (node.code === 1 && value >= BigInt(1) << BigInt(255)) ||
     (node.code === 3 && value > BigInt(1)) ||
@@ -220,6 +242,42 @@ export async function previewJobSpec(
       settleWindow: 1,
     });
   } else spec = input;
+  const { reads, fees } = await observeJobReads(spec.reads, options);
+  const checks: JobSpecPreview['checks'] = spec.checks.map((check) => {
+    let value = reads[check.read].decoded;
+    if (value === null)
+      return { pass: null, value, reason: 'READ_UNAVAILABLE' };
+    if (check.evaluation === 'NUMBER' || check.evaluation === 'PERCENTAGE') {
+      const before = options.baseline?.[check.read];
+      if (before === undefined || before === null)
+        return { pass: null, value: null, reason: 'BASELINE_REQUIRED' };
+      if (check.evaluation === 'PERCENTAGE' && before === BigInt(0))
+        return { pass: null, value: null, reason: 'ZERO_BASELINE' };
+      try {
+        value = int256(value - before);
+        if (check.evaluation === 'PERCENTAGE')
+          value = int256(value * BigInt(10000)) / before;
+      } catch {
+        return { pass: null, value: null, reason: 'ARITHMETIC_OVERFLOW' };
+      }
+    }
+    return { pass: compare(value, check.operation, check.target), value };
+  });
+  return {
+    reads,
+    checks,
+    pass: combine(spec.logic, checks),
+    fees,
+  };
+}
+
+/** Shared paid observation transport; validates historical pins on recovery. */
+export async function observeJobReads(
+  logicalReads: readonly JobRead[],
+  options: PreviewJobSpecOptions,
+  blockNumbers?: readonly (bigint | undefined)[],
+  decode: typeof decodeJobAnswer = decodeJobAnswer
+): Promise<Pick<JobSpecPreview, 'reads' | 'fees'>> {
   const waitOptions = {
     timeoutMs: options.advanced?.timeout,
     pollingIntervalMs: options.advanced?.pollingIntervalMs,
@@ -230,7 +288,7 @@ export async function previewJobSpec(
   let newlyPaid = BigInt(0);
   if (options.resume) {
     if (
-      options.resume.length !== spec.reads.length ||
+      options.resume.length !== logicalReads.length ||
       options.resume.some((id) => !/^0x[\da-f]{64}$/i.test(id)) ||
       new Set(options.resume.map((x) => x.toLowerCase())).size !==
         options.resume.length
@@ -245,7 +303,7 @@ export async function previewJobSpec(
         { requestId: id },
         { resultShape: { kind: 'raw' }, progressHook: options.progressHook }
       );
-      const read = spec.reads[i];
+      const read = logicalReads[i];
       let matched = false;
       try {
         const actual = response.request.spec;
@@ -262,6 +320,8 @@ export async function previewJobSpec(
           envelope.queryType === 1 &&
           envelope.refType === 0 &&
           envelope.blockNumber === actual.blockNumber &&
+          (blockNumbers?.[i] === undefined ||
+            actual.blockNumber === blockNumbers[i]) &&
           getAddress(target) === getAddress(read.target) &&
           calldata.toLowerCase() ===
             (read.selector + read.args.slice(2)).toLowerCase();
@@ -282,7 +342,7 @@ export async function previewJobSpec(
     );
   } else {
     const prepared = [];
-    for (const read of spec.reads) {
+    for (const [i, read] of logicalReads.entries()) {
       const readOptions: ReadPrepareOptions = {
         chain: `${read.chainNamespace}:${read.chainId}` as Extract<
           CHAIN,
@@ -290,6 +350,7 @@ export async function previewJobSpec(
         >,
         callData: (read.selector + read.args.slice(2)) as Hex,
         minConfirmations: read.minConfirmations,
+        blockNumber: blockNumbers?.[i],
         expiryBlocks: options.expiryBlocks,
         refundTo: options.refundTo,
         callback: options.callback as ReadPrepareOptions['callback'],
@@ -356,37 +417,15 @@ export async function previewJobSpec(
     try {
       return {
         value,
-        decoded: decodeJobAnswer(spec.reads[i], value),
+        decoded: decode(logicalReads[i], value),
         response,
       };
     } catch (e) {
       return { value, decoded: null, error: (e as Error).message, response };
     }
   });
-  const checks: JobSpecPreview['checks'] = spec.checks.map((check) => {
-    let value = reads[check.read].decoded;
-    if (value === null)
-      return { pass: null, value, reason: 'READ_UNAVAILABLE' };
-    if (check.evaluation === 'NUMBER' || check.evaluation === 'PERCENTAGE') {
-      const before = options.baseline?.[check.read];
-      if (before === undefined || before === null)
-        return { pass: null, value: null, reason: 'BASELINE_REQUIRED' };
-      if (check.evaluation === 'PERCENTAGE' && before === BigInt(0))
-        return { pass: null, value: null, reason: 'ZERO_BASELINE' };
-      try {
-        value = int256(value - before);
-        if (check.evaluation === 'PERCENTAGE')
-          value = int256(value * BigInt(10000)) / before;
-      } catch {
-        return { pass: null, value: null, reason: 'ARITHMETIC_OVERFLOW' };
-      }
-    }
-    return { pass: compare(value, check.operation, check.target), value };
-  });
   return {
     reads,
-    checks,
-    pass: combine(spec.logic, checks),
     fees: {
       quoted,
       paid: reads.reduce((sum, r) => sum + r.response.fees.paid, BigInt(0)),

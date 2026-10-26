@@ -1,3 +1,5 @@
+import { EVALUATOR_ABI } from '../job/UniversalEvaluator';
+import { EVALUATION_HOOK_ABI } from '../job/UniversalHook';
 import { decodeErrorResult, type Hex } from 'viem';
 import { AgenticError } from '../agentic/errors';
 import { MARKET_ERRORS_ABI } from './contracts/UniversalMarketplaceErrors';
@@ -77,7 +79,13 @@ export function stackError(error: unknown): unknown {
     if (typeof o['data'] === 'string' && /^0x[0-9a-f]+$/i.test(o['data'])) {
       try {
         const decoded = decodeErrorResult({
-          abi: [...MARKET_ERRORS_ABI, ...JOB_KERNEL_ABI, ...RULES_HOOK_ABI],
+          abi: [
+            ...MARKET_ERRORS_ABI,
+            ...JOB_KERNEL_ABI,
+            ...RULES_HOOK_ABI,
+            ...EVALUATOR_ABI,
+            ...EVALUATION_HOOK_ABI,
+          ],
           data: o['data'] as Hex,
         });
         const code = decoded.errorName
