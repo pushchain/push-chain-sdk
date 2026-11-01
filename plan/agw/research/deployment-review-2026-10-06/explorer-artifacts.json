@@ -1,0 +1,70 @@
+{
+  "retrieved_at": "2026-10-05T18:34:24.706088+00:00",
+  "contracts": [
+    {
+      "contract": "factory",
+      "address": "0xe138Dc6EfC10233BE1e6c8aF1Caf8cABe599cfC2",
+      "url": "https://donut.push.network/api/v2/smart-contracts/0xe138Dc6EfC10233BE1e6c8aF1Caf8cABe599cfC2",
+      "abi_entries": 78,
+      "name": "AGWFactory",
+      "is_verified": true,
+      "compiler_version": "v0.8.26+commit.8a97fa7a",
+      "optimization_enabled": true,
+      "optimization_runs": 833,
+      "evm_version": "cancun",
+      "verified_at": "2026-10-05T13:39:06.864566Z"
+    },
+    {
+      "contract": "wallet",
+      "address": "0x96D69ec7e6cDdaD414e656B5c9DCA24587DF713c",
+      "url": "https://donut.push.network/api/v2/smart-contracts/0x96D69ec7e6cDdaD414e656B5c9DCA24587DF713c",
+      "abi_entries": 76,
+      "name": "AGW",
+      "is_verified": true,
+      "compiler_version": "v0.8.26+commit.8a97fa7a",
+      "optimization_enabled": true,
+      "optimization_runs": 833,
+      "evm_version": "cancun",
+      "verified_at": "2026-10-05T13:38:54.015751Z"
+    },
+    {
+      "contract": "policy",
+      "address": "0xA2391eee4C9EA1B32AEB3A460B77296EA709F02F",
+      "url": "https://donut.push.network/api/v2/smart-contracts/0xA2391eee4C9EA1B32AEB3A460B77296EA709F02F",
+      "abi_entries": 118,
+      "name": "UniversalRulesPolicy",
+      "is_verified": true,
+      "compiler_version": "v0.8.26+commit.8a97fa7a",
+      "optimization_enabled": true,
+      "optimization_runs": 833,
+      "evm_version": "cancun",
+      "verified_at": "2026-10-05T13:37:25.346522Z"
+    },
+    {
+      "contract": "validator",
+      "address": "0x068EE2388475A98EE1f5a434C58bFF3444fffFe6",
+      "url": "https://donut.push.network/api/v2/smart-contracts/0x068EE2388475A98EE1f5a434C58bFF3444fffFe6",
+      "abi_entries": 9,
+      "name": "AgentValidator",
+      "is_verified": true,
+      "compiler_version": "v0.8.26+commit.8a97fa7a",
+      "optimization_enabled": true,
+      "optimization_runs": 833,
+      "evm_version": "cancun",
+      "verified_at": "2026-10-05T13:36:34.683015Z"
+    },
+    {
+      "contract": "engine",
+      "address": "0x165A5E6782f39D30B38c7D97e1303e4CB2aD102a",
+      "url": "https://donut.push.network/api/v2/smart-contracts/0x165A5E6782f39D30B38c7D97e1303e4CB2aD102a",
+      "abi_entries": 78,
+      "name": "SmartSession",
+      "is_verified": true,
+      "compiler_version": "v0.8.26+commit.8a97fa7a",
+      "optimization_enabled": true,
+      "optimization_runs": 833,
+      "evm_version": "cancun",
+      "verified_at": "2026-10-05T13:36:21.112501Z"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+Running 14 scenarios (group: agw-extended) across 2 spec files.
+
+PASS core-e2e __e2e__/agw-extended/native-policy.spec.ts (275.511 s)
+PASS core-e2e __e2e__/agw-extended/management.spec.ts (276.819 s)
+
+Test Suites: 2 passed, 2 total
+Tests:       14 passed, 14 total
+Snapshots:   0 total
+Time:        552.361 s
+Ran all test suites within paths "__e2e__/agw-extended/management.spec.ts", "__e2e__/agw-extended/native-policy.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

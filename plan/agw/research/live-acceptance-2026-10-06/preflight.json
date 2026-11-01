@@ -1,0 +1,15 @@
+{
+  "checkedAt": "2026-10-05T21:04:12.624Z",
+  "chainId": 42101,
+  "block": "23934720",
+  "wiringVerified": true,
+  "ownerBalancePC": "970126.529158449381997743",
+  "nativeSmokeBudgetPC": "6",
+  "sufficientForNativeSmoke": true,
+  "keysPresent": {
+    "push": true,
+    "evm": true,
+    "solana": true
+  },
+  "transactionsSubmitted": false
+}

@@ -1,0 +1,47 @@
+{
+  "at": "2026-10-06T08:06:26.092329+00:00",
+  "unit": {
+    "passed": 1981,
+    "failed": 0,
+    "skipped": 12
+  },
+  "recorded_live_e2e": {
+    "passed": 3,
+    "failed": 0,
+    "transactions_sent": 0
+  },
+  "initial_funded_e2e": {
+    "passed": 2,
+    "failed": 1,
+    "failure": "externalStatus timeout at 600 seconds; same source outbound later became REVERTED and read-only replay classified failed"
+  },
+  "funded_source_outbounds": 2,
+  "core_build": "pass",
+  "types": {
+    "library": "pass",
+    "spec": "pass"
+  },
+  "lint": {
+    "errors": 0,
+    "warnings": 21
+  },
+  "groups": {
+    "all": {
+      "scenarios": 76,
+      "tests": 81
+    },
+    "agw": {
+      "scenarios": 25
+    },
+    "agw-svm-wire": {
+      "scenarios": 3
+    },
+    "agw-svm-replay": {
+      "scenarios": 3
+    }
+  },
+  "public_svm_enabled": false,
+  "production_library_files_changed": false,
+  "prior_local_contract_passes": 75,
+  "local_contract_suite_rerun": false
+}

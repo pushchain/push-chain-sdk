@@ -1,0 +1,5 @@
+Original script: reproduced YN0028 after stable-to-alpha bump
+Fixed script: 7.0.1-alpha.0 immutable install passed; lock included in release commit
+Fixed script: 7.0.1-alpha.1 immutable install passed; lock included in release commit
+No publish/tag/push occurred: npm and git were intercepted in isolated fixtures
+Fixture logs: /var/folders/4_/d47r2_4s1wb3x2dvmt2ghp800000gp/T/release-lock-regression-9io04tzg

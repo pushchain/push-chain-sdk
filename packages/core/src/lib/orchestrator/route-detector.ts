@@ -9,6 +9,7 @@
  */
 
 import { CHAIN } from '../constants/enums';
+import { isWeb2ReadChain } from '../constants/read-state';
 import { MOVEABLE_TOKENS, type MoveableToken } from '../constants/tokens';
 import type {
   UniversalExecuteParams,
@@ -238,8 +239,8 @@ export function validateRouteParams(
   context?: { clientChain?: CHAIN }
 ): void {
   const toChain = isChainTarget(params.to) ? String(params.to.chain) : undefined;
-  if (String(params.from?.chain ?? '') === CHAIN.WEB2 || toChain === CHAIN.WEB2) {
-    throw new RouteValidationError('CHAIN.WEB2 is a read-only destination and cannot be used with transaction APIs');
+  if (isWeb2ReadChain(String(params.from?.chain ?? '')) || isWeb2ReadChain(toChain)) {
+    throw new RouteValidationError('READ.CHAIN.WEB2 is a read-only destination and cannot be used with transaction APIs');
   }
   const route = detectRoute(params);
 

@@ -1,0 +1,185 @@
+{
+  "at": "2026-10-20T11:20:11.358467+00:00",
+  "files": [
+    {
+      "path": "packages/core/MARKETPLACE.md",
+      "sha256": "1212a00942feb179bb1e39522d9cca7857c90a19f2f9340ff0ba8329b0b3aa17"
+    },
+    {
+      "path": "packages/core/__e2e__/ci/suite.ts",
+      "sha256": "277331424ea7d5d64b451873154843a8fce3d9ae3cb125b3d7bd7aedfc3479b2"
+    },
+    {
+      "path": "packages/core/__e2e__/marketplace/lifecycle.spec.ts",
+      "sha256": "de5aba539b7779b97354b28b75afcbac9636aec83c37ee7c73a23bcb6df385b1"
+    },
+    {
+      "path": "packages/core/__e2e__/marketplace/readiness.spec.ts",
+      "sha256": "a72d3c427602ecc9089c5a8823168986bf6ce978ccc201aebfd3096d03e7e287"
+    },
+    {
+      "path": "packages/core/__market-local__/marketplace.spec.ts",
+      "sha256": "9fe8110fd9bef6ef21229f15c2551015fe5f0042c9b1f01170480b29b5eef62c"
+    },
+    {
+      "path": "packages/core/__market-local__/setup.ts",
+      "sha256": "49013def98fb026fc408430fce66273c1d33a45ae5f66a95a68ad5240e0ef46f"
+    },
+    {
+      "path": "packages/core/jest.marketplace-local.config.ts",
+      "sha256": "6344b13077e277d591f0bad4e94a9722527c7a5b5a9fd3539fdb4ed5b69165cc"
+    },
+    {
+      "path": "packages/core/package.json",
+      "sha256": "f8204973c67d237e630e52c0efe5c742060b787cc095d26d4881a17d5cbf991c"
+    },
+    {
+      "path": "packages/core/scripts/check-agw-api.js",
+      "sha256": "b376215aadf2d81b5c1528ef4b2d060af7638fcee52323010299bb169c5c1fc8"
+    },
+    {
+      "path": "packages/core/scripts/check-agw-docs.js",
+      "sha256": "caeba5794c27f616f0744b1748f7a73c641af70a0a9bfb9ab11bb8bb50929a4c"
+    },
+    {
+      "path": "packages/core/scripts/check-agw-package.js",
+      "sha256": "ee4d68213993c3b4a494cb067ece5e8d28a785d9a3092942d2b9adc46465169b"
+    },
+    {
+      "path": "packages/core/src/lib/agentic/__tests__/response-surface.spec.ts",
+      "sha256": "147bc7400eaae3a7221a16035c3a722be7ac8154034257578de3aadb40bc6b80"
+    },
+    {
+      "path": "packages/core/src/lib/agentic/constants.ts",
+      "sha256": "b5f57def2edbc5d1c22eeded1e8ab32197f8875ac8e630ed9f4085132747ca7d"
+    },
+    {
+      "path": "packages/core/src/lib/agentic/contracts/reader.ts",
+      "sha256": "2c90f098fe374aaf2a92e54fb50e1fbbbe3bd5a138a85f34c56fb6999a178bd9"
+    },
+    {
+      "path": "packages/core/src/lib/agentic/errors.ts",
+      "sha256": "97dfee6107e27f6dad66e0d58e996ff1225df131f018d3efa1f98ad1f075c7b1"
+    },
+    {
+      "path": "packages/core/src/lib/index.ts",
+      "sha256": "f92d4899691d98d30243f2e8fd86eef62c10b995322a2a92a3fb3691996a25ea"
+    },
+    {
+      "path": "packages/core/src/lib/job-spec/__tests__/codec.spec.ts",
+      "sha256": "26c64f27223a35fc716a3f64618901423397cbbcf69c6ff639e69bb92d0e12db"
+    },
+    {
+      "path": "packages/core/src/lib/job-spec/codec.ts",
+      "sha256": "ee27c032038b7f4f38093531c5fa97e7655c1c77857c000a72390a448de2533c"
+    },
+    {
+      "path": "packages/core/src/lib/job-spec/constants.ts",
+      "sha256": "f5c14e73d8c9ef664ca48b5f489ed406fd6367f7df61cd882aa92a528210b153"
+    },
+    {
+      "path": "packages/core/src/lib/job-spec/helpers.ts",
+      "sha256": "5d2ec2b0cc1d746cba5006cfbe0a13c73629821c975860431a831759d51e3690"
+    },
+    {
+      "path": "packages/core/src/lib/job-spec/index.ts",
+      "sha256": "910ca188c273fc7d4d8c564d7c1d279b3f2860af7c04942864f78eeeec4219c9"
+    },
+    {
+      "path": "packages/core/src/lib/job-spec/read.ts",
+      "sha256": "a572900f9b316e443ffdedfc83fd043f0d944f4e431d29dc8781ea38de79a8a4"
+    },
+    {
+      "path": "packages/core/src/lib/job-spec/schema.ts",
+      "sha256": "7f780d3b826a7acf56b43cd80ce7870d182ddc04be3a8bc5205bc095869dfbe8"
+    },
+    {
+      "path": "packages/core/src/lib/job-spec/types.ts",
+      "sha256": "0fcaeab75d76124854e0f84ba4bc0daf8512db091b261d6cdb059be6889161a3"
+    },
+    {
+      "path": "packages/core/src/lib/job/job.ts",
+      "sha256": "1e63af2e7eb55f2a7bea1efceab089d5778dcbbb7a70aa042ab923f0a6b20032"
+    },
+    {
+      "path": "packages/core/src/lib/job/types.ts",
+      "sha256": "85659e00c3a0b4565b813b599d3a05d6f9efb981225162636a6ca010da9c99d9"
+    },
+    {
+      "path": "packages/core/src/lib/market/__tests__/kernel-wire.spec.ts",
+      "sha256": "6753167bfe07aef7398c6d72f95103b78b58e945691b9da8ab850c3eeb3a04d5"
+    },
+    {
+      "path": "packages/core/src/lib/market/__tests__/namespace.spec.ts",
+      "sha256": "f9d24545c8b1b8e9451f4952678dd65c06cf7905b1f33d0405e4e6a2b41b6b7e"
+    },
+    {
+      "path": "packages/core/src/lib/market/__tests__/rules.spec.ts",
+      "sha256": "0eb697c4cd7e9bed6d2bf39a2b4ebe54da169d66598aa7cfc9bef386288467f5"
+    },
+    {
+      "path": "packages/core/src/lib/market/contracts/AgenticCommerce.ts",
+      "sha256": "d77269e520a2878b5e1343e127c021d953ec2f14e1352648b6bb402f6bdb5535"
+    },
+    {
+      "path": "packages/core/src/lib/market/contracts/RulesBindingHook.ts",
+      "sha256": "794798248d9100b7bbd4da39bd21ae0a24faec843d74df0d62e6cb66d1b62e87"
+    },
+    {
+      "path": "packages/core/src/lib/market/contracts/UniversalMarketplace.ts",
+      "sha256": "90c2675ba46778994606da25a8d5264700c009a44837b634ef07f81070116b4d"
+    },
+    {
+      "path": "packages/core/src/lib/market/contracts/UniversalMarketplaceErrors.ts",
+      "sha256": "09436a0f219d49077eb66899dcd047649b897ead6fa72332fa54111c1c4de477"
+    },
+    {
+      "path": "packages/core/src/lib/market/contracts/UniversalMarketplaceRules.ts",
+      "sha256": "f3218839eeb9ac1b911c42d38ab2d8461d7ce253d06fe797c40fdc0d556b9b69"
+    },
+    {
+      "path": "packages/core/src/lib/market/deployment.ts",
+      "sha256": "aeec7a7a45453d510f3f3a545b89bd76b4fa900c30cfd939845dc7a82e44bbc3"
+    },
+    {
+      "path": "packages/core/src/lib/market/errors.ts",
+      "sha256": "f2199e6a618d416a862aef6e4b8950fe6804071b1d8bace8249ce9b41e25a52a"
+    },
+    {
+      "path": "packages/core/src/lib/market/index.ts",
+      "sha256": "b219661de10456cb2510f061440747fc2dc97c0bc84103617a1aeaeae651ca2b"
+    },
+    {
+      "path": "packages/core/src/lib/market/kernel-wire.ts",
+      "sha256": "a10226752326ebdbf76a3b01720217ed0dbf0efe27e6a62049df1774e10ef6b4"
+    },
+    {
+      "path": "packages/core/src/lib/market/market.ts",
+      "sha256": "a72581409445c285aad217ee4e74d9f231f59da90dbb133959ec69d1b5cd8b84"
+    },
+    {
+      "path": "packages/core/src/lib/market/rules.ts",
+      "sha256": "7aefbf7480a48d04caa8b3255282cd51886807d6082ce600daaba0aa85a5549f"
+    },
+    {
+      "path": "packages/core/src/lib/market/runtime.ts",
+      "sha256": "c03cf0ae352e7432652647a86ad87596a6af5ddeef4da39d232ec1384251350e"
+    },
+    {
+      "path": "packages/core/src/lib/market/types.ts",
+      "sha256": "28a7ed37d8cc787471b2271b052962c0dee2ef86050891f6252940931049ee82"
+    },
+    {
+      "path": "packages/core/src/lib/push-chain/push-chain.ts",
+      "sha256": "be53f83582055abab1d3df1156b4e9521209db9bba8bed0fafe1036d5841cc0a"
+    },
+    {
+      "path": "packages/core/src/lib/utils.ts",
+      "sha256": "34d7d956be03e5bbd82130088a15f2601e609b7ef5484b9a899f90dfeb13f659"
+    },
+    {
+      "path": "packages/core/tsconfig.marketplace-local.json",
+      "sha256": "632b093629b7a442a93e2189973c2484b25fecc162bf622f1ca896070b155391"
+    }
+  ]
+}

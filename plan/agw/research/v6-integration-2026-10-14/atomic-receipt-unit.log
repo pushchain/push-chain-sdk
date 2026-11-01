@@ -1,0 +1,27 @@
+PASS core packages/core/src/lib/agentic/__tests__/management.spec.ts
+  agentic.create
+    ✓ validates first, then sends deploy + grants in input order and returns receipt IDs (8 ms)
+    ✓ a bare wallet is one deployWallet call, no funding
+    ✓ invalid input never reaches the signer (1 ms)
+    ✓ refuses a changed URP version before grant signing (1 ms)
+    ✓ a different wallet in the receipt is RECEIPT_MISMATCH, not a safe-to-retry race
+    ✓ IDs that differ from the input order are a RECEIPT_MISMATCH, not a silent reorder (1 ms)
+    ✓ creation never uses the batch transport or a sequential fallback (5 ms)
+    ✓ a receipt that cannot be read after submission keeps the hash and reports unknown state
+    ✓ the deploy is index-bound: a raced slot reverts and is reported as INDEX_RACE with nothing committed (3 ms)
+    ✓ a later rename alone does not establish a competing creation (1 ms)
+    ✓ a slot that is already deployed is refused before signing
+  rules.add / rules.delete
+    ✓ add: owner-only, duplicate agent/chain refused before signing (1 ms)
+    ✓ add: several rules are one atomic owner execute batch (one signature on any signer) (2 ms)
+    ✓ revoke: bare and empty are refused; unknown IDs fail before signing; several IDs are one atomic owner execute (2 ms)
+  rules.update — one owner batch: assert → revoke → grant
+    ✓ builds exactly one execute(batch) with the observed spend asserted per pair (1 ms)
+    ✓ universal replacement asserts every asset in stored order before revoke/grant (1 ms)
+    ✓ replacement may name another live agent, but may not repeat an old ID (1 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       17 passed, 17 total
+Snapshots:   0 total
+Time:        4.952 s
+Ran all test suites within paths "packages/core/src/lib/agentic/__tests__/management.spec.ts".

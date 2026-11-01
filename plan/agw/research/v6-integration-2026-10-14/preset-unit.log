@@ -1,0 +1,28 @@
+PASS core packages/core/src/lib/agentic/__tests__/presets.spec.ts
+  ✓ exposes enumerable frozen categories with no invented production addresses (5 ms)
+  ✓ groups all apps on a chain into one editable template and omits unspecified fields (1 ms)
+  ✓ returns ready Rule types with identity and expiry; routes assets and defaults missing caps to zero
+  ✓ does not type an incomplete template as a ready rule
+  ✓ adds only spender-pinned and amount-bounded ERC20 approvals; native assets have none (1 ms)
+  ✓ does not mutate caller assets, returned records, or the bundled catalog
+  ✓ rejects malformed or mismatched options before returning templates (case 0) (1 ms)
+  ✓ rejects malformed or mismatched options before returning templates (case 1)
+  ✓ rejects malformed or mismatched options before returning templates (case 2)
+  ✓ rejects malformed or mismatched options before returning templates (case 3) (1 ms)
+  ✓ rejects malformed or mismatched options before returning templates (case 4)
+  ✓ rejects malformed or mismatched options before returning templates (case 5)
+  ✓ rejects malformed or mismatched options before returning templates (case 6)
+  ✓ rejects malformed or mismatched options before returning templates (case 7)
+  ✓ rejects malformed or mismatched options before returning templates (case 8)
+  ✓ rejects unknown presets, unsupported list types and unsupported chain filters
+  ✓ produces separate pinned alternatives for multiple spenders
+  ✓ enforces the 32-call ceiling including generated approvals (1 ms)
+  ✓ requires full signatures and rejects duplicate function entries
+  ✓ compiles preset spender and amount pins with the deployed v6 policy (1 ms)
+  ✓ keeps OR alternatives EVM-only: repeated Solana instructions are refused
+
+Test Suites: 1 passed, 1 total
+Tests:       21 passed, 21 total
+Snapshots:   0 total
+Time:        2.312 s
+Ran all test suites within paths "packages/core/src/lib/agentic/__tests__/presets.spec.ts".

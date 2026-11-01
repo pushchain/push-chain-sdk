@@ -1,0 +1,42 @@
+{
+  "completed_at": "2026-10-14T17:44:22.870452+00:00",
+  "source_commit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+  "unit": {
+    "passed": 2073,
+    "failed": 0,
+    "skipped": 12
+  },
+  "local_contracts": {
+    "passed": 99,
+    "failed": 0,
+    "suites": 13
+  },
+  "live_full": {
+    "selected": 68,
+    "passed": 67,
+    "failed": 1,
+    "filtered": 1,
+    "reason": "stale v5 expectation of leftover gateway allowance; v6 correctly cleared it to zero"
+  },
+  "live_focused": {
+    "selected": 2,
+    "passed": 2,
+    "failed": 0,
+    "filtered": 4,
+    "cases": [
+      "corrected multi-asset allowance/budget case",
+      "new v6 EVM EQ/MAX OR alternative case"
+    ]
+  },
+  "distinct_live_cases_with_passing_coverage": 69,
+  "single_clean_full_run": false,
+  "build": "pass",
+  "typechecks": "lib/spec/agw-local pass",
+  "consumer_checks": "docs/package/API pass",
+  "committed": true,
+  "pushed": false,
+  "code_commits": {
+    "feat/agw-sdk-v4": "7dca3f2a",
+    "feat/agw-sdk-v5": "700a52a7"
+  }
+}

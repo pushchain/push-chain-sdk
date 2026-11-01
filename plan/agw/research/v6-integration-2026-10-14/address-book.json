@@ -1,0 +1,142 @@
+{
+  "network": "push-donut-testnet",
+  "chainId": 42101,
+  "generation": "v6",
+  "explorer": "https://donut.push.network",
+  "commit": "git:ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+  "branch": "deploy-agw",
+  "engineForkCommit": "7dc20e4",
+  "forge": "1.5.1-stable",
+  "deployer": "0xa89523351BE1e2De64937AA9AF61Ae06eAd199C7",
+  "deployScript": "script/Deploy.s.sol",
+  "blocks": [
+    24229957,
+    24229971
+  ],
+  "deploymentGas": 19799340,
+  "deploymentCostPC": "0.0222742575",
+  "summary": "Fresh full suite for the SDK review fixes: URP with the Solana rulebook moved into the linked SvmRulebook library, EVM argument pins, zero-means-nothing limits; AGW with gateway auto-approve and createWallet; AGWFactory with createWallet / createWalletWithSig. Engine and validator are fresh too, bytecode-identical to v4/v5.",
+  "contracts": {
+    "factoryProxy": {
+      "address": "0xFBBEB6a365178fAaA81A9789a5f64b300c37e5bc",
+      "contract": "ERC1967Proxy (UUPS)",
+      "sizeBytes": 141,
+      "verified": true,
+      "explorer": "https://donut.push.network/address/0xFBBEB6a365178fAaA81A9789a5f64b300c37e5bc",
+      "deployTx": "0x4b83d7c060b24f56c165737addfae7a65d5b767e432d418c096bce8659422311",
+      "note": "PERMANENT, user-facing: deploy and look up wallets here. Also the EIP-712 verifyingContract for every OwnerIntent."
+    },
+    "factoryLogic": {
+      "address": "0x64893c611920604a9247530673071D46ac9174c9",
+      "contract": "AGWFactory",
+      "sizeBytes": 14313,
+      "verified": true,
+      "explorer": "https://donut.push.network/address/0x64893c611920604a9247530673071D46ac9174c9",
+      "deployTx": "0x89de4ac81ba480f3fbe55a15f8d47d341fd96a55b1960e1d05b927fca7597054",
+      "note": "Adds createWallet(label, rules) and createWalletWithSig(intent, sig, label, rules) (selector 0x0a8f332b)."
+    },
+    "walletImplementation": {
+      "address": "0x536D3EA48219ff743ac663C6c224920e9eB476A5",
+      "contract": "AGW",
+      "sizeBytes": 18818,
+      "verified": true,
+      "explorer": "https://donut.push.network/address/0x536D3EA48219ff743ac663C6c224920e9eB476A5",
+      "deployTx": "0x1765e66f36e8530321c4232df0e415a4dbcb15c211e807c49f5315ffd81dbf44",
+      "note": "Clone target; accountId push.agw.1.0.0. Gateway auto-approve on both doors; initializeAccount(string label, Session[] rules)."
+    },
+    "urp": {
+      "address": "0xBA32e7A1500cb34311a31127bcD40CA52C8CFd36",
+      "contract": "TransparentUpgradeableProxy",
+      "sizeBytes": 830,
+      "verified": true,
+      "explorer": "https://donut.push.network/address/0xBA32e7A1500cb34311a31127bcD40CA52C8CFd36",
+      "deployTx": "0x2d5cf99ffa202f488659444e4bf5a35f4e691967688976a317c4b161b8e55b81",
+      "note": "PERMANENT: every v6 wallet pins it; every rule names it as its only action policy."
+    },
+    "urpImplementation": {
+      "address": "0xa176b1424018D52711EDCb9d3D8757dc6e174463",
+      "contract": "UniversalRulesPolicy (version() still reports 3.1.0)",
+      "sizeBytes": 18538,
+      "verified": true,
+      "explorer": "https://donut.push.network/address/0xa176b1424018D52711EDCb9d3D8757dc6e174463",
+      "deployTx": "0xe26822d47178d2160b2d7fc2b9ea6b887dd55a321e04b9e8c411bf7493e404a2",
+      "note": "Verified with --libraries src/policies/SvmRulebook.sol:SvmRulebook:0x15c3259490f0625C75b5a00731e4231b2B529c1E."
+    },
+    "svmRulebook": {
+      "address": "0x15c3259490f0625C75b5a00731e4231b2B529c1E",
+      "contract": "SvmRulebook (external library, linked into urpImplementation)",
+      "sizeBytes": 10612,
+      "verified": false,
+      "explorer": "https://donut.push.network/address/0x15c3259490f0625C75b5a00731e4231b2B529c1E",
+      "deployTx": "0x9bcdccc66827f1e65b2199dc279b3fde6f7cae6f23982d5c314ea8bbef43bbaa",
+      "note": "Deployed by forge through the CREATE2 deployer 0x4e59b44847b379578588920cA78FbF26c0B4956C. Blockscout does not index the internal creation, reports the address as not a contract, and refuses verification. The code is on chain (eth_getCode) and is embedded in urpImplementation."
+    },
+    "urpProxyAdmin": {
+      "address": "0x5abC6Ae78EfE01c0F3d6b67389f88952Bf31A805",
+      "contract": "ProxyAdmin",
+      "sizeBytes": 926,
+      "verified": true,
+      "explorer": "https://donut.push.network/address/0x5abC6Ae78EfE01c0F3d6b67389f88952Bf31A805",
+      "note": "KEEP: no URP upgrade is possible without it. Created internally by the TUP; read from the ERC-1967 admin slot."
+    },
+    "sessionValidator": {
+      "address": "0xBf08d8335c1cE41a577DB70666816027814737dD",
+      "contract": "AgentValidator",
+      "sizeBytes": 806,
+      "verified": true,
+      "explorer": "https://donut.push.network/address/0xBf08d8335c1cE41a577DB70666816027814737dD",
+      "deployTx": "0xd2ec49fff4e929750d77ba484d797b7ebb87e134dc4c4e9e70efb6a39e7779fc"
+    },
+    "sessionEngine": {
+      "address": "0xf63DC0628fe1B25049FE3E3a3585Ef051CB98c1d",
+      "contract": "SmartSession (fork 7dc20e4)",
+      "sizeBytes": 22581,
+      "verified": true,
+      "explorer": "https://donut.push.network/address/0xf63DC0628fe1B25049FE3E3a3585Ef051CB98c1d",
+      "deployTx": "0x7397a445b52979b5596eccc7cd3028b1dd0308319abb25bc17b2e7050e912fdc"
+    }
+  },
+  "external": {
+    "universalGateway": "0x00000000000000000000000000000000000000C1",
+    "universalCore": "0x00000000000000000000000000000000000000C0",
+    "ueaFactory": "0x00000000000000000000000000000000000000eA",
+    "universalExecutorModule": "0x14191Ea54B4c176fCf86f51b0FAc7CB1E71Df7d7",
+    "gatewayImplementationAtDeploy": "0x1e412939780f2b834DC42C7AC58d9f99888Da659",
+    "gatewayOutboundSelector": "0x77b86bec"
+  },
+  "adminState": {
+    "factoryDefaultAdmin": "0xa89523351BE1e2De64937AA9AF61Ae06eAd199C7",
+    "defaultAdminDelaySeconds": 172800,
+    "urpProxyAdminOwner": "0xa89523351BE1e2De64937AA9AF61Ae06eAd199C7",
+    "pauserRole": "none",
+    "operatorRole": "none",
+    "note": "Testnet: the factory's default admin and the URP ProxyAdmin owner are both the deployer EOA. PAUSER_ROLE and OPERATOR_ROLE are unassigned; grant them before the factory can be paused."
+  },
+  "ruleEncoding": {
+    "initData": "abi.encode(uint16 version, string chainNamespace, bytes body), version 1",
+    "argPinTuple": "(uint16,uint8,bytes32) — offset (selector included, 4 = first argument), op (0 = EQ, 1 = MAX), value",
+    "allowedCallTuple": "(address,bytes4,uint16,bool,uint256,(uint16,uint8,bytes32)[])",
+    "universalTermsTuple": "(uint48,address,(address,uint256,uint256)[],uint256,(address,bytes4,uint16,bool,uint256,(uint16,uint8,bytes32)[])[])",
+    "nativeTermsTuple": "(uint48,address,bytes4,uint256,uint256,(bool,uint16,uint256,uint256),uint32,(uint16,uint8,bytes32)[])",
+    "tokens": "PRC20 addresses on Push, 1..8 per cross-chain rule; type(uint256).max = unlimited, 0 = nothing",
+    "maxCalls": "native rules: 0 is refused (ZeroMaxCalls); type(uint32).max = unlimited",
+    "maxAccounts": "Solana programs: 1..64 exact; 255 = any count; 0 and 65..254 refused",
+    "approvals": "none needed: the wallet approves the gateway for exactly the outbound amount and clears the allowance after the call",
+    "pushChainHash": "0x3d6bc1f1d3fb03065860265a8e93840b586e57075d956cd41b4319d040be87f9"
+  },
+  "createWallet": {
+    "maxInitialRules": 8,
+    "signedForm": "createWalletWithSig: intent.sessionHash == keccak256(abi.encode(rules)) and intent.grantNonce == 0; the label is not signed",
+    "selector": "0x0a8f332b"
+  },
+  "supersedes": {
+    "generation": "v5",
+    "factoryProxy": "0x8137F96A50EBF41d904e3678c84c391a0D1BCcc5",
+    "factoryLogic": "0xe549d3D4e85cB16F687448D7acA21D9d13A7cD0f",
+    "walletImplementation": "0x4D459Da499C14548aa16c46c57fD92880A88EBb4",
+    "urp": "0x603E7f0aF6e1aAFf46DDfb28b1e99364f8BC59af",
+    "sessionEngine": "0x165A5E6782f39D30B38c7D97e1303e4CB2aD102a",
+    "sessionValidator": "0x068EE2388475A98EE1f5a434C58bFF3444fffFe6",
+    "note": "v5 and v4 wallets keep working against the v4 URP and engine, which stay live; they do not get v6 behaviour. The v5 book is kept beside this one in deployments/address-book-v5/."
+  }
+}

@@ -1,0 +1,831 @@
+{
+ "note": "Routed preset live runs, 21 Oct: LENDING Arbitrum passed; DEXES Sepolia subsequent failed out of gas at the 500k base (trace in sepolia-dex-subsequent-oog-trace.json); re-run with the 1,000,000 multi-step default passed. Public hashes only.",
+ "entries": [
+  {
+   "name": "unchanged-preset-created",
+   "at": "2026-10-21T02:49:04.740Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "category": "DEXES",
+   "chainNamespace": "eip155:11155111",
+   "wallet": "0x5c788fca118Bf06cDb7AB679fFBbD9007B5375E7",
+   "hash": "0x17a58f61b934c0eee3ba83120eba9d338c6de5defbe031aff961dfc3d68b71fb",
+   "rules": [
+    {
+     "chainNamespace": "eip155:11155111",
+     "allowedCalls": [
+      {
+       "target": "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E",
+       "selector": "exactInputSingle((address,address,uint24,address,uint256,uint256,uint160))",
+       "pins": [
+        {
+         "arg": [
+          0,
+          0
+         ],
+         "expected": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14"
+        },
+        {
+         "arg": [
+          0,
+          1
+         ],
+         "expected": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+        },
+        {
+         "arg": [
+          0,
+          3
+         ],
+         "expected": "agentic:wallet"
+        },
+        {
+         "arg": [
+          0,
+          4
+         ],
+         "max": "1000000000000000"
+        }
+       ],
+       "app": "Uniswap V3",
+       "label": "Swap exact input"
+      },
+      {
+       "target": "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E",
+       "selector": "exactOutputSingle((address,address,uint24,address,uint256,uint256,uint160))",
+       "pins": [
+        {
+         "arg": [
+          0,
+          0
+         ],
+         "expected": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14"
+        },
+        {
+         "arg": [
+          0,
+          1
+         ],
+         "expected": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+        },
+        {
+         "arg": [
+          0,
+          3
+         ],
+         "expected": "agentic:wallet"
+        },
+        {
+         "arg": [
+          0,
+          5
+         ],
+         "max": "1000000000000000"
+        }
+       ],
+       "app": "Uniswap V3",
+       "label": "Swap exact output"
+      },
+      {
+       "target": "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E",
+       "selector": "exactInputSingle((address,address,uint24,address,uint256,uint256,uint160))",
+       "pins": [
+        {
+         "arg": [
+          0,
+          0
+         ],
+         "expected": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+        },
+        {
+         "arg": [
+          0,
+          1
+         ],
+         "expected": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14"
+        },
+        {
+         "arg": [
+          0,
+          3
+         ],
+         "expected": "agentic:wallet"
+        },
+        {
+         "arg": [
+          0,
+          4
+         ],
+         "max": "10000000"
+        }
+       ],
+       "app": "Uniswap V3",
+       "label": "Swap exact input"
+      },
+      {
+       "target": "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E",
+       "selector": "exactOutputSingle((address,address,uint24,address,uint256,uint256,uint160))",
+       "pins": [
+        {
+         "arg": [
+          0,
+          0
+         ],
+         "expected": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+        },
+        {
+         "arg": [
+          0,
+          1
+         ],
+         "expected": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14"
+        },
+        {
+         "arg": [
+          0,
+          3
+         ],
+         "expected": "agentic:wallet"
+        },
+        {
+         "arg": [
+          0,
+          5
+         ],
+         "max": "10000000"
+        }
+       ],
+       "app": "Uniswap V3",
+       "label": "Swap exact output"
+      },
+      {
+       "target": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+       "selector": "approve(address,uint256)",
+       "pins": [
+        {
+         "arg": 0,
+         "expected": "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E"
+        },
+        {
+         "arg": 1,
+         "max": "1000000000000000"
+        }
+       ],
+       "app": "Uniswap V3",
+       "label": "Approve token spending"
+      },
+      {
+       "target": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+       "selector": "approve(address,uint256)",
+       "pins": [
+        {
+         "arg": 0,
+         "expected": "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E"
+        },
+        {
+         "arg": 1,
+         "max": "10000000"
+        }
+       ],
+       "app": "Uniswap V3",
+       "label": "Approve token spending"
+      }
+     ],
+     "agent": "0xAdbc7E575Fba1D03B11E22bE396d06EB873625ab",
+     "validUntil": 1793155723,
+     "assets": [
+      {
+       "token": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+       "maxPerCall": "1000000000000000",
+       "maxTotal": "10000000000000000"
+      },
+      {
+       "token": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+       "maxPerCall": "10000000",
+       "maxTotal": "100000000"
+      }
+     ],
+     "maxGasPerCall": "20000000000000000000"
+    }
+   ]
+  },
+  {
+   "name": "agw-gas-quote",
+   "at": "2026-10-21T02:49:27.568Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "stage": "DEXES:eip155:11155111:first-use",
+   "token": "0x387b9C8Db60E74999aAAC5A2b7825b400F12d68E",
+   "requestedGasLimit": "2000000",
+   "chain": "eip155:11155111",
+   "protocolFeePCWei": "0",
+   "quotedGasBudgetPCWei": "10000000000000000000",
+   "gasLimitUsed": "2000000",
+   "attachedPCWei": "10000000000000000000",
+   "gasTokenFee": "440054000000",
+   "poolPcInRequired": "643474888519368"
+  },
+  {
+   "name": "unchanged-preset-submitted",
+   "at": "2026-10-21T02:49:30.758Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "category": "DEXES",
+   "chainNamespace": "eip155:11155111",
+   "stage": "first-use",
+   "wallet": "0x5c788fca118Bf06cDb7AB679fFBbD9007B5375E7",
+   "hash": "0x05bb69c5cd001c74e558ba77607c24ec7f80fa2963d9414bf3a48023499a9dbb"
+  },
+  {
+   "name": "agw-push-gas",
+   "at": "2026-10-21T02:50:33.793Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "stage": "first-use",
+   "hash": "0x05bb69c5cd001c74e558ba77607c24ec7f80fa2963d9414bf3a48023499a9dbb",
+   "block": "24472461",
+   "gasUsed": "479802",
+   "effectiveGasPrice": "1125000000",
+   "transactionGasPaidPCWei": "539777250000000"
+  },
+  {
+   "name": "unchanged-preset-delivered",
+   "at": "2026-10-21T02:50:33.795Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "category": "DEXES",
+   "chainNamespace": "eip155:11155111",
+   "stage": "first-use",
+   "hash": "0x05bb69c5cd001c74e558ba77607c24ec7f80fa2963d9414bf3a48023499a9dbb",
+   "destinationHash": "0xa0324bcacb5cc32cba020e10f873c92aee9321d694e4c742ceef74d770debc2c",
+   "destinationGasUsed": "1502039",
+   "destinationGasPaidWei": "330489135053"
+  },
+  {
+   "name": "agw-gas-quote",
+   "at": "2026-10-21T02:50:41.106Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "stage": "DEXES:eip155:11155111:subsequent",
+   "token": "0x387b9C8Db60E74999aAAC5A2b7825b400F12d68E",
+   "requestedGasLimit": "0",
+   "chain": "eip155:11155111",
+   "protocolFeePCWei": "0",
+   "quotedGasBudgetPCWei": "10000000000000000000",
+   "gasLimitUsed": "500000",
+   "attachedPCWei": "10000000000000000000",
+   "gasTokenFee": "110013000000",
+   "poolPcInRequired": "160867992121838"
+  },
+  {
+   "name": "unchanged-preset-submitted",
+   "at": "2026-10-21T02:50:45.549Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "category": "DEXES",
+   "chainNamespace": "eip155:11155111",
+   "stage": "subsequent",
+   "wallet": "0x5c788fca118Bf06cDb7AB679fFBbD9007B5375E7",
+   "hash": "0x03ce92d8ae375b221fe157e42be472abc693308dac7b5c2e87fc4c58ea037421"
+  },
+  {
+   "name": "unchanged-preset-created",
+   "at": "2026-10-21T02:52:38.840Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "category": "LENDING",
+   "chainNamespace": "eip155:421614",
+   "wallet": "0xD60F3aAbA0b86c607a140093E7A7c61668f56773",
+   "hash": "0xe068ff9d9afe2c3b5a918a03a73be461fe305b7913b50293ff8b3c09bcb255f0",
+   "rules": [
+    {
+     "chainNamespace": "eip155:421614",
+     "allowedCalls": [
+      {
+       "target": "0xBfC91D59fdAA134A4ED45f7B584cAf96D7792Eff",
+       "selector": "supply(address,uint256,address,uint16)",
+       "pins": [
+        {
+         "arg": 2,
+         "expected": "agentic:wallet"
+        },
+        {
+         "arg": 0,
+         "expected": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d"
+        },
+        {
+         "arg": 1,
+         "max": "10000000"
+        }
+       ],
+       "app": "Aave V3",
+       "label": "Supply"
+      },
+      {
+       "target": "0xBfC91D59fdAA134A4ED45f7B584cAf96D7792Eff",
+       "selector": "withdraw(address,uint256,address)",
+       "pins": [
+        {
+         "arg": 2,
+         "expected": "agentic:wallet"
+        },
+        {
+         "arg": 0,
+         "expected": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d"
+        },
+        {
+         "arg": 1,
+         "max": "10000000"
+        }
+       ],
+       "app": "Aave V3",
+       "label": "Withdraw"
+      },
+      {
+       "target": "0xBfC91D59fdAA134A4ED45f7B584cAf96D7792Eff",
+       "selector": "borrow(address,uint256,uint256,uint16,address)",
+       "pins": [
+        {
+         "arg": 4,
+         "expected": "agentic:wallet"
+        },
+        {
+         "arg": 0,
+         "expected": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d"
+        },
+        {
+         "arg": 1,
+         "max": "10000000"
+        }
+       ],
+       "app": "Aave V3",
+       "label": "Borrow"
+      },
+      {
+       "target": "0xBfC91D59fdAA134A4ED45f7B584cAf96D7792Eff",
+       "selector": "repay(address,uint256,uint256,address)",
+       "pins": [
+        {
+         "arg": 3,
+         "expected": "agentic:wallet"
+        },
+        {
+         "arg": 0,
+         "expected": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d"
+        },
+        {
+         "arg": 1,
+         "max": "10000000"
+        }
+       ],
+       "app": "Aave V3",
+       "label": "Repay"
+      },
+      {
+       "target": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+       "selector": "approve(address,uint256)",
+       "pins": [
+        {
+         "arg": 0,
+         "expected": "0xBfC91D59fdAA134A4ED45f7B584cAf96D7792Eff"
+        },
+        {
+         "arg": 1,
+         "max": "10000000"
+        }
+       ],
+       "app": "Aave V3",
+       "label": "Approve token spending"
+      }
+     ],
+     "agent": "0xb28855f6525E0F01cB018E5802C62cd98A4452fA",
+     "validUntil": 1793155937,
+     "assets": [
+      {
+       "token": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+       "maxPerCall": "10000000",
+       "maxTotal": "100000000"
+      }
+     ],
+     "maxGasPerCall": "20000000000000000000"
+    }
+   ]
+  },
+  {
+   "name": "agw-gas-quote",
+   "at": "2026-10-21T02:53:02.340Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "stage": "LENDING:eip155:421614:first-use",
+   "token": "0xa261A10e94aE4bA88EE8c5845CbE7266bD679DD6",
+   "requestedGasLimit": "2000000",
+   "chain": "eip155:421614",
+   "protocolFeePCWei": "0",
+   "quotedGasBudgetPCWei": "10000000000000000000",
+   "gasLimitUsed": "2000000",
+   "attachedPCWei": "10000000000000000000",
+   "gasTokenFee": "44374000000000",
+   "poolPcInRequired": "1894989313621377835"
+  },
+  {
+   "name": "unchanged-preset-submitted",
+   "at": "2026-10-21T02:53:06.305Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "category": "LENDING",
+   "chainNamespace": "eip155:421614",
+   "stage": "first-use",
+   "wallet": "0xD60F3aAbA0b86c607a140093E7A7c61668f56773",
+   "hash": "0x0bd3a109e20fd85e54a89b48538a778497ee3664061ef09edb2a66f08faa86f8"
+  },
+  {
+   "name": "agw-push-gas",
+   "at": "2026-10-21T02:54:06.062Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "stage": "first-use",
+   "hash": "0x0bd3a109e20fd85e54a89b48538a778497ee3664061ef09edb2a66f08faa86f8",
+   "block": "24472549",
+   "gasUsed": "464154",
+   "effectiveGasPrice": "1125000000",
+   "transactionGasPaidPCWei": "522173250000000"
+  },
+  {
+   "name": "unchanged-preset-delivered",
+   "at": "2026-10-21T02:54:06.064Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "category": "LENDING",
+   "chainNamespace": "eip155:421614",
+   "stage": "first-use",
+   "hash": "0x0bd3a109e20fd85e54a89b48538a778497ee3664061ef09edb2a66f08faa86f8",
+   "destinationHash": "0x4073d97ada3d7f150c109faca5364aa3be95ca1f082fed0e6db5f3c177f9d32f",
+   "destinationGasUsed": "536341",
+   "destinationGasPaidWei": "11899797767000"
+  },
+  {
+   "name": "agw-gas-quote",
+   "at": "2026-10-21T02:54:13.762Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "stage": "LENDING:eip155:421614:subsequent",
+   "token": "0xa261A10e94aE4bA88EE8c5845CbE7266bD679DD6",
+   "requestedGasLimit": "0",
+   "chain": "eip155:421614",
+   "protocolFeePCWei": "0",
+   "quotedGasBudgetPCWei": "10000000000000000000",
+   "gasLimitUsed": "500000",
+   "attachedPCWei": "10000000000000000000",
+   "gasTokenFee": "11029700000000",
+   "poolPcInRequired": "471022386761574893"
+  },
+  {
+   "name": "unchanged-preset-submitted",
+   "at": "2026-10-21T02:54:23.128Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "category": "LENDING",
+   "chainNamespace": "eip155:421614",
+   "stage": "subsequent",
+   "wallet": "0xD60F3aAbA0b86c607a140093E7A7c61668f56773",
+   "hash": "0xda9775321a1733b53c794e2da1660a454701d1994ff508d3dfb5a7744bc87f65"
+  },
+  {
+   "name": "agw-push-gas",
+   "at": "2026-10-21T02:55:11.891Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "stage": "subsequent",
+   "hash": "0xda9775321a1733b53c794e2da1660a454701d1994ff508d3dfb5a7744bc87f65",
+   "block": "24472578",
+   "gasUsed": "438634",
+   "effectiveGasPrice": "1125000000",
+   "transactionGasPaidPCWei": "493463250000000"
+  },
+  {
+   "name": "unchanged-preset-delivered",
+   "at": "2026-10-21T02:55:11.892Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "category": "LENDING",
+   "chainNamespace": "eip155:421614",
+   "stage": "subsequent",
+   "hash": "0xda9775321a1733b53c794e2da1660a454701d1994ff508d3dfb5a7744bc87f65",
+   "destinationHash": "0x441bd0069c2b08cf84f5bdbf52c36aa6c9d3f6902bb3910c77953dbd85beb24c",
+   "destinationGasUsed": "292561",
+   "destinationGasPaidWei": "6453720123400"
+  },
+  {
+   "name": "unchanged-preset-created",
+   "at": "2026-10-21T03:00:20.251Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "category": "DEXES",
+   "chainNamespace": "eip155:11155111",
+   "wallet": "0x7369894641360aF9AA464E6E07886eA0a670bdE3",
+   "hash": "0x41627803cc881cd6bd4f4f38bfa6adb5f5321b3af80dd40e5425ef4b8b1e7c85",
+   "rules": [
+    {
+     "chainNamespace": "eip155:11155111",
+     "allowedCalls": [
+      {
+       "target": "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E",
+       "selector": "exactInputSingle((address,address,uint24,address,uint256,uint256,uint160))",
+       "pins": [
+        {
+         "arg": [
+          0,
+          0
+         ],
+         "expected": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14"
+        },
+        {
+         "arg": [
+          0,
+          1
+         ],
+         "expected": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+        },
+        {
+         "arg": [
+          0,
+          3
+         ],
+         "expected": "agentic:wallet"
+        },
+        {
+         "arg": [
+          0,
+          4
+         ],
+         "max": "1000000000000000"
+        }
+       ],
+       "app": "Uniswap V3",
+       "label": "Swap exact input"
+      },
+      {
+       "target": "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E",
+       "selector": "exactOutputSingle((address,address,uint24,address,uint256,uint256,uint160))",
+       "pins": [
+        {
+         "arg": [
+          0,
+          0
+         ],
+         "expected": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14"
+        },
+        {
+         "arg": [
+          0,
+          1
+         ],
+         "expected": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+        },
+        {
+         "arg": [
+          0,
+          3
+         ],
+         "expected": "agentic:wallet"
+        },
+        {
+         "arg": [
+          0,
+          5
+         ],
+         "max": "1000000000000000"
+        }
+       ],
+       "app": "Uniswap V3",
+       "label": "Swap exact output"
+      },
+      {
+       "target": "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E",
+       "selector": "exactInputSingle((address,address,uint24,address,uint256,uint256,uint160))",
+       "pins": [
+        {
+         "arg": [
+          0,
+          0
+         ],
+         "expected": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+        },
+        {
+         "arg": [
+          0,
+          1
+         ],
+         "expected": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14"
+        },
+        {
+         "arg": [
+          0,
+          3
+         ],
+         "expected": "agentic:wallet"
+        },
+        {
+         "arg": [
+          0,
+          4
+         ],
+         "max": "10000000"
+        }
+       ],
+       "app": "Uniswap V3",
+       "label": "Swap exact input"
+      },
+      {
+       "target": "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E",
+       "selector": "exactOutputSingle((address,address,uint24,address,uint256,uint256,uint160))",
+       "pins": [
+        {
+         "arg": [
+          0,
+          0
+         ],
+         "expected": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+        },
+        {
+         "arg": [
+          0,
+          1
+         ],
+         "expected": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14"
+        },
+        {
+         "arg": [
+          0,
+          3
+         ],
+         "expected": "agentic:wallet"
+        },
+        {
+         "arg": [
+          0,
+          5
+         ],
+         "max": "10000000"
+        }
+       ],
+       "app": "Uniswap V3",
+       "label": "Swap exact output"
+      },
+      {
+       "target": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+       "selector": "approve(address,uint256)",
+       "pins": [
+        {
+         "arg": 0,
+         "expected": "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E"
+        },
+        {
+         "arg": 1,
+         "max": "1000000000000000"
+        }
+       ],
+       "app": "Uniswap V3",
+       "label": "Approve token spending"
+      },
+      {
+       "target": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+       "selector": "approve(address,uint256)",
+       "pins": [
+        {
+         "arg": 0,
+         "expected": "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E"
+        },
+        {
+         "arg": 1,
+         "max": "10000000"
+        }
+       ],
+       "app": "Uniswap V3",
+       "label": "Approve token spending"
+      }
+     ],
+     "agent": "0x21659BcC0FfD83aed079db13EBD01C4a90da3a1C",
+     "validUntil": 1793156397,
+     "assets": [
+      {
+       "token": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+       "maxPerCall": "1000000000000000",
+       "maxTotal": "10000000000000000"
+      },
+      {
+       "token": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+       "maxPerCall": "10000000",
+       "maxTotal": "100000000"
+      }
+     ],
+     "maxGasPerCall": "20000000000000000000"
+    }
+   ]
+  },
+  {
+   "name": "agw-gas-quote",
+   "at": "2026-10-21T03:00:44.663Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "stage": "DEXES:eip155:11155111:first-use",
+   "token": "0x387b9C8Db60E74999aAAC5A2b7825b400F12d68E",
+   "requestedGasLimit": "2000000",
+   "chain": "eip155:11155111",
+   "protocolFeePCWei": "0",
+   "quotedGasBudgetPCWei": "10000000000000000000",
+   "gasLimitUsed": "2000000",
+   "attachedPCWei": "10000000000000000000",
+   "gasTokenFee": "440052000000",
+   "poolPcInRequired": "643471974079470"
+  },
+  {
+   "name": "unchanged-preset-submitted",
+   "at": "2026-10-21T03:00:48.504Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "category": "DEXES",
+   "chainNamespace": "eip155:11155111",
+   "stage": "first-use",
+   "wallet": "0x7369894641360aF9AA464E6E07886eA0a670bdE3",
+   "hash": "0x64d9df75b7d4a8b6169d57629bb10cd48bd9961d7011471ec2eede36f2cd2b6e"
+  },
+  {
+   "name": "agw-push-gas",
+   "at": "2026-10-21T03:01:48.324Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "stage": "first-use",
+   "hash": "0x64d9df75b7d4a8b6169d57629bb10cd48bd9961d7011471ec2eede36f2cd2b6e",
+   "block": "24472738",
+   "gasUsed": "479814",
+   "effectiveGasPrice": "1125000000",
+   "transactionGasPaidPCWei": "539790750000000"
+  },
+  {
+   "name": "unchanged-preset-delivered",
+   "at": "2026-10-21T03:01:48.326Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "category": "DEXES",
+   "chainNamespace": "eip155:11155111",
+   "stage": "first-use",
+   "hash": "0x64d9df75b7d4a8b6169d57629bb10cd48bd9961d7011471ec2eede36f2cd2b6e",
+   "destinationHash": "0xe97ab6a3e658aacd8f61fe72bd6c55241c0195a67e9ab8fca6c091a7c51aaee7",
+   "destinationGasUsed": "1502063",
+   "destinationGasPaidWei": "330492913638"
+  },
+  {
+   "name": "agw-gas-quote",
+   "at": "2026-10-21T03:02:00.399Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "stage": "DEXES:eip155:11155111:subsequent",
+   "token": "0x387b9C8Db60E74999aAAC5A2b7825b400F12d68E",
+   "requestedGasLimit": "1000000",
+   "chain": "eip155:11155111",
+   "protocolFeePCWei": "0",
+   "quotedGasBudgetPCWei": "10000000000000000000",
+   "gasLimitUsed": "1000000",
+   "attachedPCWei": "10000000000000000000",
+   "gasTokenFee": "220027000000",
+   "poolPcInRequired": "321737452297646"
+  },
+  {
+   "name": "unchanged-preset-submitted",
+   "at": "2026-10-21T03:02:05.422Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "category": "DEXES",
+   "chainNamespace": "eip155:11155111",
+   "stage": "subsequent",
+   "wallet": "0x7369894641360aF9AA464E6E07886eA0a670bdE3",
+   "hash": "0x06bd9dd403535b0e9603e36bedaf4f178bb9b46a2f1c33834b7fc387ae59c97c"
+  },
+  {
+   "name": "agw-push-gas",
+   "at": "2026-10-21T03:03:18.212Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "stage": "subsequent",
+   "hash": "0x06bd9dd403535b0e9603e36bedaf4f178bb9b46a2f1c33834b7fc387ae59c97c",
+   "block": "24472768",
+   "gasUsed": "457914",
+   "effectiveGasPrice": "1125000000",
+   "transactionGasPaidPCWei": "515153250000000"
+  },
+  {
+   "name": "unchanged-preset-delivered",
+   "at": "2026-10-21T03:03:18.215Z",
+   "network": "TESTNET_DONUT",
+   "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+   "category": "DEXES",
+   "chainNamespace": "eip155:11155111",
+   "stage": "subsequent",
+   "hash": "0x06bd9dd403535b0e9603e36bedaf4f178bb9b46a2f1c33834b7fc387ae59c97c",
+   "destinationHash": "0x07f46919b08d36aefc2a0ca25c1d7a2fd4573ad1993a1bc98a981774d71fe79a",
+   "destinationGasUsed": "362079",
+   "destinationGasPaidWei": "79667156133"
+  }
+ ]
+}

@@ -1,0 +1,35 @@
+{
+  "block": "24245415",
+  "references": [
+    {
+      "file": "src/policies/SvmRulebook.sol",
+      "name": "SvmRulebook",
+      "address": "0x15c3259490f0625c75b5a00731e4231b2b529c1e",
+      "matches": true
+    },
+    {
+      "file": "src/policies/SvmRulebook.sol",
+      "name": "SvmRulebook",
+      "address": "0x15c3259490f0625c75b5a00731e4231b2b529c1e",
+      "matches": true
+    },
+    {
+      "file": "src/policies/SvmRulebook.sol",
+      "name": "SvmRulebook",
+      "address": "0x15c3259490f0625c75b5a00731e4231b2b529c1e",
+      "matches": true
+    }
+  ],
+  "proxies": [
+    {
+      "proxy": "factoryProxy",
+      "implementation": "0x64893c611920604a9247530673071d46ac9174c9",
+      "matches": true
+    },
+    {
+      "proxy": "urp",
+      "implementation": "0xa176b1424018d52711edcb9d3d8757dc6e174463",
+      "matches": true
+    }
+  ]
+}

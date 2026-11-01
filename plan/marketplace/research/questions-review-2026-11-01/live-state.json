@@ -1,0 +1,28 @@
+{
+  "block": "24873403",
+  "marketplace": "0x940744d96b14Bc030163C6084d602d57CE42ba48",
+  "hook": "0xbee0B01773Dc742887f04bED58BD1B5Aa457ED96",
+  "evaluator": "0x2a73944D79E052bAF553F59fA1c7C23f3491845c",
+  "maxRules": 4,
+  "wiredHook": "0xbee0B01773Dc742887f04bED58BD1B5Aa457ED96",
+  "wiredEvaluator": "0x2a73944D79E052bAF553F59fA1c7C23f3491845c",
+  "marketRulesFor23": [
+    "0x0f178c9a9318a67b936493c35ba8a0a085b3927c8f722d91e68bbb2cbce4039e"
+  ],
+  "implementations": {
+    "hook": {
+      "address": "0x5fa9cbbcb1434f3cbe84c7f7fd6b07663d437f3f",
+      "codeHash": "0x56ec9cff1d2106cafeb0644873230b6e6db5add76ebc7a7c1c1d0eac2d38e027"
+    },
+    "evaluator": {
+      "address": "0xd1d5cd1af6331df9e83e679e1627bd4966c72c01",
+      "codeHash": "0x83c61a4db475b780b36ca777bc5f8587dbdcdb77b0fcddf67b7bae3915de700a"
+    },
+    "marketplace": {
+      "address": "0xb1d8032f5432d89cf8a67e221960a494a41de1e3",
+      "codeHash": "0xfa06e3027f4b082c83276980f78e3e20e11fe1af057272109836e21e0a91d8ce"
+    }
+  },
+  "hookRulesReturnBytes": 32,
+  "hookRulesFor23": "0x0f178c9a9318a67b936493c35ba8a0a085b3927c8f722d91e68bbb2cbce4039e"
+}

@@ -1,0 +1,103 @@
+FAIL core-e2e __e2e__/agw/presets-expanded-live.spec.ts (2671.529 s)
+  agw presets expanded
+    ✕ 4. DEX swap and Venus round trip on eip155:97 (1719393 ms)
+    ✕ 5. Base Aave and both Moonwell markets supply and redeem wallet positions (947926 ms)
+    ○ skipped 1. EigenLayer Sepolia deposit credits shares to the wallet
+    ○ skipped 2. DEX swap on eip155:84532
+    ○ skipped 3. DEX swap and Aave round trip on eip155:421614
+
+  ● agw presets expanded › 4. DEX swap and Venus round trip on eip155:97
+
+    AgenticRevertError: Timed out while waiting for transaction with hash "0x52732156d51caf9d3d1aa08fd4397be09508553cc4119fc218b92f50eee126e3" to be confirmed.
+
+      163 |       decodedError?: DecodedErrorPayload;
+      164 |     };
+    > 165 |     return new AgenticRevertError(e?.message ?? decoded?.name ?? 'AGW revert', {
+          |            ^
+      166 |       decodedError: decoded ?? e?.decodedError,
+      167 |       gatewayTxHash: e?.gatewayTxHash,
+      168 |       agenticCode: decoded?.name,
+
+      at wrapSendError (src/lib/agentic/management/common.ts:165:12)
+      at agenticSend (src/lib/agentic/execution/send.ts:340:34)
+      at async send (__e2e__/agw/presets-expanded-live.spec.ts:131:14)
+      at async wrap (__e2e__/agw/presets-expanded-live.spec.ts:250:3)
+      at async dexAndLend (__e2e__/agw/presets-expanded-live.spec.ts:435:5)
+
+    Cause:
+    PushChainExecutionError: Timed out while waiting for transaction with hash "0x52732156d51caf9d3d1aa08fd4397be09508553cc4119fc218b92f50eee126e3" to be confirmed.
+
+      186 |       ctx._routeTerminalEmitted = true;
+      187 |       if (!isUserDecline && !(err instanceof PushChainExecutionError)) {
+    > 188 |         throw new PushChainExecutionError(errMsg, { cause: err });
+          |               ^
+      189 |       }
+      190 |       throw err;
+      191 |     }
+
+      at executeStandardPayload (src/lib/orchestrator/internals/execute-standard.ts:188:15)
+      at async Orchestrator.executeWithPolicy (src/lib/orchestrator/orchestrator.ts:471:11)
+      at async agenticSend (src/lib/agentic/execution/send.ts:330:9)
+      at async send (__e2e__/agw/presets-expanded-live.spec.ts:131:14)
+      at async wrap (__e2e__/agw/presets-expanded-live.spec.ts:250:3)
+      at async dexAndLend (__e2e__/agw/presets-expanded-live.spec.ts:435:5)
+
+    Cause:
+    WaitForTransactionReceiptTimeoutError: Timed out while waiting for transaction with hash "0x52732156d51caf9d3d1aa08fd4397be09508553cc4119fc218b92f50eee126e3" to be confirmed.
+
+    Version: viem@2.27.2
+
+      at Timeout._onTimeout (../../node_modules/viem/actions/public/waitForTransactionReceipt.ts:160:22)
+
+  ● agw presets expanded › 5. Base Aave and both Moonwell markets supply and redeem wallet positions
+
+    AgenticRevertError: Timed out while waiting for transaction with hash "0x72d53c5d0faad5a16eec8f1a1f413757d425ec4237488551b5d2f2436d4e60b2" to be confirmed.
+
+      163 |       decodedError?: DecodedErrorPayload;
+      164 |     };
+    > 165 |     return new AgenticRevertError(e?.message ?? decoded?.name ?? 'AGW revert', {
+          |            ^
+      166 |       decodedError: decoded ?? e?.decodedError,
+      167 |       gatewayTxHash: e?.gatewayTxHash,
+      168 |       agenticCode: decoded?.name,
+
+      at wrapSendError (src/lib/agentic/management/common.ts:165:12)
+      at agenticSend (src/lib/agentic/execution/send.ts:340:34)
+      at async send (__e2e__/agw/presets-expanded-live.spec.ts:131:14)
+      at async Object.<anonymous> (__e2e__/agw/presets-expanded-live.spec.ts:657:5)
+
+    Cause:
+    PushChainExecutionError: Timed out while waiting for transaction with hash "0x72d53c5d0faad5a16eec8f1a1f413757d425ec4237488551b5d2f2436d4e60b2" to be confirmed.
+
+      186 |       ctx._routeTerminalEmitted = true;
+      187 |       if (!isUserDecline && !(err instanceof PushChainExecutionError)) {
+    > 188 |         throw new PushChainExecutionError(errMsg, { cause: err });
+          |               ^
+      189 |       }
+      190 |       throw err;
+      191 |     }
+
+      at executeStandardPayload (src/lib/orchestrator/internals/execute-standard.ts:188:15)
+      at async Orchestrator.executeWithPolicy (src/lib/orchestrator/orchestrator.ts:471:11)
+      at async agenticSend (src/lib/agentic/execution/send.ts:330:9)
+      at async send (__e2e__/agw/presets-expanded-live.spec.ts:131:14)
+      at async Object.<anonymous> (__e2e__/agw/presets-expanded-live.spec.ts:657:5)
+
+    Cause:
+    WaitForTransactionReceiptTimeoutError: Timed out while waiting for transaction with hash "0x72d53c5d0faad5a16eec8f1a1f413757d425ec4237488551b5d2f2436d4e60b2" to be confirmed.
+
+    Version: viem@2.27.2
+
+      at Timeout._onTimeout (../../node_modules/viem/actions/public/waitForTransactionReceipt.ts:160:22)
+
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 3 skipped, 5 total
+Snapshots:   0 total
+Time:        2671.595 s
+Ran all test suites within paths "__e2e__/agw/presets-expanded-live.spec.ts".
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 3 skipped, 5 total
+Snapshots:   0 total
+Time:        2671.599 s
+Ran all test suites within paths "__e2e__/agw/presets-expanded-live.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

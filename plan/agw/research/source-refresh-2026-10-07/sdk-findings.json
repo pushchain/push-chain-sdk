@@ -1,0 +1,34 @@
+{
+  "sdkCommit": "898eda17",
+  "scope": "source-level, no transactions",
+  "expired": {
+    "name": "AgenticError",
+    "code": "RULE_LIMIT_EXCEEDED",
+    "message": "RulesExpired",
+    "isAgenticRevertError": false,
+    "decodedError": null,
+    "details": {
+      "contractError": "RulesExpired"
+    }
+  },
+  "wrongAccount": {
+    "name": "AgenticError",
+    "code": "INVALID_RULE",
+    "message": "SvmAccountPinMismatch",
+    "isAgenticRevertError": false,
+    "decodedError": null,
+    "details": {
+      "contractError": "SvmAccountPinMismatch"
+    }
+  },
+  "ownerFundsOnly": {
+    "code": "INVALID_RULE",
+    "message": "Solana AGW sends require one encoded instruction; arrays and funds-only sends are unsupported",
+    "executions": 0
+  },
+  "ordinaryFundsOnlyPayload": {
+    "svmPayload": "0x",
+    "targetBytes": "0x3333333333333333333333333333333333333333333333333333333333333333",
+    "hasExecute": false
+  }
+}

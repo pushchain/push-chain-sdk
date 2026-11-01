@@ -1,0 +1,13 @@
+{
+  "archives": [
+    {
+      "file": "invariant-tests.log.gz",
+      "compression": "gzip",
+      "uncompressed_name": "invariant-tests.log",
+      "uncompressed_bytes": 45180847,
+      "uncompressed_sha256": "8352680abe26d8fdbda1c12c5dd003a84b2d91c0320bf9ca4e6471f4b6ca5cdc",
+      "compressed_bytes": 4466951,
+      "sha256": "dec8bc21a83014b1d5479796ce621ef4f419c3f304be14db82542d0feae2b6b5"
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+Compiling 1 files with Solc 0.8.26
+Solc 0.8.26 finished in 12.54s
+Compiler run successful with warnings:
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+  --> lib/smartsessions/contracts/lib/ConfigLib.sol:77:9:
+   |
+77 |         bool useRegistry
+   |         ^^^^^^^^^^^^^^^^
+
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+   --> lib/smartsessions/contracts/lib/ConfigLib.sol:123:9:
+    |
+123 |         bool useRegistry
+    |         ^^^^^^^^^^^^^^^^
+
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+   --> lib/smartsessions/contracts/lib/ConfigLib.sol:203:9:
+    |
+203 |         bool useRegistry
+    |         ^^^^^^^^^^^^^^^^
+
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+   --> lib/smartsessions/contracts/core/SmartSessionBase.sol:270:9:
+    |
+270 |         bool useRegistry
+    |         ^^^^^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+   --> src/AGWFactory.sol:352:5:
+    |
+352 |     function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+
+Ran 10 tests for sdk-harness/SdkSvmWire.t.sol:SdkSvmWireTest
+[PASS] test_SdkSvm_AccountSubstitutionFails() (gas: 622358)
+[PASS] test_SdkSvm_DatalessOnlyEmptyData() (gas: 1573814)
+[PASS] test_SdkSvm_EncodedTermsMatchStoredPinsAndAssets() (gas: 83952)
+[PASS] test_SdkSvm_NonExecuteFails() (gas: 603571)
+[PASS] test_SdkSvm_ProtectedAccountAliasFails() (gas: 647688)
+[PASS] test_SdkSvm_RatioFloorFailsWithoutSpend() (gas: 716489)
+[PASS] test_SdkSvm_RecipientMismatchFails() (gas: 603986)
+[PASS] test_SdkSvm_TrailingPayloadFails() (gas: 603572)
+[PASS] test_SdkSvm_U64OverflowFails() (gas: 595604)
+[PASS] test_SdkSvm_ValidPayloadPassesAndMeters() (gas: 736266)
+Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 10.64ms (10.46ms CPU time)
+
+Ran 1 test suite in 17.80ms (10.64ms CPU time): 10 tests passed, 0 failed, 0 skipped (10 total tests)

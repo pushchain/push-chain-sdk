@@ -1,0 +1,151 @@
+FAIL plan/agw/implementation-review/regressions.spec.ts
+  ✕ R2 explicit connected Push destination behaves like the bare native address (5 ms)
+  ✕ R3 owner funds-only outbound encodes the requested destination address (1 ms)
+  ✕ R4 owner outbound accepts an existing unlimited gateway allowance (10 ms)
+  ✕ R5 decoded static-array pin keeps its argument index (1 ms)
+  ✕ R5 a decoded simple address-pin rule can be re-encoded after restoring its known signature (2 ms)
+  ✕ R6 replayed outbound must replace a preexisting Push route instead of preserving it (2 ms)
+  ✕ R7 failed recovery RPC must not claim that a confirmed deployment did not happen (3 ms)
+
+  ● R2 explicit connected Push destination behaves like the bare native address
+
+    expect(received).resolves.toBeDefined()
+
+    Received promise rejected instead of resolved
+    Rejected to value: [AgenticError: rule 0x0000000000000000000000000000000000000000000000000000000000000001 is not an EVM universal rule]
+
+      27 | it('R2 explicit connected Push destination behaves like the bare native address', async () => {
+      28 |   const { rt, ctx } = setup();
+    > 29 |   await expect(agenticSend(rt, ctx, { to: { address: ADDR.target, chain: CHAIN.PUSH_TESTNET_DONUT }, data: '0xd09de08a' })).resolves.toBeDefined();
+         |         ^
+      30 | });
+      31 |
+      32 | it('R3 owner funds-only outbound encodes the requested destination address', async () => {
+
+      at expect (node_modules/expect/build/index.js:113:15)
+      at Object.<anonymous> (plan/agw/implementation-review/regressions.spec.ts:29:9)
+
+  ● R3 owner funds-only outbound encodes the requested destination address
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "0000000000000000000000000000000000007a76"
+    Received string:    "0x77b86bec000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000007070000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000030d40000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003e80000000000000000000000000000000000000000000000000000000000000120000000000000000000000000366e166f4c847a874ad54068e64d3cef77c8c02600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+
+      33 |   const { rt, gen, wallet } = setup('owner');
+      34 |   const out = await composeOutbound(rt, gen, wallet.address, { to: { address: ADDR.target, chain: CHAIN.ETHEREUM_SEPOLIA }, funds: { amount: BigInt(10) } }, { requireCalls: false });
+    > 35 |   expect(out.gatewayCall.data.toLowerCase()).toContain(ADDR.target.slice(2).toLowerCase());
+         |                                              ^
+      36 | });
+      37 |
+      38 | it('R4 owner outbound accepts an existing unlimited gateway allowance', async () => {
+
+      at Object.<anonymous> (plan/agw/implementation-review/regressions.spec.ts:35:46)
+
+  ● R4 owner outbound accepts an existing unlimited gateway allowance
+
+    expect(received).not.toThrow()
+
+    Error name:    "IntegerOutOfRangeError"
+    Error message: "Number \"115792089237316195423570985008687907853269984665640564039457584007913129639945\" is not in safe 256-bit unsigned integer range (0 to 115792089237316195423570985008687907853269984665640564039457584007913129639935)·
+    Version: viem@2.27.2"
+
+          182 |       target: out.token,
+          183 |       value: BigInt(0),
+        > 184 |       data: encodeFunctionData({
+              |                               ^
+          185 |         abi: ERC20_EVM,
+          186 |         functionName: 'approve',
+          187 |         args: [gen.addresses.gateway, currentAllowance + out.amount],
+
+      at encodeNumber (node_modules/viem/utils/abi/encodeAbiParameters.ts:340:13)
+      at prepareParam (node_modules/viem/utils/abi/encodeAbiParameters.ts:169:12)
+      at prepareParams (node_modules/viem/utils/abi/encodeAbiParameters.ts:126:25)
+      at encodeAbiParameters (node_modules/viem/utils/abi/encodeAbiParameters.ts:99:26)
+      at encodeFunctionData (node_modules/viem/utils/abi/encodeFunctionData.ts:93:28)
+      at ownerOutboundCalls (packages/core/src/lib/agentic/execution/outbound.ts:184:31)
+      at plan/agw/implementation-review/regressions.spec.ts:41:34
+      at Object.<anonymous> (node_modules/expect/build/toThrowMatchers.js:74:11)
+      at Object.throwingMatcher [as toThrow] (node_modules/expect/build/index.js:320:21)
+      at Object.<anonymous> (plan/agw/implementation-review/regressions.spec.ts:41:62)
+      at Object.<anonymous> (plan/agw/implementation-review/regressions.spec.ts:41:62)
+
+  ● R5 decoded static-array pin keeps its argument index
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: 2
+
+      46 |   const { terms } = nativeRuleToTerms(input, { nowSeconds: 1700000000 });
+      47 |   const decoded = nativeTermsToRule(terms, ADDR.agent, `0x${'00'.repeat(32)}`);
+    > 48 |   expect(decoded.pins?.[0].arg).toBe(1);
+         |                                 ^
+      49 | });
+      50 |
+      51 | it('R5 a decoded simple address-pin rule can be re-encoded after restoring its known signature', () => {
+
+      at Object.<anonymous> (plan/agw/implementation-review/regressions.spec.ts:48:33)
+
+  ● R5 a decoded simple address-pin rule can be re-encoded after restoring its known signature
+
+    expect(received).not.toThrow()
+
+    Error name:    "AgenticError"
+    Error message: "pins[0] expected value does not encode as address: expected an address"
+
+          128 |
+          129 | function invalid(message: string, cause?: unknown): AgenticError {
+        > 130 |   return new AgenticError(AGENTIC_ERROR_CODE.INVALID_RULE, message, { cause });
+              |          ^
+          131 | }
+          132 |
+
+      at invalid (packages/core/src/lib/agentic/codec/abi-layout.ts:130:10)
+      at encodeArgWord (packages/core/src/lib/agentic/codec/abi-layout.ts:109:11)
+      at packages/core/src/lib/agentic/codec/native.ts:121:45
+                at Array.map (<anonymous>)
+      at nativeRuleToTerms (packages/core/src/lib/agentic/codec/native.ts:118:23)
+      at plan/agw/implementation-review/regressions.spec.ts:55:33
+      at Object.<anonymous> (node_modules/expect/build/toThrowMatchers.js:74:11)
+      at Object.throwingMatcher [as toThrow] (node_modules/expect/build/index.js:320:21)
+      at Object.<anonymous> (plan/agw/implementation-review/regressions.spec.ts:55:109)
+      at Object.<anonymous> (plan/agw/implementation-review/regressions.spec.ts:55:109)
+
+  ● R6 replayed outbound must replace a preexisting Push route instead of preserving it
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "UOA_TO_CEA"
+    Received: "UOA_TO_PUSH"
+
+      61 |   const resp = fakeResponse({ to: wallet.address, data: e704d5b.encodeExecute([out.gatewayCall]), route: 'UOA_TO_PUSH' });
+      62 |   const adapted = await adaptTrackedResponse(rt, resp);
+    > 63 |   expect(adapted.route).toBe('UOA_TO_CEA');
+         |                         ^
+      64 | });
+      65 |
+      66 | it('R7 failed recovery RPC must not claim that a confirmed deployment did not happen', async () => {
+
+      at Object.<anonymous> (plan/agw/implementation-review/regressions.spec.ts:63:25)
+
+  ● R7 failed recovery RPC must not claim that a confirmed deployment did not happen
+
+    expect(received).not.toBe(expected) // Object.is equality
+
+    Expected: not false
+
+      79 |   const err = await createWallet(rt, 'review', { rules: [{ agent: ADDR.agent, target: ADDR.target, selector: 'increment()', validUntil: 1800000000 }] }).catch(e => e);
+      80 |   expect(err.code).toBe('CREATE_PARTIAL');
+    > 81 |   expect(err.details.walletDeployed).not.toBe(false);
+         |                                          ^
+      82 | });
+      83 |
+
+      at Object.<anonymous> (plan/agw/implementation-review/regressions.spec.ts:81:42)
+
+Test Suites: 1 failed, 1 total
+Tests:       7 failed, 7 total
+Snapshots:   0 total
+Time:        2.654 s, estimated 7 s
+Ran all test suites within paths "plan/agw/implementation-review/regressions.spec.ts".

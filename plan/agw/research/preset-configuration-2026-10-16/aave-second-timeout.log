@@ -1,0 +1,27 @@
+FAIL core-e2e __e2e__/agw/presets-live.spec.ts (1847.916 s)
+  agw presets live
+    ✕ 2. Aave preset supplies and withdraws the wallet position (946467 ms)
+    ○ skipped 1. Uniswap preset swaps from the wallet CEA and rejects a different recipient
+
+  ● agw presets live › 2. Aave preset supplies and withdraws the wallet position
+
+    thrown: "Exceeded timeout of 900000 ms for a test.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+      225 |     });
+      226 |   }, 900_000);
+    > 227 |   it('2. Aave preset supplies and withdraws the wallet position', async () => {
+          |   ^
+      228 |     const mockLINK = '0xf8Fb3713D459D7C1018BD0A49D19b4C44290EBE5' as Address;
+      229 |     const faucet = '0xC959483DBa39aa9E78757139af0e9a2EDEb3f42D' as Address;
+      230 |     const amount = BigInt(10) ** BigInt(12);
+
+      at __e2e__/agw/presets-live.spec.ts:227:3
+      at Object.<anonymous> (__e2e__/agw/presets-live.spec.ts:46:1)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 1 skipped, 2 total
+Snapshots:   0 total
+Time:        1847.938 s, estimated 1850 s
+Ran all test suites within paths "__e2e__/agw/presets-live.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

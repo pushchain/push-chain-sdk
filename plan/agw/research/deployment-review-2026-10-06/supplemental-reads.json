@@ -1,0 +1,25 @@
+{
+  "rpc": "https://evm.donut.rpc.push.org/",
+  "block": 23931055,
+  "checked_at": "2026-10-05T18:42:12.699217+00:00",
+  "reads": [
+    {
+      "address": "0x00000000000000000000000000000000000000C0",
+      "signature": "gasTokenPRC20ByChainNamespace(string)(address)",
+      "args": [
+        "eip155:11155111"
+      ],
+      "exit_code": 0,
+      "output": "0x2971824Db68229D087931155C2b8bB820B275809",
+      "error": ""
+    },
+    {
+      "address": "0x603E7f0aF6e1aAFf46DDfb28b1e99364f8BC59af",
+      "signature": "SESSION_ENGINE()(address)",
+      "args": [],
+      "exit_code": 0,
+      "output": "0x165A5E6782f39D30B38c7D97e1303e4CB2aD102a",
+      "error": ""
+    }
+  ]
+}

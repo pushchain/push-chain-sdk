@@ -1,0 +1,103 @@
+{
+  "at": "2026-10-06T07:29:28.593Z",
+  "hash": "0x51e2227e833e8090844f151c2d5d959225d3ec24828bf11a1c6467e2a74410fc",
+  "block": 23949885,
+  "observations": [
+    {
+      "id": "0xf328cfa0af8a4e50afc3648205161759c02f1d0ddd27c40ba25f15990d084f36",
+      "record": {
+        "universalTx": {
+          "id": "f328cfa0af8a4e50afc3648205161759c02f1d0ddd27c40ba25f15990d084f36",
+          "pcTx": [
+            {
+              "txHash": "0x51e2227e833e8090844f151c2d5d959225d3ec24828bf11a1c6467e2a74410fc",
+              "sender": "0xDfFb9e4cc2b869cF35ab811675333f40cD04dF76",
+              "gasUsed": 417241,
+              "blockHeight": 23949885,
+              "status": "SUCCESS",
+              "errorMsg": ""
+            }
+          ],
+          "outboundTx": [
+            {
+              "destinationChain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+              "recipient": "0x7673075a980bfd5d6b1dffe99c31f63e8938519cc1c2af009dda5e568a94460d",
+              "amount": "10000",
+              "externalAssetAddr": "0x0000000000000000000000000000000000000000",
+              "prc20AssetAddr": "0x5D525Df2bD99a6e7ec58b76aF2fd95F39874EBed",
+              "sender": "0x4612ad240cd66A77b921693BbbB356d1B8219b2c",
+              "payload": "0x000000024f12fe6816ae7e33ebf7db0b154ec3b09e3bf1a7690481e8e9477d5a278ad3af01dd7c1b885eb85dbac2db2a4ce5887489200c20d2549a6ed12d202cd12a7dfe8100000000106ae3a83bf81b96650100000000000000027673075a980bfd5d6b1dffe99c31f63e8938519cc1c2af009dda5e568a94460d",
+              "gasLimit": "960",
+              "txType": 4,
+              "pcTx": {
+                "txHash": "0x51e2227e833e8090844f151c2d5d959225d3ec24828bf11a1c6467e2a74410fc",
+                "logIndex": "13"
+              },
+              "id": "d7e4da935abc97cbb68c0869dafa1e28038b89848c53650364250f60cd11e1ef",
+              "outboundStatus": 1,
+              "revertInstructions": {
+                "fundRecipient": "0x4612ad240cd66A77b921693BbbB356d1B8219b2c"
+              },
+              "gasPrice": "1000",
+              "gasFee": "960000",
+              "refundSwapError": "",
+              "gasToken": "0x5D525Df2bD99a6e7ec58b76aF2fd95F39874EBed",
+              "abortReason": "",
+              "isPc20": false,
+              "pc20ContractAddress": ""
+            }
+          ],
+          "universalStatus": 0
+        }
+      }
+    },
+    {
+      "id": "0xf328cfa0af8a4e50afc3648205161759c02f1d0ddd27c40ba25f15990d084f36",
+      "record": {
+        "universalTx": {
+          "id": "f328cfa0af8a4e50afc3648205161759c02f1d0ddd27c40ba25f15990d084f36",
+          "pcTx": [
+            {
+              "txHash": "0x51e2227e833e8090844f151c2d5d959225d3ec24828bf11a1c6467e2a74410fc",
+              "sender": "0xDfFb9e4cc2b869cF35ab811675333f40cD04dF76",
+              "gasUsed": 417241,
+              "blockHeight": 23949885,
+              "status": "SUCCESS",
+              "errorMsg": ""
+            }
+          ],
+          "outboundTx": [
+            {
+              "destinationChain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+              "recipient": "0x7673075a980bfd5d6b1dffe99c31f63e8938519cc1c2af009dda5e568a94460d",
+              "amount": "10000",
+              "externalAssetAddr": "0x0000000000000000000000000000000000000000",
+              "prc20AssetAddr": "0x5D525Df2bD99a6e7ec58b76aF2fd95F39874EBed",
+              "sender": "0x4612ad240cd66A77b921693BbbB356d1B8219b2c",
+              "payload": "0x000000024f12fe6816ae7e33ebf7db0b154ec3b09e3bf1a7690481e8e9477d5a278ad3af01dd7c1b885eb85dbac2db2a4ce5887489200c20d2549a6ed12d202cd12a7dfe8100000000106ae3a83bf81b96650100000000000000027673075a980bfd5d6b1dffe99c31f63e8938519cc1c2af009dda5e568a94460d",
+              "gasLimit": "960",
+              "txType": 4,
+              "pcTx": {
+                "txHash": "0x51e2227e833e8090844f151c2d5d959225d3ec24828bf11a1c6467e2a74410fc",
+                "logIndex": "13"
+              },
+              "id": "d7e4da935abc97cbb68c0869dafa1e28038b89848c53650364250f60cd11e1ef",
+              "outboundStatus": 1,
+              "revertInstructions": {
+                "fundRecipient": "0x4612ad240cd66A77b921693BbbB356d1B8219b2c"
+              },
+              "gasPrice": "1000",
+              "gasFee": "960000",
+              "refundSwapError": "",
+              "gasToken": "0x5D525Df2bD99a6e7ec58b76aF2fd95F39874EBed",
+              "abortReason": "",
+              "isPc20": false,
+              "pc20ContractAddress": ""
+            }
+          ],
+          "universalStatus": 0
+        }
+      }
+    }
+  ]
+}

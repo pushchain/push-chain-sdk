@@ -1,0 +1,32 @@
+{
+  "packages/core/src/lib/agentic/__tests__/codec.spec.ts": {
+    "warningsUnchanged": true,
+    "diagnostics": [
+      {
+        "ruleId": "@typescript-eslint/no-non-null-assertion",
+        "severity": 1,
+        "message": "Forbidden non-null assertion."
+      }
+    ]
+  },
+  "packages/core/src/lib/agentic/__tests__/rules-policy.spec.ts": {
+    "warningsUnchanged": true,
+    "diagnostics": [
+      {
+        "ruleId": "@typescript-eslint/no-unused-vars",
+        "severity": 1,
+        "message": "'NativeRule' is defined but never used."
+      }
+    ]
+  },
+  "packages/core/src/lib/agentic/__tests__/svm-internals.spec.ts": {
+    "warningsUnchanged": true,
+    "diagnostics": [
+      {
+        "ruleId": "@typescript-eslint/no-non-null-assertion",
+        "severity": 1,
+        "message": "Forbidden non-null assertion."
+      }
+    ]
+  }
+}

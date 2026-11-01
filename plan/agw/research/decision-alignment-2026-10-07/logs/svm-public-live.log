@@ -1,0 +1,13 @@
+PASS core-e2e __e2e__/agw/svm-public.spec.ts (283.2 s)
+  agw public svm
+    ✓ 1. named IDL grant reads exact constraints and replaces atomically (102799 ms)
+    ✓ 2. public send confirms actual CEA transfer and preserves replay identity (100011 ms)
+    ✓ 3. substituted named accounts and excessive instruction amounts fail before signing (15315 ms)
+    ✓ 4. public revoke removes the Solana rule and subsequent sends are refused (9725 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       4 passed, 4 total
+Snapshots:   0 total
+Time:        283.218 s
+Ran all test suites within paths "__e2e__/agw/svm-public.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

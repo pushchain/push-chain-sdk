@@ -1,0 +1,124 @@
+{
+  "run_id": "20261003T075310278902Z",
+  "pulled_at": "2026-10-03T07:53:10.278902+00:00",
+  "complete": true,
+  "missing_page_ids": [],
+  "unknown_export_entries": [],
+  "archives": [
+    "notion/exports/20261003T075310278902Z/export-1.zip",
+    "notion/exports/20261003T075310278902Z/export-2.zip",
+    "notion/exports/20261003T075310278902Z/export-3.zip",
+    "notion/exports/20261003T075310278902Z/export-4.zip"
+  ],
+  "pages": [
+    {
+      "page_id": "3e9188aea7f481c8b38ccba332b0afa2",
+      "title": "AGW design overview",
+      "local_file": "notion/overview.md",
+      "changed": false,
+      "previous_sha256": "f2d7954e018324a937282ca190f397cc12a27973a07c891f3edfd6e89383c53e",
+      "sha256": "f2d7954e018324a937282ca190f397cc12a27973a07c891f3edfd6e89383c53e",
+      "raw_export_sha256": "99b727bd58cf588b2c766dc1b93eff402c47e918718b69c2a456b119ad43435b"
+    },
+    {
+      "page_id": "3e9188aea7f4813aa31fc95ceb4e684d",
+      "title": "1 AGW Contract Changes",
+      "local_file": "notion/1-agw-contract-changes.md",
+      "changed": true,
+      "previous_sha256": "22fa37bdd52e903c632760f4b7fa77cd7be89a7c5a124eba3f6866c00b5632c6",
+      "sha256": "f1301d8ff1cf370968b90a3d53037ece8fa4c6783c45a402f9be6998928e3631",
+      "raw_export_sha256": "f1301d8ff1cf370968b90a3d53037ece8fa4c6783c45a402f9be6998928e3631"
+    },
+    {
+      "page_id": "3e9188aea7f48118b90ac9b267496295",
+      "title": "2 Universal Marketplace",
+      "local_file": "notion/2-universal-marketplace.md",
+      "changed": false,
+      "previous_sha256": "5ddfd9e8980faae9eec85e3959cc99edbb3b115565af289c5603a91df0b78d18",
+      "sha256": "5ddfd9e8980faae9eec85e3959cc99edbb3b115565af289c5603a91df0b78d18",
+      "raw_export_sha256": "5ddfd9e8980faae9eec85e3959cc99edbb3b115565af289c5603a91df0b78d18"
+    },
+    {
+      "page_id": "3e9188aea7f48188a838c3a740d8c858",
+      "title": "3 ERC-8183 job kernel and hook",
+      "local_file": "notion/3-8183-job-kernel-and-hook.md",
+      "changed": false,
+      "previous_sha256": "3c805db465f2d39db8d34179ac1dd864db1abf7b1b3e93f38074fbf393093f90",
+      "sha256": "3c805db465f2d39db8d34179ac1dd864db1abf7b1b3e93f38074fbf393093f90",
+      "raw_export_sha256": "3c805db465f2d39db8d34179ac1dd864db1abf7b1b3e93f38074fbf393093f90"
+    },
+    {
+      "page_id": "3e9188aea7f4817bb03ef4c78c883f8b",
+      "title": "4 Universal Evaluation",
+      "local_file": "notion/4-universal-evaluation.md",
+      "changed": false,
+      "previous_sha256": "a2f1c93a75b8631c9628c06f1be135fa0198f00f096a765ce808dd5e544b2d6f",
+      "sha256": "a2f1c93a75b8631c9628c06f1be135fa0198f00f096a765ce808dd5e544b2d6f",
+      "raw_export_sha256": "a2f1c93a75b8631c9628c06f1be135fa0198f00f096a765ce808dd5e544b2d6f"
+    },
+    {
+      "page_id": "3e9188aea7f481cf8e8de324956549b9",
+      "title": "5 SDK AGW",
+      "local_file": "notion/5-sdk-agw.md",
+      "changed": true,
+      "previous_sha256": "9ce90fb84826c989b4fec22066da0776121f9195e27bc6679aaac538995f4653",
+      "sha256": "e407ee77cdf874db7ef4697f84e9945ff3a12a2f2e07e8a7f90bd24e93ea32f1",
+      "raw_export_sha256": "9a16f8aed79fac09818ec216fb4c69dc79f2fa0cffe0af611af956eb0e69f33f"
+    },
+    {
+      "page_id": "3ea188aea7f481e2961ed97129f3a4e6",
+      "title": "6 SDK Universal Marketplace",
+      "local_file": "notion/6-sdk-universal-marketplace.md",
+      "changed": false,
+      "previous_sha256": "e7298952f2ba9adb218b4ef0459b8fa696a2072167dc5f655060b69788cf528c",
+      "sha256": "e7298952f2ba9adb218b4ef0459b8fa696a2072167dc5f655060b69788cf528c",
+      "raw_export_sha256": "e7298952f2ba9adb218b4ef0459b8fa696a2072167dc5f655060b69788cf528c"
+    },
+    {
+      "page_id": "3ea188aea7f481e0a137f5a896723376",
+      "title": "7 SDK ERC-8183 Job",
+      "local_file": "notion/7-sdk-8183-job.md",
+      "changed": false,
+      "previous_sha256": "dbf1ff539f5df944e5f5f55710f5f6d3359469a141038cec2604e7c33392752c",
+      "sha256": "dbf1ff539f5df944e5f5f55710f5f6d3359469a141038cec2604e7c33392752c",
+      "raw_export_sha256": "dbf1ff539f5df944e5f5f55710f5f6d3359469a141038cec2604e7c33392752c"
+    },
+    {
+      "page_id": "3ea188aea7f48197a3b3cfdedfa74fee",
+      "title": "8 SDK Universal Evaluation",
+      "local_file": "notion/8-sdk-universal-evaluation.md",
+      "changed": false,
+      "previous_sha256": "eb2e584bd76aeea06c0dd03b3c8802b2340acf955e1ea75bf7768ebf9d2ab34e",
+      "sha256": "eb2e584bd76aeea06c0dd03b3c8802b2340acf955e1ea75bf7768ebf9d2ab34e",
+      "raw_export_sha256": "eb2e584bd76aeea06c0dd03b3c8802b2340acf955e1ea75bf7768ebf9d2ab34e"
+    },
+    {
+      "page_id": "d2d188aea7f4825cbcea81ef86eca607",
+      "title": "Legacy PUSH AGW SDK Doc v1",
+      "local_file": "notion/legacy-agw-sdk-v1.md",
+      "changed": false,
+      "previous_sha256": "9e6569ef9b76d59cb411d65305d67333c6766abc2e9c80a35ae6f56f12f70916",
+      "sha256": "9e6569ef9b76d59cb411d65305d67333c6766abc2e9c80a35ae6f56f12f70916",
+      "raw_export_sha256": "9e6569ef9b76d59cb411d65305d67333c6766abc2e9c80a35ae6f56f12f70916"
+    },
+    {
+      "page_id": "3d1188aea7f480ddbb4af6d0efb211e6",
+      "title": "AGW Address Book PC Donut",
+      "local_file": "notion/agw-address-book-donut-2026-09-04.md",
+      "changed": false,
+      "previous_sha256": "5c5017d6b4a58af0fa8854ef550b054c1f33d57a812ea51a16f31f7c33e79742",
+      "sha256": "5c5017d6b4a58af0fa8854ef550b054c1f33d57a812ea51a16f31f7c33e79742",
+      "raw_export_sha256": "5c5017d6b4a58af0fa8854ef550b054c1f33d57a812ea51a16f31f7c33e79742"
+    },
+    {
+      "page_id": "3d1188aea7f4801f9cb3fbd9318ec536",
+      "title": "Agentic wallet flow updated",
+      "local_file": "notion/agentic-wallet-flow-2026-09-07.md",
+      "changed": false,
+      "previous_sha256": "d4a922fd1d33da5a7042f26053e8df0e496c3ccd4cb0044b0892948ac509c3a0",
+      "sha256": "d4a922fd1d33da5a7042f26053e8df0e496c3ccd4cb0044b0892948ac509c3a0",
+      "raw_export_sha256": "d4a922fd1d33da5a7042f26053e8df0e496c3ccd4cb0044b0892948ac509c3a0"
+    }
+  ],
+  "review_status": "Review required"
+}

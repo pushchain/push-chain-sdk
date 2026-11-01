@@ -1,0 +1,1094 @@
+{
+  "at": "2026-10-20T17:39:03.799Z",
+  "readOnly": true,
+  "chains": [
+    {
+      "chain": "eip155:11155111",
+      "candidates": [
+        {
+          "token": "0xC4230aEaFcF6b8B49a7b4e53886420f00ff71876",
+          "symbol": "USDT",
+          "prc20": "0x0f97A213207703923F5f0C613C9827f7C9A0f96B",
+          "identityVerified": true
+        },
+        {
+          "token": "0x97F477B7f970D47a87B42869ceeace218106152a",
+          "symbol": "USDC",
+          "prc20": "0x7A58048036206bB898008b5bBDA85697DB1e5d66",
+          "identityVerified": true
+        },
+        {
+          "token": "0xfff9976782d46cc05630d1f6ebab18b2324d6b14",
+          "symbol": "WETH",
+          "prc20": "0x0d0dF7E8807430A81104EA84d926139816eC7586",
+          "identityVerified": true
+        },
+        {
+          "token": "0x3e3FE7dBc6B4C189E7128855dD526361c49b40Af",
+          "symbol": "stETH",
+          "prc20": "0xaf89E805949c628ebde3262e91dc4ab9eA12668E",
+          "identityVerified": true
+        },
+        {
+          "token": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+          "symbol": "USDC",
+          "prc20": "0x387b9C8Db60E74999aAAC5A2b7825b400F12d68E",
+          "identityVerified": true
+        }
+      ],
+      "protocols": [
+        {
+          "app": "Uniswap V3",
+          "kind": "dex",
+          "router": "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E",
+          "pairs": [
+            {
+              "tokens": [
+                "0xC4230aEaFcF6b8B49a7b4e53886420f00ff71876",
+                "0x97F477B7f970D47a87B42869ceeace218106152a"
+              ],
+              "pools": []
+            },
+            {
+              "tokens": [
+                "0xC4230aEaFcF6b8B49a7b4e53886420f00ff71876",
+                "0xfff9976782d46cc05630d1f6ebab18b2324d6b14"
+              ],
+              "pools": []
+            },
+            {
+              "tokens": [
+                "0xC4230aEaFcF6b8B49a7b4e53886420f00ff71876",
+                "0x3e3FE7dBc6B4C189E7128855dD526361c49b40Af"
+              ],
+              "pools": []
+            },
+            {
+              "tokens": [
+                "0xC4230aEaFcF6b8B49a7b4e53886420f00ff71876",
+                "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+              ],
+              "pools": []
+            },
+            {
+              "tokens": [
+                "0x97F477B7f970D47a87B42869ceeace218106152a",
+                "0xfff9976782d46cc05630d1f6ebab18b2324d6b14"
+              ],
+              "pools": []
+            },
+            {
+              "tokens": [
+                "0x97F477B7f970D47a87B42869ceeace218106152a",
+                "0x3e3FE7dBc6B4C189E7128855dD526361c49b40Af"
+              ],
+              "pools": []
+            },
+            {
+              "tokens": [
+                "0x97F477B7f970D47a87B42869ceeace218106152a",
+                "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+              ],
+              "pools": []
+            },
+            {
+              "tokens": [
+                "0xfff9976782d46cc05630d1f6ebab18b2324d6b14",
+                "0x3e3FE7dBc6B4C189E7128855dD526361c49b40Af"
+              ],
+              "pools": []
+            },
+            {
+              "tokens": [
+                "0xfff9976782d46cc05630d1f6ebab18b2324d6b14",
+                "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+              ],
+              "pools": [
+                {
+                  "fee": 100,
+                  "pool": "0xFeEd501c2B21D315F04946F85fC6416B640240b5",
+                  "liquidity": "621313943474064"
+                },
+                {
+                  "fee": 500,
+                  "pool": "0x3289680dD4d6C10bb19b899729cda5eEF58AEfF1",
+                  "liquidity": "13025255931102115"
+                },
+                {
+                  "fee": 3000,
+                  "pool": "0x6Ce0896eAE6D4BD668fDe41BB784548fb8F59b50",
+                  "liquidity": "8791221715427077"
+                },
+                {
+                  "fee": 10000,
+                  "pool": "0x6418EEC70f50913ff0d756B48d32Ce7C02b47C47",
+                  "liquidity": "107641416313884184"
+                }
+              ]
+            },
+            {
+              "tokens": [
+                "0x3e3FE7dBc6B4C189E7128855dD526361c49b40Af",
+                "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+              ],
+              "pools": []
+            }
+          ],
+          "factory": "0x0227628f3F023bb0B980b67D528571c95c6DaC1c",
+          "defaultPair": {
+            "tokens": [
+              "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+              "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+            ],
+            "routed": [
+              true,
+              true
+            ],
+            "pools": [
+              {
+                "fee": 100,
+                "pool": "0xFeEd501c2B21D315F04946F85fC6416B640240b5",
+                "liquidity": "621313943474064"
+              },
+              {
+                "fee": 500,
+                "pool": "0x3289680dD4d6C10bb19b899729cda5eEF58AEfF1",
+                "liquidity": "13025255931102115"
+              },
+              {
+                "fee": 3000,
+                "pool": "0x6Ce0896eAE6D4BD668fDe41BB784548fb8F59b50",
+                "liquidity": "8791221715427077"
+              },
+              {
+                "fee": 10000,
+                "pool": "0x6418EEC70f50913ff0d756B48d32Ce7C02b47C47",
+                "liquidity": "107641416313884184"
+              }
+            ]
+          }
+        },
+        {
+          "app": "Aave V3",
+          "kind": "lending",
+          "pool": "0x6Ae43d3271ff6888e7Fc43Fd7321a503ff738951",
+          "reserves": [
+            "0xFF34B3d4Aee8ddCd6F9AFFFB6Fe49bD371b8a357",
+            "0xf8Fb3713D459D7C1018BD0A49D19b4C44290EBE5",
+            "0x94a9D9AC8a22534E3FaCa9F4e7F2E2cf85d5E4C8",
+            "0x29f2D40B0605204364af54EC677bD022dA425d03",
+            "0xC558DBdd856501FCd9aaF1E62eae57A9F0629a3c",
+            "0xaA8E23Fb1079EA71e0a56F48a2aA51851D8433D0",
+            "0x88541670E55cC00bEEFD87eB59EDd1b7C511AC9a",
+            "0x6d906e526a4e2Ca02097BA9d0caA3c382F52278E",
+            "0xc4bF5CbDaBE595361438F8c6a187bDc330539c60"
+          ],
+          "routedReserves": []
+        },
+        {
+          "app": "EigenLayer",
+          "kind": "strategy",
+          "strategy": "0x424246eF71b01ee33aA33aC590fd9a0855F5eFbc",
+          "underlying": "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9",
+          "routed": false
+        }
+      ],
+      "presets": [
+        {
+          "category": "DEXES",
+          "readiness": {
+            "ready": true,
+            "chains": [
+              {
+                "chainNamespace": "eip155:11155111",
+                "ready": true,
+                "configurationReady": true,
+                "selectedAssets": [
+                  {
+                    "token": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+                    "maxPerCall": "1000000000000000",
+                    "maxTotal": "10000000000000000"
+                  },
+                  {
+                    "token": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+                    "maxPerCall": "10000000",
+                    "maxTotal": "100000000"
+                  }
+                ],
+                "bridgeAssets": [
+                  {
+                    "token": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+                    "prc20": "0x0d0dF7E8807430A81104EA84d926139816eC7586",
+                    "status": "registered"
+                  },
+                  {
+                    "token": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+                    "prc20": "0x387b9C8Db60E74999aAAC5A2b7825b400F12d68E",
+                    "status": "registered"
+                  }
+                ],
+                "issues": [],
+                "disabledCalls": [],
+                "excludedCalls": [],
+                "knownTokens": [
+                  "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+                  "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+                ],
+                "zeroBridgeLimits": []
+              }
+            ]
+          },
+          "assets": [
+            {
+              "token": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+              "maxPerCall": "1000000000000000",
+              "maxTotal": "10000000000000000"
+            },
+            {
+              "token": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+              "maxPerCall": "10000000",
+              "maxTotal": "100000000"
+            }
+          ]
+        },
+        {
+          "category": "LENDING",
+          "readiness": {
+            "ready": false,
+            "chains": [
+              {
+                "chainNamespace": "eip155:11155111",
+                "ready": false,
+                "configurationReady": true,
+                "selectedAssets": [
+                  {
+                    "token": "0xf8Fb3713D459D7C1018BD0A49D19b4C44290EBE5",
+                    "maxPerCall": "1000000000000000000",
+                    "maxTotal": "10000000000000000000"
+                  }
+                ],
+                "bridgeAssets": [
+                  {
+                    "token": "0xf8Fb3713D459D7C1018BD0A49D19b4C44290EBE5",
+                    "status": "unavailable"
+                  }
+                ],
+                "issues": [
+                  {
+                    "code": "BRIDGE_ASSET_UNAVAILABLE",
+                    "token": "0xf8Fb3713D459D7C1018BD0A49D19b4C44290EBE5",
+                    "message": "No SDK PRC20 mapping for eip155:11155111:0xf8Fb3713D459D7C1018BD0A49D19b4C44290EBE5 on TESTNET_DONUT. This preset cannot be created with this token until its Push route is verified. Choose a routed token only if the selected app supports that exact token address."
+                  }
+                ],
+                "disabledCalls": [],
+                "excludedCalls": [],
+                "knownTokens": [
+                  "0xFF34B3d4Aee8ddCd6F9AFFFB6Fe49bD371b8a357",
+                  "0xf8Fb3713D459D7C1018BD0A49D19b4C44290EBE5",
+                  "0x94a9D9AC8a22534E3FaCa9F4e7F2E2cf85d5E4C8",
+                  "0x29f2D40B0605204364af54EC677bD022dA425d03",
+                  "0xC558DBdd856501FCd9aaF1E62eae57A9F0629a3c",
+                  "0xaA8E23Fb1079EA71e0a56F48a2aA51851D8433D0",
+                  "0x88541670E55cC00bEEFD87eB59EDd1b7C511AC9a",
+                  "0x6d906e526a4e2Ca02097BA9d0caA3c382F52278E",
+                  "0xc4bF5CbDaBE595361438F8c6a187bDc330539c60"
+                ],
+                "zeroBridgeLimits": []
+              }
+            ]
+          },
+          "assets": [
+            {
+              "token": "0xf8Fb3713D459D7C1018BD0A49D19b4C44290EBE5",
+              "maxPerCall": "1000000000000000000",
+              "maxTotal": "10000000000000000000"
+            }
+          ]
+        },
+        {
+          "category": "STAKING",
+          "readiness": {
+            "ready": false,
+            "chains": [
+              {
+                "chainNamespace": "eip155:11155111",
+                "ready": false,
+                "configurationReady": true,
+                "selectedAssets": [
+                  {
+                    "token": "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9",
+                    "maxPerCall": "1000000000000000",
+                    "maxTotal": "10000000000000000"
+                  }
+                ],
+                "bridgeAssets": [
+                  {
+                    "token": "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9",
+                    "status": "unavailable"
+                  }
+                ],
+                "issues": [
+                  {
+                    "code": "BRIDGE_ASSET_UNAVAILABLE",
+                    "token": "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9",
+                    "message": "No SDK PRC20 mapping for eip155:11155111:0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9 on TESTNET_DONUT. This preset cannot be created with this token until its Push route is verified. Choose a routed token only if the selected app supports that exact token address."
+                  }
+                ],
+                "disabledCalls": [],
+                "excludedCalls": [],
+                "knownTokens": [
+                  "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9"
+                ],
+                "zeroBridgeLimits": []
+              }
+            ]
+          },
+          "assets": [
+            {
+              "token": "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9",
+              "maxPerCall": "1000000000000000",
+              "maxTotal": "10000000000000000"
+            }
+          ]
+        }
+      ],
+      "block": "11956837"
+    },
+    {
+      "chain": "eip155:84532",
+      "candidates": [
+        {
+          "token": "0x4D7646B9eE3D68F4b0F135B5cbc66B00819F6b61",
+          "symbol": "USDT",
+          "prc20": "0x148823809B853e1db187BC09A9ac909BC42F971a",
+          "identityVerified": true
+        },
+        {
+          "token": "0x5c3504F0E3bA28FDc1F74234fE936518276AaBB8",
+          "symbol": "USDC",
+          "prc20": "0xD7C6cA1e2c0CE260BE0c0AD39C1540de460e3Be1",
+          "identityVerified": true
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "unavailable": "Unsupported WETH origin chain for synthetic mapping"
+        },
+        {
+          "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+          "symbol": "USDC",
+          "prc20": "0x84B62e44F667F692F7739Ca6040cD17DA02068A8",
+          "identityVerified": true
+        }
+      ],
+      "protocols": [
+        {
+          "app": "Uniswap V3",
+          "kind": "dex",
+          "router": "0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4",
+          "pairs": [
+            {
+              "tokens": [
+                "0x4D7646B9eE3D68F4b0F135B5cbc66B00819F6b61",
+                "0x5c3504F0E3bA28FDc1F74234fE936518276AaBB8"
+              ],
+              "pools": []
+            },
+            {
+              "tokens": [
+                "0x4D7646B9eE3D68F4b0F135B5cbc66B00819F6b61",
+                "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+              ],
+              "pools": []
+            },
+            {
+              "tokens": [
+                "0x5c3504F0E3bA28FDc1F74234fE936518276AaBB8",
+                "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+              ],
+              "pools": []
+            }
+          ],
+          "factory": "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24",
+          "defaultPair": {
+            "tokens": [
+              "0x4200000000000000000000000000000000000006",
+              "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+            ],
+            "routed": [
+              false,
+              true
+            ],
+            "pools": [
+              {
+                "fee": 100,
+                "pool": "0x57183717A087d2fe3Ad890873877244c3B96156c",
+                "liquidity": "2890001491047"
+              },
+              {
+                "fee": 500,
+                "pool": "0x94bfc0574FF48E92cE43d495376C477B1d0EEeC0",
+                "liquidity": "448098251397"
+              },
+              {
+                "fee": 3000,
+                "pool": "0x46880b404CD35c165EDdefF7421019F8dD25F4Ad",
+                "liquidity": "541083441415564"
+              },
+              {
+                "fee": 10000,
+                "pool": "0x4664755562152EDDa3a3073850FB62835451926a",
+                "liquidity": "57734017049"
+              }
+            ]
+          }
+        },
+        {
+          "app": "Aave V3",
+          "kind": "lending",
+          "pool": "0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27",
+          "reserves": [
+            "0xba50Cd2A20f6DA35D788639E581bca8d0B5d4D5f",
+            "0x0a215D8ba66387DCA84B284D18c3B4ec3de6E54a",
+            "0x54114591963CF60EF3aA63bEfD6eC263D98145a4",
+            "0x4200000000000000000000000000000000000006",
+            "0xD171b9694f7A2597Ed006D41f7509aaD4B485c4B",
+            "0x810D46F9a9027E28F9B01F75E2bdde839dA61115"
+          ],
+          "routedReserves": []
+        },
+        {
+          "app": "Moonwell mUSDbC",
+          "kind": "market",
+          "market": "0x876852425331a113d8E432eFFB3aC5BEf38f033a",
+          "underlying": "0x4616975f7E6045FD9737e95bC527e9e14c727BD2",
+          "routed": false
+        },
+        {
+          "app": "Moonwell mWETH",
+          "kind": "market",
+          "market": "0x2F39a349A79492a70E152760ce7123A1933eCf28",
+          "underlying": "0x663A6F02d547dFd639BF689FED298712f2FB69Fb",
+          "routed": false
+        }
+      ],
+      "presets": [
+        {
+          "category": "DEXES",
+          "readiness": {
+            "ready": false,
+            "chains": [
+              {
+                "chainNamespace": "eip155:84532",
+                "ready": false,
+                "configurationReady": true,
+                "selectedAssets": [
+                  {
+                    "token": "0x4200000000000000000000000000000000000006",
+                    "maxPerCall": "1000000000000000",
+                    "maxTotal": "10000000000000000"
+                  },
+                  {
+                    "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+                    "maxPerCall": "10000000",
+                    "maxTotal": "100000000"
+                  }
+                ],
+                "bridgeAssets": [
+                  {
+                    "token": "0x4200000000000000000000000000000000000006",
+                    "status": "unavailable"
+                  },
+                  {
+                    "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+                    "prc20": "0x84B62e44F667F692F7739Ca6040cD17DA02068A8",
+                    "status": "registered"
+                  }
+                ],
+                "issues": [
+                  {
+                    "code": "BRIDGE_ASSET_UNAVAILABLE",
+                    "token": "0x4200000000000000000000000000000000000006",
+                    "message": "No SDK PRC20 mapping for eip155:84532:0x4200000000000000000000000000000000000006 on TESTNET_DONUT. This preset cannot be created with this token until its Push route is verified. Choose a routed token only if the selected app supports that exact token address."
+                  }
+                ],
+                "disabledCalls": [],
+                "excludedCalls": [],
+                "knownTokens": [
+                  "0x4200000000000000000000000000000000000006",
+                  "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+                ],
+                "zeroBridgeLimits": []
+              }
+            ]
+          },
+          "assets": [
+            {
+              "token": "0x4200000000000000000000000000000000000006",
+              "maxPerCall": "1000000000000000",
+              "maxTotal": "10000000000000000"
+            },
+            {
+              "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+              "maxPerCall": "10000000",
+              "maxTotal": "100000000"
+            }
+          ]
+        },
+        {
+          "category": "LENDING",
+          "readiness": {
+            "ready": false,
+            "chains": [
+              {
+                "chainNamespace": "eip155:84532",
+                "ready": false,
+                "configurationReady": true,
+                "selectedAssets": [
+                  {
+                    "token": "0x810D46F9a9027E28F9B01F75E2bdde839dA61115",
+                    "maxPerCall": "1000000000000000000",
+                    "maxTotal": "10000000000000000000"
+                  },
+                  {
+                    "token": "0x4616975f7E6045FD9737e95bC527e9e14c727BD2",
+                    "maxPerCall": "10000000",
+                    "maxTotal": "100000000"
+                  },
+                  {
+                    "token": "0x663A6F02d547dFd639BF689FED298712f2FB69Fb",
+                    "maxPerCall": "1000000000000000",
+                    "maxTotal": "10000000000000000"
+                  }
+                ],
+                "bridgeAssets": [
+                  {
+                    "token": "0x810D46F9a9027E28F9B01F75E2bdde839dA61115",
+                    "status": "unavailable"
+                  },
+                  {
+                    "token": "0x4616975f7E6045FD9737e95bC527e9e14c727BD2",
+                    "status": "unavailable"
+                  },
+                  {
+                    "token": "0x663A6F02d547dFd639BF689FED298712f2FB69Fb",
+                    "status": "unavailable"
+                  }
+                ],
+                "issues": [
+                  {
+                    "code": "BRIDGE_ASSET_UNAVAILABLE",
+                    "token": "0x810D46F9a9027E28F9B01F75E2bdde839dA61115",
+                    "message": "No SDK PRC20 mapping for eip155:84532:0x810D46F9a9027E28F9B01F75E2bdde839dA61115 on TESTNET_DONUT. This preset cannot be created with this token until its Push route is verified. Choose a routed token only if the selected app supports that exact token address."
+                  },
+                  {
+                    "code": "BRIDGE_ASSET_UNAVAILABLE",
+                    "token": "0x4616975f7E6045FD9737e95bC527e9e14c727BD2",
+                    "message": "No SDK PRC20 mapping for eip155:84532:0x4616975f7E6045FD9737e95bC527e9e14c727BD2 on TESTNET_DONUT. This preset cannot be created with this token until its Push route is verified. Choose a routed token only if the selected app supports that exact token address."
+                  },
+                  {
+                    "code": "BRIDGE_ASSET_UNAVAILABLE",
+                    "token": "0x663A6F02d547dFd639BF689FED298712f2FB69Fb",
+                    "message": "No SDK PRC20 mapping for eip155:84532:0x663A6F02d547dFd639BF689FED298712f2FB69Fb on TESTNET_DONUT. This preset cannot be created with this token until its Push route is verified. Choose a routed token only if the selected app supports that exact token address."
+                  }
+                ],
+                "disabledCalls": [],
+                "excludedCalls": [
+                  {
+                    "target": "0x876852425331a113d8E432eFFB3aC5BEf38f033a",
+                    "selector": "redeem(uint256)",
+                    "app": "Moonwell mUSDbC",
+                    "reason": "SHARE_AMOUNT",
+                    "alternative": "redeemUnderlying(uint256)"
+                  },
+                  {
+                    "target": "0x2F39a349A79492a70E152760ce7123A1933eCf28",
+                    "selector": "redeem(uint256)",
+                    "app": "Moonwell mWETH",
+                    "reason": "SHARE_AMOUNT",
+                    "alternative": "redeemUnderlying(uint256)"
+                  }
+                ],
+                "knownTokens": [
+                  "0xba50Cd2A20f6DA35D788639E581bca8d0B5d4D5f",
+                  "0x0a215D8ba66387DCA84B284D18c3B4ec3de6E54a",
+                  "0x54114591963CF60EF3aA63bEfD6eC263D98145a4",
+                  "0x4200000000000000000000000000000000000006",
+                  "0xD171b9694f7A2597Ed006D41f7509aaD4B485c4B",
+                  "0x810D46F9a9027E28F9B01F75E2bdde839dA61115",
+                  "0x4616975f7E6045FD9737e95bC527e9e14c727BD2",
+                  "0x663A6F02d547dFd639BF689FED298712f2FB69Fb"
+                ],
+                "zeroBridgeLimits": []
+              }
+            ]
+          },
+          "assets": [
+            {
+              "token": "0x810D46F9a9027E28F9B01F75E2bdde839dA61115",
+              "maxPerCall": "1000000000000000000",
+              "maxTotal": "10000000000000000000"
+            },
+            {
+              "token": "0x4616975f7E6045FD9737e95bC527e9e14c727BD2",
+              "maxPerCall": "10000000",
+              "maxTotal": "100000000"
+            },
+            {
+              "token": "0x663A6F02d547dFd639BF689FED298712f2FB69Fb",
+              "maxPerCall": "1000000000000000",
+              "maxTotal": "10000000000000000"
+            }
+          ]
+        }
+      ],
+      "block": "48374837"
+    },
+    {
+      "chain": "eip155:421614",
+      "candidates": [
+        {
+          "token": "0xE30928528f52CAEeB75fB07837e22d77D47e9c07",
+          "symbol": "USDT",
+          "prc20": "0xFE6E9DF2BbC9ce05D98b83B1365df6DcA9951891",
+          "identityVerified": true
+        },
+        {
+          "token": "0x5dd39b0b3610F666F631a6506b7713EF83e1Ac5C",
+          "symbol": "USDC",
+          "prc20": "0x1091cCBA2FF8d2A131AE4B35e34cf3308C48572C",
+          "identityVerified": true
+        },
+        {
+          "token": "0x980B62Da83eFf3D4576C647993b0c1D7faf17c73",
+          "symbol": "WETH",
+          "unavailable": "Unsupported WETH origin chain for synthetic mapping"
+        },
+        {
+          "token": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+          "symbol": "USDC",
+          "prc20": "0xa261A10e94aE4bA88EE8c5845CbE7266bD679DD6",
+          "identityVerified": true
+        }
+      ],
+      "protocols": [
+        {
+          "app": "Uniswap V3",
+          "kind": "dex",
+          "router": "0x101F443B4d1b059569D643917553c771E1b9663E",
+          "pairs": [
+            {
+              "tokens": [
+                "0xE30928528f52CAEeB75fB07837e22d77D47e9c07",
+                "0x5dd39b0b3610F666F631a6506b7713EF83e1Ac5C"
+              ],
+              "pools": []
+            },
+            {
+              "tokens": [
+                "0xE30928528f52CAEeB75fB07837e22d77D47e9c07",
+                "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d"
+              ],
+              "pools": []
+            },
+            {
+              "tokens": [
+                "0x5dd39b0b3610F666F631a6506b7713EF83e1Ac5C",
+                "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d"
+              ],
+              "pools": []
+            }
+          ],
+          "factory": "0x248AB79Bbb9bC29bB72f7Cd42F17e054Fc40188e",
+          "defaultPair": {
+            "tokens": [
+              "0x980B62Da83eFf3D4576C647993b0c1D7faf17c73",
+              "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d"
+            ],
+            "routed": [
+              false,
+              true
+            ],
+            "pools": [
+              {
+                "fee": 100,
+                "pool": "0x152c469626C706E201721F13eb470691E4E81c5D",
+                "liquidity": "0"
+              },
+              {
+                "fee": 500,
+                "pool": "0x6F112d524DC998381C09b4e53C7e5e2cc260f877",
+                "liquidity": "122"
+              },
+              {
+                "fee": 3000,
+                "pool": "0x66EEAB70aC52459Dd74C6AD50D578Ef76a441bbf",
+                "liquidity": "10070937193695"
+              },
+              {
+                "fee": 10000,
+                "pool": "0x3eCedaB7E9479E29B694d8590dc34e0Ce6059868",
+                "liquidity": "3225673603183"
+              }
+            ]
+          }
+        },
+        {
+          "app": "Aave V3",
+          "kind": "lending",
+          "pool": "0xBfC91D59fdAA134A4ED45f7B584cAf96D7792Eff",
+          "reserves": [
+            "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+            "0x1dF462e2712496373A347f8ad10802a5E95f053D"
+          ],
+          "routedReserves": [
+            {
+              "token": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+              "symbol": "USDC",
+              "prc20": "0xa261A10e94aE4bA88EE8c5845CbE7266bD679DD6",
+              "identityVerified": true
+            }
+          ]
+        }
+      ],
+      "presets": [
+        {
+          "category": "DEXES",
+          "readiness": {
+            "ready": false,
+            "chains": [
+              {
+                "chainNamespace": "eip155:421614",
+                "ready": false,
+                "configurationReady": true,
+                "selectedAssets": [
+                  {
+                    "token": "0x980B62Da83eFf3D4576C647993b0c1D7faf17c73",
+                    "maxPerCall": "1000000000000000",
+                    "maxTotal": "10000000000000000"
+                  },
+                  {
+                    "token": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+                    "maxPerCall": "10000000",
+                    "maxTotal": "100000000"
+                  }
+                ],
+                "bridgeAssets": [
+                  {
+                    "token": "0x980B62Da83eFf3D4576C647993b0c1D7faf17c73",
+                    "status": "unavailable"
+                  },
+                  {
+                    "token": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+                    "prc20": "0xa261A10e94aE4bA88EE8c5845CbE7266bD679DD6",
+                    "status": "registered"
+                  }
+                ],
+                "issues": [
+                  {
+                    "code": "BRIDGE_ASSET_UNAVAILABLE",
+                    "token": "0x980B62Da83eFf3D4576C647993b0c1D7faf17c73",
+                    "message": "No SDK PRC20 mapping for eip155:421614:0x980B62Da83eFf3D4576C647993b0c1D7faf17c73 on TESTNET_DONUT. This preset cannot be created with this token until its Push route is verified. Choose a routed token only if the selected app supports that exact token address."
+                  }
+                ],
+                "disabledCalls": [],
+                "excludedCalls": [],
+                "knownTokens": [
+                  "0x980B62Da83eFf3D4576C647993b0c1D7faf17c73",
+                  "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d"
+                ],
+                "zeroBridgeLimits": []
+              }
+            ]
+          },
+          "assets": [
+            {
+              "token": "0x980B62Da83eFf3D4576C647993b0c1D7faf17c73",
+              "maxPerCall": "1000000000000000",
+              "maxTotal": "10000000000000000"
+            },
+            {
+              "token": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+              "maxPerCall": "10000000",
+              "maxTotal": "100000000"
+            }
+          ]
+        },
+        {
+          "category": "LENDING",
+          "readiness": {
+            "ready": true,
+            "chains": [
+              {
+                "chainNamespace": "eip155:421614",
+                "ready": true,
+                "configurationReady": true,
+                "selectedAssets": [
+                  {
+                    "token": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+                    "maxPerCall": "10000000",
+                    "maxTotal": "100000000"
+                  }
+                ],
+                "bridgeAssets": [
+                  {
+                    "token": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+                    "prc20": "0xa261A10e94aE4bA88EE8c5845CbE7266bD679DD6",
+                    "status": "registered"
+                  }
+                ],
+                "issues": [],
+                "disabledCalls": [],
+                "excludedCalls": [],
+                "knownTokens": [
+                  "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+                  "0x1dF462e2712496373A347f8ad10802a5E95f053D"
+                ],
+                "zeroBridgeLimits": []
+              }
+            ]
+          },
+          "assets": [
+            {
+              "token": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+              "maxPerCall": "10000000",
+              "maxTotal": "100000000"
+            }
+          ]
+        }
+      ],
+      "block": "321130556"
+    },
+    {
+      "chain": "eip155:97",
+      "candidates": [
+        {
+          "token": "0xE935d9c9C24D02E61186c640cc01d713C876d40F",
+          "symbol": "USDT",
+          "prc20": "0x731aF1Da5365259d27528557EE4aFBA4baC90ef2",
+          "identityVerified": true
+        },
+        {
+          "token": "0xA8802F96cAd0d45343d9bc660B6f7d80050A660b",
+          "symbol": "USDC",
+          "prc20": "0x120EBf25Dad7D6a09Ad2316f23f9Be95DBb90639",
+          "identityVerified": true
+        }
+      ],
+      "protocols": [
+        {
+          "app": "PancakeSwap V3",
+          "kind": "dex",
+          "router": "0x9a489505a00cE272eAa5e07Dba6491314CaE3796",
+          "pairs": [
+            {
+              "tokens": [
+                "0xE935d9c9C24D02E61186c640cc01d713C876d40F",
+                "0xA8802F96cAd0d45343d9bc660B6f7d80050A660b"
+              ],
+              "pools": []
+            }
+          ],
+          "factory": "0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865",
+          "defaultPair": {
+            "tokens": [
+              "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
+              "0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c"
+            ],
+            "routed": [
+              false,
+              false
+            ],
+            "pools": [
+              {
+                "fee": 100,
+                "pool": "0xCed0844e421F856D2de472F9e7037f873987887C",
+                "liquidity": "229529662705916"
+              },
+              {
+                "fee": 500,
+                "pool": "0xc2F0629Dd29AB0EcfF7476560bc8FD5c0c4D19Cd",
+                "liquidity": "0"
+              },
+              {
+                "fee": 2500,
+                "pool": "0x917aB0c0f32452e1403eBD68B222C0B59bAaa2C3",
+                "liquidity": "0"
+              },
+              {
+                "fee": 10000,
+                "pool": "0xa5316a3418e0643BB977A97689E584a3b6c35080",
+                "liquidity": "0"
+              }
+            ]
+          }
+        },
+        {
+          "app": "Venus vUSDT",
+          "kind": "market",
+          "market": "0xb7526572FFE56AB9D7489838Bf2E18e3323b441A",
+          "underlying": "0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c",
+          "routed": false
+        },
+        {
+          "app": "Venus vUSDC",
+          "kind": "market",
+          "market": "0xD5C4C2e2facBEB59D0216D0595d63FcDc6F9A1a7",
+          "underlying": "0x16227D60f7a0e586C66B005219dfc887D13C9531",
+          "routed": false
+        }
+      ],
+      "presets": [
+        {
+          "category": "DEXES",
+          "readiness": {
+            "ready": false,
+            "chains": [
+              {
+                "chainNamespace": "eip155:97",
+                "ready": false,
+                "configurationReady": true,
+                "selectedAssets": [
+                  {
+                    "token": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
+                    "maxPerCall": "10000000000000000",
+                    "maxTotal": "100000000000000000"
+                  },
+                  {
+                    "token": "0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c",
+                    "maxPerCall": "10000000",
+                    "maxTotal": "100000000"
+                  }
+                ],
+                "bridgeAssets": [
+                  {
+                    "token": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
+                    "status": "unavailable"
+                  },
+                  {
+                    "token": "0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c",
+                    "status": "unavailable"
+                  }
+                ],
+                "issues": [
+                  {
+                    "code": "BRIDGE_ASSET_UNAVAILABLE",
+                    "token": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
+                    "message": "No SDK PRC20 mapping for eip155:97:0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd on TESTNET_DONUT. This preset cannot be created with this token until its Push route is verified. Choose a routed token only if the selected app supports that exact token address."
+                  },
+                  {
+                    "code": "BRIDGE_ASSET_UNAVAILABLE",
+                    "token": "0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c",
+                    "message": "No SDK PRC20 mapping for eip155:97:0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c on TESTNET_DONUT. This preset cannot be created with this token until its Push route is verified. Choose a routed token only if the selected app supports that exact token address."
+                  }
+                ],
+                "disabledCalls": [],
+                "excludedCalls": [],
+                "knownTokens": [
+                  "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
+                  "0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c"
+                ],
+                "zeroBridgeLimits": []
+              }
+            ]
+          },
+          "assets": [
+            {
+              "token": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
+              "maxPerCall": "10000000000000000",
+              "maxTotal": "100000000000000000"
+            },
+            {
+              "token": "0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c",
+              "maxPerCall": "10000000",
+              "maxTotal": "100000000"
+            }
+          ]
+        },
+        {
+          "category": "LENDING",
+          "readiness": {
+            "ready": false,
+            "chains": [
+              {
+                "chainNamespace": "eip155:97",
+                "ready": false,
+                "configurationReady": true,
+                "selectedAssets": [
+                  {
+                    "token": "0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c",
+                    "maxPerCall": "10000000",
+                    "maxTotal": "100000000"
+                  },
+                  {
+                    "token": "0x16227D60f7a0e586C66B005219dfc887D13C9531",
+                    "maxPerCall": "10000000",
+                    "maxTotal": "100000000"
+                  }
+                ],
+                "bridgeAssets": [
+                  {
+                    "token": "0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c",
+                    "status": "unavailable"
+                  },
+                  {
+                    "token": "0x16227D60f7a0e586C66B005219dfc887D13C9531",
+                    "status": "unavailable"
+                  }
+                ],
+                "issues": [
+                  {
+                    "code": "BRIDGE_ASSET_UNAVAILABLE",
+                    "token": "0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c",
+                    "message": "No SDK PRC20 mapping for eip155:97:0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c on TESTNET_DONUT. This preset cannot be created with this token until its Push route is verified. Choose a routed token only if the selected app supports that exact token address."
+                  },
+                  {
+                    "code": "BRIDGE_ASSET_UNAVAILABLE",
+                    "token": "0x16227D60f7a0e586C66B005219dfc887D13C9531",
+                    "message": "No SDK PRC20 mapping for eip155:97:0x16227D60f7a0e586C66B005219dfc887D13C9531 on TESTNET_DONUT. This preset cannot be created with this token until its Push route is verified. Choose a routed token only if the selected app supports that exact token address."
+                  }
+                ],
+                "disabledCalls": [],
+                "excludedCalls": [
+                  {
+                    "target": "0xb7526572FFE56AB9D7489838Bf2E18e3323b441A",
+                    "selector": "redeem(uint256)",
+                    "app": "Venus vUSDT",
+                    "reason": "SHARE_AMOUNT",
+                    "alternative": "redeemUnderlying(uint256)"
+                  },
+                  {
+                    "target": "0xD5C4C2e2facBEB59D0216D0595d63FcDc6F9A1a7",
+                    "selector": "redeem(uint256)",
+                    "app": "Venus vUSDC",
+                    "reason": "SHARE_AMOUNT",
+                    "alternative": "redeemUnderlying(uint256)"
+                  }
+                ],
+                "knownTokens": [
+                  "0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c",
+                  "0x16227D60f7a0e586C66B005219dfc887D13C9531"
+                ],
+                "zeroBridgeLimits": []
+              }
+            ]
+          },
+          "assets": [
+            {
+              "token": "0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c",
+              "maxPerCall": "10000000",
+              "maxTotal": "100000000"
+            },
+            {
+              "token": "0x16227D60f7a0e586C66B005219dfc887D13C9531",
+              "maxPerCall": "10000000",
+              "maxTotal": "100000000"
+            }
+          ]
+        }
+      ],
+      "block": "137927715"
+    }
+  ],
+  "pushBlock": "24458953"
+}

@@ -1,0 +1,11 @@
+{
+  "observedAt": "2026-10-20T11:18:53.682Z",
+  "blockNumber": "24449590",
+  "card1Active": false,
+  "card2Active": false,
+  "jobId": "1",
+  "jobStatus": 4,
+  "jobBudget": "0",
+  "wallet": "0xAc1A9778518AbaAE12367f7932C30c114d4940AE",
+  "permissionEnabled": false
+}

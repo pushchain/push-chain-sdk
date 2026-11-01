@@ -1,0 +1,75 @@
+PASS core-e2e packages/core/__e2e__/agw/create.spec.ts (28.902 s)
+FAIL core-e2e packages/core/__e2e__/agw/v4-multiasset.spec.ts (12.983 s)
+  ● agw v4 multi-asset › 1. public create reads and replaces an ordered two-token rule
+
+    AgenticError: SOURCE_TOKEN_ADDRESS read on 0x2971824Db68229D087931155C2b8bB820B275809 failed at block 23934879
+
+      43 |   ): Promise<T> {
+      44 |     try {
+    > 45 |       return (await this.reader.readContract({
+         |             ^
+      46 |         address,
+      47 |         abi,
+      48 |         functionName,
+
+      at Snapshot.read (src/lib/agentic/reads/snapshot.ts:45:13)
+      at async prepareWalletRules (src/lib/agentic/management/prepare.ts:102:24)
+      at async createWallet (src/lib/agentic/management/create.ts:81:20)
+      at async Object.<anonymous> (__e2e__/agw/v4-multiasset.spec.ts:45:21)
+
+    Cause:
+    ContractFunctionExecutionError: Position `32` is out of bounds (`0 < position < 32`).
+
+    Contract Call:
+      address:   0x2971824Db68229D087931155C2b8bB820B275809
+      function:  SOURCE_TOKEN_ADDRESS()
+
+    Docs: https://viem.sh/docs/contract/readContract
+    Version: viem@2.27.2
+
+      35 |     return new Snapshot(reader, block, failCode);
+      36 |   }
+    > 37 |
+         | ^
+      38 |   async read<T>(
+      39 |     address: Address,
+      40 |     abi: readonly unknown[],
+
+      at getContractError (../../node_modules/viem/utils/errors/getContractError.ts:78:10)
+      at readContract (../../node_modules/viem/actions/public/readContract.ts:136:27)
+      at async Snapshot.read (src/lib/agentic/reads/snapshot.ts:37:15)
+      at async prepareWalletRules (src/lib/agentic/management/prepare.ts:102:24)
+      at async createWallet (src/lib/agentic/management/create.ts:81:20)
+      at async Object.<anonymous> (__e2e__/agw/v4-multiasset.spec.ts:45:21)
+
+    Cause:
+    PositionOutOfBoundsError: Position `32` is out of bounds (`0 < position < 32`).
+
+    Version: viem@2.27.2
+
+      35 |     return new Snapshot(reader, block, failCode);
+      36 |   }
+    > 37 |
+         | ^
+      38 |   async read<T>(
+      39 |     address: Address,
+      40 |     abi: readonly unknown[],
+
+      at Object.assertPosition (../../node_modules/viem/utils/cursor.ts:79:13)
+      at Object.setPosition (../../node_modules/viem/utils/cursor.ts:210:10)
+      at decodeString (../../node_modules/viem/utils/abi/decodeAbiParameters.ts:357:12)
+      at decodeParameter (../../node_modules/viem/utils/abi/decodeAbiParameters.ts:113:39)
+      at decodeAbiParameters (../../node_modules/viem/utils/abi/decodeAbiParameters.ts:75:31)
+      at decodeFunctionResult (../../node_modules/viem/utils/abi/decodeFunctionResult.ts:161:37)
+      at readContract (../../node_modules/viem/actions/public/readContract.ts:129:32)
+      at async Snapshot.read (src/lib/agentic/reads/snapshot.ts:37:15)
+      at async prepareWalletRules (src/lib/agentic/management/prepare.ts:102:24)
+      at async createWallet (src/lib/agentic/management/create.ts:81:20)
+      at async Object.<anonymous> (__e2e__/agw/v4-multiasset.spec.ts:45:21)
+
+Test Suites: 1 failed, 1 passed, 2 total
+Tests:       1 failed, 2 skipped, 1 passed, 4 total
+Snapshots:   0 total
+Time:        41.91 s
+Ran all test suites within paths "packages/core/__e2e__/agw/create.spec.ts", "packages/core/__e2e__/agw/v4-multiasset.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

@@ -43,7 +43,10 @@ class CiReporter {
       numPassedTests: results.numPassedTests,
       numFailedTests: results.numFailedTests,
       numPendingTests: results.numPendingTests,
-      success: Boolean(results.success),
+      // Jest fills `success` after onRunComplete. Derive completion from final counters here.
+      success: results.numPassedTests > 0 && results.numFailedTests === 0 &&
+        (results.numFailedTestSuites ?? 0) === 0 && (results.numRuntimeErrorTestSuites ?? 0) === 0 && !results.wasInterrupted,
+      jestReportedSuccess: Boolean(results.success),
       tests,
     };
 

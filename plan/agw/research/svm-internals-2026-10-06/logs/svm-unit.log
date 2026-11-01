@@ -1,0 +1,33 @@
+PASS core packages/core/src/lib/agentic/__tests__/svm-internals.spec.ts
+  v4 internal SVM wire codec
+    ✓ round-trips ordered per-token caps and all four data-pin modes (3 ms)
+    ✓ rejects expired before encoding (4 ms)
+    ✓ rejects zero CEA before encoding
+    ✓ rejects empty assets before encoding (1 ms)
+    ✓ rejects duplicate tokens before encoding
+    ✓ rejects system program before encoding (1 ms)
+    ✓ rejects ambiguous prefixes before encoding
+    ✓ rejects missing pin before encoding
+    ✓ rejects duplicate pin before encoding
+    ✓ rejects CEA absent before encoding
+    ✓ rejects fixed count outside bound before encoding
+    ✓ refuses misleading integer/raw alignment and zero ratio denominators (1 ms)
+  wallet-scoped SVM value accounts
+    ✓ derives the exact PDA from wallet20 and the selected gateway (3 ms)
+    ✓ includes input/output ATAs, deduplicates, and separates Token-2022 accounts (3 ms)
+  S12–S18 payload checks
+    ✓ matches the existing node encoder and parses every byte including writable flags (1 ms)
+    ✓ rejects trailing data with the corresponding contract error (1 ms)
+    ✓ rejects truncated with the corresponding contract error
+    ✓ rejects oversized count with the corresponding contract error
+    ✓ pins prevent key substitution and protected-account aliasing (1 ms)
+    ✓ enforces little-endian floors/ceilings, from-end offsets, ratios and exact byte pins (1 ms)
+  internal SVM outbound action
+    ✓ uses the program recipient, wallet refund and quoted PC while preserving the exact payload (2 ms)
+    ✓ rejects caps, zero gas and unknown assets before signing (2 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       22 passed, 22 total
+Snapshots:   0 total
+Time:        3.546 s, estimated 6 s
+Ran all test suites within paths "packages/core/src/lib/agentic/__tests__/svm-internals.spec.ts".

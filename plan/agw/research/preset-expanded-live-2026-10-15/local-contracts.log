@@ -1,0 +1,24 @@
+PASS core-agw-local packages/core/__agw-local__/v5-multiasset.spec.ts (9.055 s)
+  v6 multi-asset SDK management and execution
+    ✓ v6 EVM alternatives enforce both spender and MAX, and reads update losslessly (902 ms)
+    ✓ v6 refuses a bare alternative that bypasses a pinned function and too many initial rules (31 ms)
+    ✓ the shipped DEX catalog enforces tuple receiver/token/amount pins on actual v6 URP (404 ms)
+    ✓ a review-only DEX exactInputSingle call cannot spend tokens even after asset budgets are filled (377 ms)
+    ✓ a review-only DEX exactOutputSingle call cannot spend tokens even after asset budgets are filled (360 ms)
+    ✓ a fixture preset produces rules accepted by public create and enforced by real contracts (380 ms)
+    ✓ public create encodes two ordered assets; public get reconstructs source-token caps (356 ms)
+    ✓ a token from the wrong chain fails before deployment (9 ms)
+    ✓ a same-chain registry identity mismatch fails before deployment (3 ms)
+    ✓ both tokens execute under one rule and keep independent counters/limits (364 ms)
+    ✓ omitted and explicit zero totals both prohibit movement (350 ms)
+    ✓ empty user assets grants one zero-cap gas token and executes a call-only request (358 ms)
+    ✓ public update resets both counters in one batch and records five checkpoints (365 ms)
+    ✓ spend on the second asset after snapshot rolls back revoke/grant and checkpoint writes (367 ms)
+    ✓ out-of-band duplicate contract grants still make sends ambiguous (22 ms)
+    ✓ a legacy two-field envelope is refused by the actual v6 grant path (6 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       16 passed, 16 total
+Snapshots:   0 total
+Time:        9.082 s
+Ran all test suites within paths "packages/core/__agw-local__/v5-multiasset.spec.ts".

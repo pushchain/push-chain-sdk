@@ -1,0 +1,130 @@
+{
+  "network": "TESTNET_DONUT",
+  "chainId": 42101,
+  "blockNumber": "24369907",
+  "at": "2026-10-18T05:22:00.084Z",
+  "readOnly": true,
+  "records": [
+    {
+      "key": "pETH",
+      "address": "0x2971824Db68229D087931155C2b8bB820B275809",
+      "chain": "eip155:11155111",
+      "source": "0x0000000000000000000000000000000000000000",
+      "decimals": 18,
+      "sourceEncoding": "address"
+    },
+    {
+      "key": "pETH_ARB",
+      "address": "0xc0a821a1AfEd1322c5e15f1F4586C0B8cE65400e",
+      "chain": "eip155:421614",
+      "source": "0x0000000000000000000000000000000000000000",
+      "decimals": 18
+    },
+    {
+      "key": "pETH_BASE",
+      "address": "0xc7007af2B24D4eb963fc9633B0c66e1d2D90Fc21",
+      "chain": "eip155:84532",
+      "source": "0x0000000000000000000000000000000000000000",
+      "decimals": 18
+    },
+    {
+      "key": "pBNB",
+      "address": "0x7a9082dA308f3fa005beA7dB0d203b3b86664E36",
+      "chain": "eip155:97",
+      "source": "0x0000000000000000000000000000000000000000",
+      "decimals": 18
+    },
+    {
+      "key": "pSOL",
+      "address": "0x5D525Df2bD99a6e7ec58b76aF2fd95F39874EBed",
+      "error": "Position `32` is out of bounds (`0 < position < 32`)."
+    },
+    {
+      "key": "USDT_ETH",
+      "address": "0x0f97A213207703923F5f0C613C9827f7C9A0f96B",
+      "chain": "eip155:11155111",
+      "source": "0xC4230aEaFcF6b8B49a7b4e53886420f00ff71876",
+      "decimals": 6
+    },
+    {
+      "key": "USDC_ETH",
+      "address": "0x7A58048036206bB898008b5bBDA85697DB1e5d66",
+      "chain": "eip155:11155111",
+      "source": "0x97F477B7f970D47a87B42869ceeace218106152a",
+      "decimals": 6
+    },
+    {
+      "key": "USDT_ARB",
+      "address": "0xFE6E9DF2BbC9ce05D98b83B1365df6DcA9951891",
+      "chain": "eip155:421614",
+      "source": "0xE30928528f52CAEeB75fB07837e22d77D47e9c07",
+      "decimals": 6
+    },
+    {
+      "key": "USDC_ARB",
+      "address": "0x1091cCBA2FF8d2A131AE4B35e34cf3308C48572C",
+      "chain": "eip155:421614",
+      "source": "0x5dd39b0b3610F666F631a6506b7713EF83e1Ac5C",
+      "decimals": 6
+    },
+    {
+      "key": "USDT_SOL",
+      "address": "0x4f1A3D22d170a2F4Bddb37845a962322e24f4e34",
+      "error": "Position `32` is out of bounds (`0 < position < 32`)."
+    },
+    {
+      "key": "USDC_SOL",
+      "address": "0x04B8F634ABC7C879763F623e0f0550a4b5c4426F",
+      "error": "Position `32` is out of bounds (`0 < position < 32`)."
+    },
+    {
+      "key": "USDT_BSC",
+      "address": "0x731aF1Da5365259d27528557EE4aFBA4baC90ef2",
+      "chain": "eip155:97",
+      "source": "0xE935d9c9C24D02E61186c640cc01d713C876d40F",
+      "decimals": 6
+    },
+    {
+      "key": "USDC_BSC",
+      "address": "0x120EBf25Dad7D6a09Ad2316f23f9Be95DBb90639",
+      "chain": "eip155:97",
+      "source": "0xA8802F96cAd0d45343d9bc660B6f7d80050A660b",
+      "decimals": 6
+    },
+    {
+      "key": "USDT_BASE",
+      "address": "0x148823809B853e1db187BC09A9ac909BC42F971a",
+      "chain": "eip155:84532",
+      "source": "0x4D7646B9eE3D68F4b0F135B5cbc66B00819F6b61",
+      "decimals": 6
+    },
+    {
+      "key": "USDC_BASE",
+      "address": "0xD7C6cA1e2c0CE260BE0c0AD39C1540de460e3Be1",
+      "chain": "eip155:84532",
+      "source": "0x5c3504F0E3bA28FDc1F74234fE936518276AaBB8",
+      "decimals": 6
+    },
+    {
+      "key": "WETH_ETH",
+      "address": "0x0d0dF7E8807430A81104EA84d926139816eC7586",
+      "chain": "eip155:11155111",
+      "source": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+      "decimals": 18,
+      "sourceEncoding": "address"
+    },
+    {
+      "key": "stETH_ETH",
+      "address": "0xaf89E805949c628ebde3262e91dc4ab9eA12668E",
+      "chain": "eip155:11155111",
+      "source": "0x3e3FE7dBc6B4C189E7128855dD526361c49b40Af",
+      "decimals": 18,
+      "sourceEncoding": "address"
+    },
+    {
+      "key": "DAI_SOL",
+      "address": "0x5861f56A556c990358cc9cccd8B5baa3767982A8",
+      "error": "Position `32` is out of bounds (`0 < position < 32`)."
+    }
+  ]
+}

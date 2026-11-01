@@ -1,0 +1,106 @@
+--- notion/5-sdk-agw.md (previous)
++++ notion/5-sdk-agw.md (refreshed)
+@@ -89,40 +89,39 @@
+ 
+ ### 1.b Create an agentic wallet - `client.agentic.create`
+ 
+-Deploys the wallet, moves funds into it and grants the rules. The label is the only wallet-level input; the agent and an optional `ref` are named on each rule, because that is where the contract binds them.
++Deploys the wallet and grants the rules. The label is the only wallet-level input; the agent and an optional `ref` are named on each rule, because that is where the contract binds them.
+ 
+ ```tsx
+ // Function
+ const created = await client.agentic.create(label, { options })
+ 
+ // Usage and Params
+-const created = await client.agentic.create('aave-optimiser', {    // wallet with one cross-chain rule, funded
++const created = await client.agentic.create('aave-optimiser', {    // wallet with one cross-chain rule
+   rules: [{                                                      // one entry per chain per agent
+     agent: '0xAgentOnPush',                                      // a Push address: the agent's EOA, or its UEA if the key lives on another chain. Never the owner
+     ref: jobRef,                                                 // emitted in RulesGranted, not interpreted
+     chainNamespace: CHAIN.ETHEREUM_SEPOLIA,                      // foreign chain => universal rulebook
+-    asset: usdcOnPush,
+-    maxAmountPerCall: parseUnits('100', 6),
+-    maxAmountTotal:   parseUnits('100', 6),
+-    maxPCPerCall:     parseUnits('0.5', 18),
++    assets: [
++      { token: MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.USDC, maxPerCall: parseUnits('100', 6), maxTotal: parseUnits('1000', 6) },
++      { token: MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.WETH, maxPerCall: parseUnits('0.5', 18) },
++    ],
++    maxGasPerCall: parseUnits('1', 18),   // PC (wei) per outbound for the destination leg
+     validUntil: now + 30 * 86400,
+     allowedCalls: [
+-      { target: aavePool,    selector: 'supply(address,uint256,address,uint16)', beneficiary: 2 },   // arg index, not offset
++      { target: aavePool,    selector: 'supply(address,uint256,address,uint16)', beneficiary: 2 },   // arg index, not offset: onBehalfOf must be the AGW's CEA
+       { target: usdcSepolia, selector: 'approve(address,uint256)' },
+     ],
+   }],
+-  funds: [{ amount: parseUnits('100', 6), token: MOVEABLE.TOKEN.ETHEREUM_SEPOLIA.USDC }],
+-  pc: parseUnits('5', 18),                                       // native PC for outbound fees
+   progressHook: (p) => console.log(p.id, p.message),             // AGENTIC-TX-1xx
+ });
+ const bare = await client.agentic.create('scratch', { rules: [] });   // wallet first, rules later with rules.add
+ // label                  string, required                     shown in list() and info(); the contract stores it
+ // options.rules          Rule[], required                     one per chain per agent, may be empty; each rule carries its own agent and optional ref
+-// options.funds          Array<{ amount, token }>, optional   same shape as tx.funds, always an array; default none
+-// options.pc             bigint, optional                     native PC for outbound fees; default none
+ // options.progressHook   function, optional                   progress events, AGENTIC-TX-1xx; default none
+ // rules[].agent          Address, required                    the Push address allowed to act under this rule; never the owner
+ // rules[].ref            Hex, optional                        emitted in RulesGranted, not interpreted; default zero
++// rules[].assets         AssetCap[], required on a universal rule   tokens the agent may move, as the other chain's address (MOVEABLE constants); the SDK resolves each to its PRC20 on Push; each cap is { token, maxPerCall, maxTotal? }
++// rules[].maxGasPerCall  bigint, required on a universal rule       PC (wei) the wallet may spend per outbound for the destination leg
+ 
+ // Returns
+ // <Object> { wallet, index, rulesIds, tx }
+@@ -142,11 +141,11 @@
+ 
+ One rule per chain per agent. A wallet may have different agents on different chains. If an agent needs to act on two chains, `rules` has two entries with the same `agent`; two agents on one chain are two entries with the same `chainNamespace`. Nobody states a rule type; the SDK reads it from `chainNamespace`. `rules: []` is allowed: create the wallet first and grant rules later with `rules.add` (1.k).
+ 
+-Before asking for a signature the SDK checks that no rule's agent is the owner (`AGENT_IS_OWNER`), that no two rules share both agent and chain (`DUPLICATE_RULE`), that every `allowedCalls[].target` is on the rule's chain (`TARGET_NOT_ON_RULE_CHAIN`), and that the asset is a PRC20 whose `SOURCE_CHAIN_NAMESPACE` matches the rule's chain (`ASSET_CHAIN_MISMATCH`).
+-
+-Under the hood this is `deployWallet` (or reuse of a derived address), the funds moved in, and one `grantRules` per rule. For an external owner they go as one UEA multicall under one signature. `funds` stays an array; an external owner moving several tokens may need one signature per token, and the SDK sequences them and reports each through progress events.
+-
+-For a Push EOA owner the same thing needs a batching entry on the factory, because core rejects multicall from a Push-native sender: [1. AGW Contract Changes (nomenclature standard + change set)](1-agw-contract-changes.md) item 11, **PROPOSED** (`createWallet(label, rules[], funds)` on the factory). Until it lands the SDK sends deploy, fund and grant as separate transactions and says so through progress events (AGENTIC-TX-102 to 104); `tx` is then the last of them.
++Before asking for a signature the SDK checks that no rule's agent is the owner (`AGENT_IS_OWNER`), that no two rules share both agent and chain (`DUPLICATE_RULE`), that every `allowedCalls[].target` is on the rule's chain (`TARGET_NOT_ON_RULE_CHAIN`), and that every `assets[].token` resolves to a PRC20 whose `SOURCE_CHAIN_NAMESPACE` matches the rule's chain (`ASSET_CHAIN_MISMATCH`).
++
++Under the hood this is `deployWallet` (or reuse of a derived address) and one `grantRules` per rule. For an external owner they go as one UEA multicall under one signature. Funding is not part of `create`: the wallet is a normal Push account, so send tokens and PC to its address the way you would to any account (1.a shows the address before deployment).
++
++For a Push EOA owner the same thing needs a batching entry on the factory, because core rejects multicall from a Push-native sender: [1. AGW Contract Changes (nomenclature standard + change set)](1-agw-contract-changes.md) item 11, **PROPOSED** (`createWallet(label, rules[])` on the factory). Until it lands the SDK sends deploy and grant as separate transactions and says so through progress events (AGENTIC-TX-102 and 104); `tx` is then the last of them.
+ 
+ A `progressHook` passed to `PushChain.initialize` receives the same events alongside the per-call one, as in core.
+ 
+@@ -562,8 +561,6 @@
+ 
+ interface CreateOptions {
+   rules: Rule[];                                                  // one entry per chain per agent, may be empty; each rule names its agent and optional ref
+-  funds?: { amount: bigint; token: MoveableToken | Address }[];   // same shape as tx.funds, always an array
+-  pc?: bigint;                                                    // native PC for outbound fees
+   progressHook?: ProgressHook;                                    // AGENTIC-TX-1xx
+ }
+ 
+@@ -596,10 +593,16 @@
+   agent: Address;                                                 // same as NativeRule.agent
+   ref?: Hex;                                                      // same as NativeRule.ref
+   chainNamespace: ForeignChainNamespace;                          // "eip155:..." now; "solana:..." once the SVM rulebook ships
+-  asset: Address;                                                 // PRC20 on Push; SDK asserts its SOURCE_CHAIN_NAMESPACE
++  assets: AssetCap[];                                             // tokens the agent may move on chainNamespace; SDK resolves each to its PRC20 and asserts SOURCE_CHAIN_NAMESPACE
++  maxGasPerCall: bigint;                                          // PC (wei) per outbound for the destination leg
+   validUntil: number;
+-  maxAmountPerCall: bigint;  maxAmountTotal?: bigint;  maxPCPerCall: bigint;
+   allowedCalls: AllowedCall[];                                    // 1..32, all on chainNamespace
++}
++
++interface AssetCap {
++  token: MoveableToken | Address;                                 // the other chain's token address (MOVEABLE.TOKEN.<CHAIN>.<SYMBOL>) or the native marker; the contract stores the PRC20
++  maxPerCall: bigint;
++  maxTotal?: bigint;
+ }
+ 
+ type Selector = Hex | `${string}(${string})`;                     // '0x617ba037' or 'supply(address,uint256,address,uint16)'
+@@ -688,7 +691,6 @@
+ // progress events, AGENTIC-TX (PROPOSED)
+ //   AGENTIC-TX-101      wallet derived               { address, index, deployed }
+ //   AGENTIC-TX-102      deploy step added
+-//   AGENTIC-TX-103      funds and PC step added
+ //   AGENTIC-TX-104      rules granted                { rulesIds }
+ //   AGENTIC-TX-105      rules revoked                { rulesIds | all }
+ //   AGENTIC-TX-106      label set

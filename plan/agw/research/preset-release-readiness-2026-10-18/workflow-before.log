@@ -1,0 +1,4 @@
+../../../../../../tmp/agw-validation-before.yml:18:26: context "runner" is not allowed here. available contexts are "github", "inputs", "matrix", "needs", "secrets", "strategy", "vars". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
+   |
+18 |       AGW_LOCAL_DIR: ${{ runner.temp }}/agw-v5-build
+   |                          ^~~~~~~~~~~

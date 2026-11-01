@@ -1,0 +1,29 @@
+PASS core-agw-local packages/core/__agw-local__/v5-multiasset.spec.ts (7.397 s)
+  v6 multi-asset SDK management and execution
+    ✓ v6 EVM alternatives enforce both spender and MAX, and reads update losslessly (122 ms)
+    ✓ v6 refuses a bare alternative that bypasses a pinned function and too many initial rules (24 ms)
+    ✓ the shipped DEX catalog enforces tuple receiver/token/amount pins on actual v6 URP (101 ms)
+    ✓ a default-token DEX exactInputSingle call rejects spending above its policy cap despite edited bridge budgets (71 ms)
+    ✓ a default-token DEX exactOutputSingle call rejects spending above its policy cap despite edited bridge budgets (62 ms)
+    ✓ public DEXES destination-funded defaults create directly without rewriting returned rules (59 ms)
+    ✓ public LENDING destination-funded defaults create directly without rewriting returned rules (54 ms)
+    ✓ public STAKING destination-funded defaults create directly without rewriting returned rules (45 ms)
+    ✓ regenerated LENDING presets enforce new token/amount pins through atomic rules.update (134 ms)
+    ✓ regenerated STAKING presets enforce new token/amount pins through atomic rules.update (208 ms)
+    ✓ a fixture preset produces rules accepted by public create and enforced by real contracts (80 ms)
+    ✓ public create encodes two ordered assets; public get reconstructs source-token caps (89 ms)
+    ✓ a token from the wrong chain fails before deployment (6 ms)
+    ✓ a same-chain registry identity mismatch fails before deployment (3 ms)
+    ✓ both tokens execute under one rule and keep independent counters/limits (131 ms)
+    ✓ omitted and explicit zero totals both prohibit movement (142 ms)
+    ✓ empty user assets grants one zero-cap gas token and executes a call-only request (150 ms)
+    ✓ public update resets both counters in one batch and records five checkpoints (168 ms)
+    ✓ spend on the second asset after snapshot rolls back revoke/grant and checkpoint writes (206 ms)
+    ✓ out-of-band duplicate contract grants still make sends ambiguous (82 ms)
+    ✓ a legacy two-field envelope is refused by the actual v6 grant path (11 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       21 passed, 21 total
+Snapshots:   0 total
+Time:        7.43 s, estimated 9 s
+Ran all test suites within paths "packages/core/__agw-local__/v5-multiasset.spec.ts".

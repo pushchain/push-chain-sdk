@@ -1,0 +1,203 @@
+[
+  {
+    "chain": 84532,
+    "actualChain": 84532,
+    "observedStartBlock": "48131419",
+    "wrapped": "0x4200000000000000000000000000000000000006",
+    "pools": [
+      {
+        "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "fee": 100,
+        "pool": "0x57183717A087d2fe3Ad890873877244c3B96156c",
+        "liquidity": "2890001491047"
+      },
+      {
+        "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "fee": 500,
+        "pool": "0x94bfc0574FF48E92cE43d495376C477B1d0EEeC0",
+        "liquidity": "5303698200342"
+      },
+      {
+        "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "fee": 3000,
+        "pool": "0x46880b404CD35c165EDdefF7421019F8dD25F4Ad",
+        "liquidity": "315598590516394"
+      },
+      {
+        "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "fee": 10000,
+        "pool": "0x4664755562152EDDa3a3073850FB62835451926a",
+        "liquidity": "57734017049"
+      },
+      {
+        "token": "0xba50Cd2A20f6DA35D788639E581bca8d0B5d4D5f",
+        "fee": 100,
+        "pool": "0x068e0DF9DFcCe57df2C2b60BdB2318CE49A07a31",
+        "liquidity": "8639839568058"
+      },
+      {
+        "token": "0xba50Cd2A20f6DA35D788639E581bca8d0B5d4D5f",
+        "fee": 500,
+        "pool": "0x9d9203f8a29c600D567b240692DB569B77D1F4A9",
+        "liquidity": "0"
+      },
+      {
+        "token": "0xba50Cd2A20f6DA35D788639E581bca8d0B5d4D5f",
+        "fee": 3000,
+        "pool": "0x92266210FacF124f190fbad79AA230dfB85926Ce",
+        "liquidity": "4957986963561"
+      },
+      {
+        "token": "0xba50Cd2A20f6DA35D788639E581bca8d0B5d4D5f",
+        "fee": 10000,
+        "pool": "0xC8AaD20fA4278886e64d279Fe39B1E7a2d6E10E8",
+        "liquidity": "0"
+      }
+    ],
+    "mints": [
+      {
+        "token": "0x810D46F9a9027E28F9B01F75E2bdde839dA61115",
+        "owner": "0xD9145b5F45Ad4519c7ACcD6E0A4A82e83bB8A6Dc",
+        "mint(address,uint256)": "The contract function \"mint\" reverted with the following reason:\nOwnable: caller is not the owner",
+        "mint(uint256)": "The contract function \"mint\" reverted with the following reason:\nOwnable: caller is not the owner",
+        "allocateTo(address,uint256)": "The contract function \"allocateTo\" reverted.",
+        "faucet": "ok",
+        "supply": "The contract function \"supply\" reverted with the following reason:\nERC20: transfer amount exceeds balance"
+      },
+      {
+        "token": "0x4616975f7E6045FD9737e95bC527e9e14c727BD2",
+        "mint(address,uint256)": "The contract function \"mint\" reverted.",
+        "mint(uint256)": "The contract function \"mint\" reverted.",
+        "allocateTo(address,uint256)": "ok",
+        "supply": "The contract function \"supply\" reverted."
+      },
+      {
+        "token": "0x663A6F02d547dFd639BF689FED298712f2FB69Fb",
+        "mint(address,uint256)": "ok",
+        "mint(uint256)": "The contract function \"mint\" reverted.",
+        "allocateTo(address,uint256)": "The contract function \"allocateTo\" reverted.",
+        "supply": "The contract function \"supply\" reverted."
+      }
+    ]
+  },
+  {
+    "chain": 421614,
+    "actualChain": 421614,
+    "observedStartBlock": "319278801",
+    "wrapped": "0x980B62Da83eFf3D4576C647993b0c1D7faf17c73",
+    "pools": [
+      {
+        "token": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+        "fee": 100,
+        "pool": "0x152c469626C706E201721F13eb470691E4E81c5D",
+        "liquidity": "0"
+      },
+      {
+        "token": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+        "fee": 500,
+        "pool": "0x6F112d524DC998381C09b4e53C7e5e2cc260f877",
+        "liquidity": "122"
+      },
+      {
+        "token": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+        "fee": 3000,
+        "pool": "0x66EEAB70aC52459Dd74C6AD50D578Ef76a441bbf",
+        "liquidity": "40704947517717"
+      },
+      {
+        "token": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+        "fee": 10000,
+        "pool": "0x3eCedaB7E9479E29B694d8590dc34e0Ce6059868",
+        "liquidity": "3225673603183"
+      }
+    ],
+    "mints": [
+      {
+        "token": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+        "owner": "0xaB7Dbf0Fc9d32349c484419073098DcD52C14798",
+        "mint(address,uint256)": "The contract function \"mint\" reverted with the following reason:\nFiatToken: caller is not a minter",
+        "mint(uint256)": "The contract function \"mint\" reverted.",
+        "allocateTo(address,uint256)": "The contract function \"allocateTo\" reverted.",
+        "faucet": "ok",
+        "supply": "The contract function \"supply\" reverted with the following reason:\nERC20: transfer amount exceeds allowance"
+      },
+      {
+        "token": "0x1dF462e2712496373A347f8ad10802a5E95f053D",
+        "mint(address,uint256)": "The contract function \"mint\" reverted.",
+        "mint(uint256)": "The contract function \"mint\" reverted.",
+        "allocateTo(address,uint256)": "The contract function \"allocateTo\" reverted.",
+        "supply": "The contract function \"supply\" reverted."
+      }
+    ]
+  },
+  {
+    "chain": 97,
+    "actualChain": 97,
+    "observedStartBlock": "136853649",
+    "wrapped": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
+    "pools": [
+      {
+        "token": "0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c",
+        "fee": 100,
+        "pool": "0xCed0844e421F856D2de472F9e7037f873987887C",
+        "liquidity": "229529662705916"
+      },
+      {
+        "token": "0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c",
+        "fee": 500,
+        "pool": "0xc2F0629Dd29AB0EcfF7476560bc8FD5c0c4D19Cd",
+        "liquidity": "0"
+      },
+      {
+        "token": "0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c",
+        "fee": 3000,
+        "pool": "0x0000000000000000000000000000000000000000",
+        "liquidity": "0"
+      },
+      {
+        "token": "0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c",
+        "fee": 10000,
+        "pool": "0xa5316a3418e0643BB977A97689E584a3b6c35080",
+        "liquidity": "0"
+      },
+      {
+        "token": "0x16227D60f7a0e586C66B005219dfc887D13C9531",
+        "fee": 100,
+        "pool": "0x0000000000000000000000000000000000000000",
+        "liquidity": "0"
+      },
+      {
+        "token": "0x16227D60f7a0e586C66B005219dfc887D13C9531",
+        "fee": 500,
+        "pool": "0x0000000000000000000000000000000000000000",
+        "liquidity": "0"
+      },
+      {
+        "token": "0x16227D60f7a0e586C66B005219dfc887D13C9531",
+        "fee": 3000,
+        "pool": "0x0000000000000000000000000000000000000000",
+        "liquidity": "0"
+      },
+      {
+        "token": "0x16227D60f7a0e586C66B005219dfc887D13C9531",
+        "fee": 10000,
+        "pool": "0x0000000000000000000000000000000000000000",
+        "liquidity": "0"
+      }
+    ],
+    "mints": [
+      {
+        "token": "0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c",
+        "mint(address,uint256)": "The contract function \"mint\" reverted.",
+        "mint(uint256)": "The contract function \"mint\" reverted.",
+        "allocateTo(address,uint256)": "ok"
+      },
+      {
+        "token": "0x16227D60f7a0e586C66B005219dfc887D13C9531",
+        "mint(address,uint256)": "The contract function \"mint\" reverted.",
+        "mint(uint256)": "The contract function \"mint\" reverted.",
+        "allocateTo(address,uint256)": "ok"
+      }
+    ]
+  }
+]

@@ -1,0 +1,46 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+ffi = true
+ast = true
+build_info = true
+extra_output = ["storageLayout"]
+
+# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
+# Solidity & EVM Specific Configs
+solc = "0.8.26"
+optimizer = true
+optimizer_runs = 99999
+auto_detect_solc = false
+evm_version = "shanghai"
+via_ir = true
+# UniversalMarketplace only: at 99 999 runs the inliner puts it over EIP-170 (26,257 B); at 1 000 runs it is
+# 21,284 B. Every other contract keeps the default.
+additional_compiler_profiles = [{ name = "marketplace-size", optimizer_runs = 1000 }]
+compilation_restrictions = [{ paths = "src/agentic-commerce-8183/UniversalMarketplace.sol", optimizer_runs = 1000 }]
+
+no_match_coverage = "(PRC20V0\\.sol|testnetV0/UniversalCore\\.sol|ReceiverExample\\.sol|src/(libraries|[Ii]nterfaces|mocks)/|test/)"
+
+fs_permissions = [{ access = "read-write", path = "deployments/" }, { access = "read", path = "out/" }]
+
+# Coverage only: drop the per-file profile above. With it, a contract tested both from the marketplace's
+# compile job and from its own is two artifacts, and coverage keeps the hits of only one. Run coverage with
+# FOUNDRY_PROFILE=coverage; sizes are never measured under coverage.
+[profile.coverage]
+additional_compiler_profiles = []
+compilation_restrictions = []
+
+[fmt]
+ignore = ["src/**"]
+
+[fuzz]
+runs = 1024
+max_test_rejects = 65536
+seed = '0x1'
+
+[profile.ci.fuzz]
+runs = 4096
+
+[rpc_endpoints]
+push_chain_testnet = "${PUSH_CHAIN_TESTNET_RPC_URL}"

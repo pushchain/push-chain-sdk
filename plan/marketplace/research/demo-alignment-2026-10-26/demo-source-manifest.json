@@ -1,0 +1,39 @@
+{
+  "archive": "marketplace_demo-main.zip",
+  "sha256": "557c7d3c878d9cc36b025d6880960840aaaee997ad55d7886220eecf8cc9c6b6",
+  "textFilesExtracted": 49,
+  "skippedSensitiveFiles": [
+    ".env.example"
+  ],
+  "verifiedCommit": "0d765e06418f1678f77ecd6434603ceecd5a708f",
+  "verifiedFiles": {
+    "README.md": {
+      "gitBlob": "da60e4ec8dd863a58176660bfecf1a6fab4feee3",
+      "sha256": "851b5393f41e99b40fcf37113739171faa5c88c9c4c926dfae86d3f958800788"
+    },
+    "packages/shared/src/config.ts": {
+      "gitBlob": "8e336e16e0e9ee02315f8e25e5559893041a2ba0",
+      "sha256": "a155442c6448b32e593ba66417f8c3876bdc8bc98cefdd0b1518a4a02c5dff94"
+    },
+    "packages/shared/src/jobspec.ts": {
+      "gitBlob": "97bc6ffe5702b8ef5980a467b64f53ed2bdfe102",
+      "sha256": "c1d2321b3affa42e5bc48a8d07117ee41ae7f310bb7fc23c62ccb9aa23675c0e"
+    },
+    "packages/shared/src/cards.ts": {
+      "gitBlob": "1c0cf2c0b0f9943ba0bf3a114a2fc61a8d05d14c",
+      "sha256": "c0e17aa017ac58645c93de00197e38796b3698439959b9858effeaa054a8f251"
+    },
+    "packages/shared/src/flow.ts": {
+      "gitBlob": "cb514841f881d0c741fbf8ef0da9f7a7b3c5b789",
+      "sha256": "eca376554493870f20ec3653f95f42ce261128bcc569b722a03f49594d7991d2"
+    },
+    "packages/provider/src/agent.ts": {
+      "gitBlob": "d0cfe4508e2cfb9f61cc64cd6faf4a01a1d903c1",
+      "sha256": "36eadda27d9fb02e9bc18bf0934406e1781eb1b102b6a2e21beb5d1ea2ce83c8"
+    },
+    "contracts/DeployDemoStack.s.sol": {
+      "gitBlob": "ad9c56d8631d7f585da705b97761f45cc552325c",
+      "sha256": "9fab1152f75698409af46bf22712af900d59bb26933e45fd4e55a2395bfc110c"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+FAIL core-e2e __e2e__/agw/presets-live.spec.ts (211.735 s)
+  agw presets live
+    ✕ 2. Aave preset supplies and withdraws the wallet position (209529 ms)
+    ○ skipped 1. Uniswap preset swaps from the wallet CEA and rejects a different recipient
+
+  ● agw presets live › 2. Aave preset supplies and withdraws the wallet position
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "success"
+    Received: "reverted"
+
+      321 |       hash: supplied.externalTxHash as Hex,
+      322 |     });
+    > 323 |     expect(supplyReceipt.status).toBe('success');
+          |                                  ^
+      324 |     expect(await balance()).toBe(BigInt(0));
+      325 |     const events = parseEventLogs({
+      326 |       abi,
+
+      at Object.<anonymous> (__e2e__/agw/presets-live.spec.ts:323:34)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 1 skipped, 2 total
+Snapshots:   0 total
+Time:        211.754 s, estimated 218 s
+Ran all test suites within paths "__e2e__/agw/presets-live.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

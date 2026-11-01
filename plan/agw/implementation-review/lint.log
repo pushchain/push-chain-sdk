@@ -1,0 +1,1157 @@
+
+> nx run core:lint
+
+> eslint .
+
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__agw-local__/agw-local-advanced.spec.ts[24m[0m
+[0m   [2m60:54[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m70:17[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m211:22[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m222:18[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m238:18[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m291:13[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__agw-local__/agw-local.spec.ts[24m[0m
+[0m  [2m35:17[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m36:17[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__agw-local__/harness.ts[24m[0m
+[0m  [2m152:16[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m171:16[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m179:17[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m251:18[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__agw-local__/vectors.spec.ts[24m[0m
+[0m   [2m38:7[22m   [33mwarning[39m  Forbidden non-null assertion             [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m39:7[22m   [33mwarning[39m  Forbidden non-null assertion             [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m63:32[22m  [33mwarning[39m  Forbidden non-null assertion             [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m153:25[22m  [33mwarning[39m  '_a' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m154:25[22m  [33mwarning[39m  '_b' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/agw/identity-gas.spec.ts[24m[0m
+[0m  [2m62:123[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/agw/universal-evm.spec.ts[24m[0m
+[0m  [2m31:17[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/cross-chain/cascade-amm.spec.ts[24m[0m
+[0m  [2m1715:41[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m1897:41[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m2003:41[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m2096:41[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m2167:41[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m2256:41[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/cross-chain/cea-to-push-erc20.spec.ts[24m[0m
+[0m   [2m92:12[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m95:12[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m102:12[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/cross-chain/forced-sizer.spec.ts[24m[0m
+[0m  [2m36:17[22m  [33mwarning[39m  'PUSH_NETWORK' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/cross-chain/fresh-wallet.spec.ts[24m[0m
+[0m  [2m92:16[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/cross-chain/multi-child-r3-sepolia.spec.ts[24m[0m
+[0m  [2m83:7[22m  [33mwarning[39m  'VALUE_RECEIVER' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/cross-chain/peth-bridge.spec.ts[24m[0m
+[0m  [2m114:77[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m132:76[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m149:42[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m165:35[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m174:50[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m218:21[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m241:31[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m261:21[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m271:28[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m295:27[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/cross-chain/uoa-multi-hop.spec.ts[24m[0m
+[0m  [2m43:7[22m   [33mwarning[39m  'SOL_COUNTER_PDA' is assigned a value but never used   [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m44:7[22m   [33mwarning[39m  'SOL_TARGET' is assigned a value but never used        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m45:7[22m   [33mwarning[39m  'SOL_ZERO_ADDRESS' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m51:7[22m   [33mwarning[39m  'bscPublicClient' is assigned a value but never used   [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m52:7[22m   [33mwarning[39m  'pushPublicClient' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m68:27[22m  [33mwarning[39m  Unexpected any. Specify a different type               [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/docs-examples/07-transaction-scenarios/route1.spec.ts[24m[0m
+[0m  [2m357:7[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m357:7[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m360:46[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m364:16[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m389:20[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/docs-examples/07-transaction-scenarios/route2.spec.ts[24m[0m
+[0m  [2m297:30[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m386:7[22m   [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m389:46[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m412:60[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/docs-examples/07-transaction-scenarios/route3.spec.ts[24m[0m
+[0m  [2m375:7[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m375:7[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m378:46[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m384:16[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m404:20[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/docs-examples/08-multichain-transactions/multichain-transactions.spec.ts[24m[0m
+[0m  [2m218:30[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m232:25[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m398:25[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m455:25[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m523:30[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m536:25[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/docs-examples/13-read-state/fixtures/universal_read_batch.js[24m[0m
+[0m  [2m4:1[22m  [31merror[39m  Projects should use relative imports to import from other files within the same project. Use "./path/to/file" instead of import from "@pushchain/core"  [2m@nx/enforce-module-boundaries[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/docs-examples/13-read-state/fixtures/universal_read_evm_balance.js[24m[0m
+[0m  [2m4:1[22m  [31merror[39m  Projects should use relative imports to import from other files within the same project. Use "./path/to/file" instead of import from "@pushchain/core"  [2m@nx/enforce-module-boundaries[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/docs-examples/13-read-state/fixtures/universal_read_resume.js[24m[0m
+[0m  [2m4:1[22m  [31merror[39m  Projects should use relative imports to import from other files within the same project. Use "./path/to/file" instead of import from "@pushchain/core"  [2m@nx/enforce-module-boundaries[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/docs-examples/13-read-state/playgrounds.spec.ts[24m[0m
+[0m   [2m20:63[22m  [31merror[39m    Unexpected empty async function  [2m@typescript-eslint/no-empty-function[22m[0m
+[0m   [2m69:43[22m  [33mwarning[39m  Forbidden non-null assertion     [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m74:16[22m  [33mwarning[39m  Forbidden non-null assertion     [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m102:23[22m  [33mwarning[39m  Forbidden non-null assertion     [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m104:30[22m  [33mwarning[39m  Forbidden non-null assertion     [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m115:19[22m  [33mwarning[39m  Forbidden non-null assertion     [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m116:18[22m  [33mwarning[39m  Forbidden non-null assertion     [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m132:23[22m  [33mwarning[39m  Forbidden non-null assertion     [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m146:19[22m  [33mwarning[39m  Forbidden non-null assertion     [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m149:12[22m  [33mwarning[39m  Forbidden non-null assertion     [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m174:43[22m  [33mwarning[39m  Forbidden non-null assertion     [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m180:36[22m  [33mwarning[39m  Forbidden non-null assertion     [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m184:27[22m  [33mwarning[39m  Forbidden non-null assertion     [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m184:69[22m  [33mwarning[39m  Forbidden non-null assertion     [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/docs-examples/13-read-state/read-state.spec.ts[24m[0m
+[0m  [2m56:12[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m56:32[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/docs-examples/_helpers/docs-fund.ts[24m[0m
+[0m  [2m95:12[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/evm/inbound/rescue-funds.spec.ts[24m[0m
+[0m  [2m165:20[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m227:15[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/evm/outbound/cea-to-smart-contracts.spec.ts[24m[0m
+[0m  [2m48:3[22m  [33mwarning[39m  'UGPC_PRECOMPILE' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/evm/outbound/cea-to-uea.spec.ts[24m[0m
+[0m  [2m1411:15[22m  [33mwarning[39m  'tx' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/evm/outbound/uea-to-cea.spec.ts[24m[0m
+[0m  [2m2277:41[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m2330:43[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-(node:62151) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+sdk/packages/core/__e2e__/evm/pc20/pc20-inbound.spec.ts[24m[0m
+[0m  [2m15:10[22m  [33mwarning[39m  'PUSH_NETWORK' is defined but never used                [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m21:3[22m   [33mwarning[39m  'waitToleratingFeeCreditBug' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/evm/pc20/pc20-roundtrip.spec.ts[24m[0m
+[0m  [2m17:3[22m  [33mwarning[39m  'waitToleratingFeeCreditBug' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/push/account-conversion/eth.spec.ts[24m[0m
+[0m  [2m176:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m177:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m181:55[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m181:80[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m192:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m193:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m244:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m245:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m246:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m250:50[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m250:75[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m277:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m278:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m314:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m315:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m320:108[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m350:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m351:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m352:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m355:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m356:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m378:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m379:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m380:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m408:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m409:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m410:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m411:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m415:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m416:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m417:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m420:50[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m420:76[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m420:97[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m442:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m443:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m470:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m471:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m474:73[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m474:99[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/push/account-conversion/solana.spec.ts[24m[0m
+[0m   [2m78:14[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m79:14[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m81:58[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m81:83[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m92:14[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m93:14[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m121:14[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m122:14[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m136:14[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m137:14[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m138:14[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m139:14[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m140:14[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m160:14[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m161:14[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m162:14[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m183:14[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m184:14[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/push/fee-lock-cap-raise.spec.ts[24m[0m
+[0m   [2m60:19[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m170:38[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/push/native.spec.ts[24m[0m
+[0m  [2m389:7[22m   [33mwarning[39m  'mainPushClient' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m428:16[22m  [33mwarning[39m  Forbidden non-null assertion                         [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m517:16[22m  [33mwarning[39m  Forbidden non-null assertion                         [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/push/pool-depth-diagnostic.spec.ts[24m[0m
+[0m  [2m27:24[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/push/progress-hooks.spec.ts[24m[0m
+[0m  [2m383:19[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m594:25[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/push/utilities.spec.ts[24m[0m
+[0m  [2m128:79[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/_shared.ts[24m[0m
+[0m  [2m54:70[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/evm/any-mutability.spec.ts[24m[0m
+[0m  [2m34:48[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/evm/api-coverage.spec.ts[24m[0m
+[0m  [2m18:48[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m30:48[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m53:14[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m53:31[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/evm/app-batch.spec.ts[24m[0m
+[0m  [2m38:12[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m38:29[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m46:48[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m67:67[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m71:12[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m71:32[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m76:48[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m81:107[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/evm/balance-eoa.spec.ts[24m[0m
+[0m  [2m23:57[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m59:12[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m59:32[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/evm/balance-uea.spec.ts[24m[0m
+[0m  [2m25:116[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m52:12[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m52:32[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/evm/callback-reverts.spec.ts[24m[0m
+[0m  [2m22:48[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m36:12[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m36:32[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/evm/contract-call.spec.ts[24m[0m
+[0m  [2m28:48[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/evm/registry.spec.ts[24m[0m
+[0m  [2m14:57[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m40:14[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m40:36[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/lifecycle/expiry.spec.ts[24m[0m
+[0m  [2m25:57[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/lifecycle/track-lookup.spec.ts[24m[0m
+[0m  [2m21:48[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/svm/account-idl.spec.ts[24m[0m
+[0m  [2m20:53[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m25:59[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m27:48[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m45:48[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m62:12[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m62:31[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m63:102[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m70:14[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m70:52[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m79:44[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/svm/lamports.spec.ts[24m[0m
+[0m  [2m19:53[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m22:48[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/svm/raw-account.spec.ts[24m[0m
+[0m  [2m13:48[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/tools/live-read-uea.ts[24m[0m
+[0m   [2m57:15[22m   [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m57:63[22m   [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m57:101[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m103:18[22m   [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m106:46[22m   [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m107:143[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/web2/json.spec.ts[24m[0m
+[0m  [2m15:48[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/scripts/e2e-7702-multicall.ts[24m[0m
+[0m   [2m93:44[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m132:28[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/shared/evm-client.ts[24m[0m
+[0m  [2m14:24[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/shared/svm-client.ts[24m[0m
+[0m  [2m10:24[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/svm/inbound/uea-to-push.spec.ts[24m[0m
+[0m  [2m16:10[22m  [33mwarning[39m  'MOVEABLE_TOKENS' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/svm/outbound/cea-to-eoa.spec.ts[24m[0m
+[0m  [2m15:61[22m  [33mwarning[39m  'encodeFunctionData' is defined but never used         [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m24:3[22m   [33mwarning[39m  'COUNTER_ADDRESS_PAYABLE' is defined but never used    [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m25:3[22m   [33mwarning[39m  'COUNTER_ABI_PAYABLE' is defined but never used        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m27:10[22m  [33mwarning[39m  'COUNTER_ABI' is defined but never used                [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m37:7[22m   [33mwarning[39m  'pushPublicClient' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/svm/outbound/cea-to-uea.spec.ts[24m[0m
+[0m  [2m39:3[22m  [33mwarning[39m  'buildReceiveSolAccounts' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/svm/outbound/eoa-to-cea.spec.ts[24m[0m
+[0m  [2m23:3[22m  [33mwarning[39m  'SOL_ZERO_ADDRESS' is defined but never used         [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m25:3[22m  [33mwarning[39m  'COUNTER_PDA' is defined but never used              [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m28:3[22m  [33mwarning[39m  'buildReceiveSolAccounts' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/svm/outbound/eoa-to-smart-contracts.spec.ts[24m[0m
+[0m  [2m86:19[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/svm/outbound/uea-to-cea.spec.ts[24m[0m
+[0m  [2m43:3[22m  [33mwarning[39m  'buildReceiveSolAccounts' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/scripts/poll-outbound.ts[24m[0m
+[0m   [2m24:3[22m   [33mwarning[39m  'UniversalTxStatus' is defined but never used     [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m25:3[22m   [33mwarning[39m  'OutboundStatus' is defined but never used        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m236:19[22m  [33mwarning[39m  'intervalMs' is assigned a value but never used   [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m236:31[22m  [33mwarning[39m  'timeoutMs' is assigned a value but never used    [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m260:30[22m  [33mwarning[39m  Forbidden non-null assertion                      [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m292:29[22m  [33mwarning[39m  'childUtxIds' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/scripts/probe-multihop-track.ts[24m[0m
+[0m  [2m36:40[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m40:12[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m41:12[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m42:12[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m55:37[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/scripts/test-uea-migration.ts[24m[0m
+[0m   [2m80:122[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m165:20[22m   [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m166:20[22m   [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m168:27[22m   [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m169:23[22m   [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m191:17[22m   [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/agentic/__tests__/codec.spec.ts[24m[0m
+[0m  [2m171:21[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/agentic/utils.ts[24m[0m
+[0m  [2m108:15[22m  [33mwarning[39m  '_card' is defined but never used       [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m108:31[22m  [33mwarning[39m  '_userInput' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m108:52[22m  [33mwarning[39m  '_ctx' is defined but never used        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/agentic/wallet.ts[24m[0m
+[0m  [2m92:33[22m  [33mwarning[39m  '_opts' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/cache/cache.ts[24m[0m
+[0m   [2m4:10[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m38:21[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m56:27[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/constants/__tests__/svm-gateway-idl.spec.ts[24m[0m
+[0m  [2m13:22[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/internal/buffer.ts[24m[0m
+[0m  [2m4:18[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/internal/global-buffer-polyfill.ts[24m[0m
+[0m  [2m3:10[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/account-status.spec.ts[24m[0m
+[0m  [2m274:15[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m286:15[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/cascade-composition.spec.ts[24m[0m
+[0m  [2m363:13[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m431:13[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m447:13[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m480:13[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m552:12[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m618:12[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m686:12[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m758:13[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m774:13[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m811:13[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m887:13[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/context-helpers-tracker.spec.ts[24m[0m
+[0m   [2m36:47[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m39:10[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m167:14[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/gas-usd-sizer.spec.ts[24m[0m
+[0m   [2m26:25[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m32:7[22m   [33mwarning[39m  'PC_USD_1E8' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m35:44[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m41:57[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m65:10[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m71:10[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m215:59[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m231:10[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m243:31[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m252:65[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m281:10[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m297:31[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/gateway-uea-account.spec.ts[24m[0m
+[0m    [2m9:10[22m  [33mwarning[39m  'CHAIN_INFO' is defined but never used      [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m14:3[22m   [33mwarning[39m  'AccountStatus' is defined but never used   [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m62:10[22m  [33mwarning[39m  Unexpected any. Specify a different type    [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m68:10[22m  [33mwarning[39m  Unexpected any. Specify a different type    [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m86:10[22m  [33mwarning[39m  Unexpected any. Specify a different type    [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m223:12[22m  [33mwarning[39m  Unexpected any. Specify a different type    [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m231:12[22m  [33mwarning[39m  Unexpected any. Specify a different type    [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m243:12[22m  [33mwarning[39m  Unexpected any. Specify a different type    [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m251:12[22m  [33mwarning[39m  Unexpected any. Specify a different type    [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m264:12[22m  [33mwarning[39m  Unexpected any. Specify a different type    [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m441:11[22m  [33mwarning[39m  'first' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/payload-builders.spec.ts[24m[0m
+[0m   [2m11:44[22m  [33mwarning[39m  'MULTICALL_SELECTOR' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m152:24[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m152:24[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m175:12[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m176:12[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m325:12[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m326:12[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m365:12[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m373:12[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m374:12[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m516:12[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m517:12[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m575:12[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m576:12[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m577:12[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m578:12[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m599:12[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m600:12[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m620:12[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/preflight.spec.ts[24m[0m
+[0m   [2m54:35[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m72:35[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m73:35[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m93:35[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m94:35[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m97:35[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m156:35[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m158:35[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m179:35[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m199:35[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m200:35[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m297:33[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m394:13[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m394:33[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m423:35[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m424:35[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m440:35[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m456:35[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/push-chain-tx-retry.spec.ts[24m[0m
+[0m   [2m12:31[22m  [33mwarning[39m  'VM' is defined but never used            [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m49:85[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m102:72[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m239:64[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m261:72[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/rescue-svm-confirmation.spec.ts[24m[0m
+[0m   [2m13:10[22m  [33mwarning[39m  'bytesToHex' is defined but never used                     [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m13:22[22m  [33mwarning[39m  'hexToBytes' is defined but never used                     [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m15:10[22m  [33mwarning[39m  'VM' is defined but never used                             [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m29:33[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m30:26[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m34:43[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m39:32[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m43:7[22m   [33mwarning[39m  'mockEvmConfirmations' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m44:7[22m   [33mwarning[39m  'mockSvmConfirmations' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m148:10[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m154:10[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m155:37[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m167:36[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m188:49[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m194:48[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m203:55[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m209:47[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m218:81[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m227:56[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m231:51[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m255:54[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m263:61[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m347:30[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m349:30[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m351:30[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m356:14[22m  [33mwarning[39m  Forbidden non-null assertion                               [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m357:14[22m  [33mwarning[39m  Forbidden non-null assertion                               [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m367:14[22m  [33mwarning[39m  Forbidden non-null assertion                               [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m368:14[22m  [33mwarning[39m  Forbidden non-null assertion                               [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m375:52[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m435:25[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m566:43[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m612:41[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m702:25[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m705:12[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m706:39[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m751:13[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m751:61[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m765:23[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m794:10[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m816:25[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m819:12[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m820:39[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m835:25[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m838:12[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m839:39[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m852:10[22m  [33mwarning[39m  Unexpected any. Specify a different type                   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/response-builder-push-revert.spec.ts[24m[0m
+[0m  [2m64:10[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m66:70[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/send-transaction-progress-hook.spec.ts[24m[0m
+[0m   [2m79:20[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m199:10[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/signing-payload.spec.ts[24m[0m
+[0m   [2m19:3[22m   [33mwarning[39m  'encodeAbiParameters' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m20:3[22m   [33mwarning[39m  'encodePacked' is defined but never used         [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m25:31[22m  [33mwarning[39m  'VM' is defined but never used                   [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m144:46[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m148:46[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m157:46[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m161:49[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m232:10[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m239:51[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m248:48[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m252:54[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m261:78[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m265:83[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m606:10[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m619:58[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m651:48[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m659:54[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m666:59[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m677:51[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m690:10[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m711:10[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m740:10[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m750:51[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m767:68[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m772:82[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m922:37[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m932:37[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m941:37[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m950:37[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/source-hash-resolution.spec.ts[24m[0m
+[0m  [2m24:8[22m   [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m34:10[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m58:70[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m74:10[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m91:10[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/terminal-suppression.spec.ts[24m[0m
+[0m  [2m26:23[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m27:28[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m28:24[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/track-transaction-guard.spec.ts[24m[0m
+[0m  [2m21:27[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m23:21[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m30:40[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m38:69[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m44:64[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/tx-transformer-gas.spec.ts[24m[0m
+[0m    [2m10:15[22m  [33mwarning[39m  'UniversalTxReceipt' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m22:32[22m  [33mwarning[39m  'PayableToken' is defined but never used        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m22:46[22m  [33mwarning[39m  'MoveableToken' is defined but never used       [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m28:52[22m  [33mwarning[39m  Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m    [2m44:60[22m  [33mwarning[39m  Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m    [2m65:47[22m  [33mwarning[39m  Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m110:64[22m  [33mwarning[39m  Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m115:10[22m  [33mwarning[39m  Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m121:10[22m  [33mwarning[39m  Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m122:37[22m  [33mwarning[39m  Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m144:63[22m  [33mwarning[39m  Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m165:63[22m  [33mwarning[39m  Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m174:63[22m  [33mwarning[39m  Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m183:63[22m  [33mwarning[39m  Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m193:63[22m  [33mwarning[39m  Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m202:63[22m  [33mwarning[39m  Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m215:63[22m  [33mwarning[39m  Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m224:63[22m  [33mwarning[39m  Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m505:14[22m  [33mwarning[39m  Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m529:14[22m  [33mwarning[39m  Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m614:12[22m  [33mwarning[39m  Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m663:12[22m  [33mwarning[39m  Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m693:12[22m  [33mwarning[39m  Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m709:12[22m  [33mwarning[39m  Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m839:58[22m  [33mwarning[39m  Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m850:27[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m850:27[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m866:27[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m866:27[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m880:27[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m880:27[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m955:87[22m  [33mwarning[39m  Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m994:27[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m994:27[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m1015:27[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m1015:27[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m1028:27[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m1028:27[22m  [33mwarning[39m  Forbidden non-null assertion                    [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/tx-transformer-multichain.spec.ts[24m[0m
+[0m   [2m10:10[22m  [33mwarning[39m  'encodeAbiParameters' is defined but never used     [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m15:10[22m  [33mwarning[39m  'UEA_MULTICALL_SELECTOR' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m15:34[22m  [33mwarning[39m  'ZERO_ADDRESS' is defined but never used            [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m107:18[22m  [33mwarning[39m  Forbidden non-null assertion                        [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m108:18[22m  [33mwarning[39m  Forbidden non-null assertion                        [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m128:18[22m  [33mwarning[39m  Forbidden non-null assertion                        [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m149:18[22m  [33mwarning[39m  Forbidden non-null assertion                        [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m168:13[22m  [33mwarning[39m  Forbidden non-null assertion                        [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m241:15[22m  [33mwarning[39m  Forbidden non-null assertion                        [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m279:15[22m  [33mwarning[39m  Forbidden non-null assertion                        [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/account-manager.ts[24m[0m
+[0m  [2m113:46[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m205:23[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/cascade.ts[24m[0m
+[0m    [2m18:22[22m  [33mwarning[39m  'UNIVERSAL_GATEWAY_ADDRESSES' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m123:23[22m  [33mwarning[39m  Unexpected any. Specify a different type                 [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m136:11[22m  [33mwarning[39m  Unexpected any. Specify a different type                 [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m180:3[22m   [33mwarning[39m  'callbacks' is defined but never used                    [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m613:27[22m  [33mwarning[39m  Forbidden non-null assertion                             [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m636:15[22m  [33mwarning[39m  'gatewayProgramHex' is assigned a value but never used   [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m668:11[22m  [33mwarning[39m  'amount' is assigned a value but never used              [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m741:13[22m  [33mwarning[39m  'tokenAddress' is assigned a value but never used        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m746:9[22m   [33mwarning[39m  'amount' is assigned a value but never used              [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m747:9[22m   [33mwarning[39m  'nativeValue' is assigned a value but never used         [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m802:11[22m  [33mwarning[39m  'chain' is assigned a value but never used               [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m1711:29[22m  [33mwarning[39m  Forbidden non-null assertion                             [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m2678:45[22m  [33mwarning[39m  Unexpected any. Specify a different type                 [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/confirmation.ts[24m[0m
+[0m  [2m134:38[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m135:21[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/context.ts[24m[0m
+[0m  [2m135:12[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/execute-funds-only.ts[24m[0m
+[0m   [2m18:10[22m  [33mwarning[39m  'EvmClient' is defined but never used                  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m82:8[22m   [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m92:5[22m   [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m95:18[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m96:18[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m123:21[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m123:21[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m124:20[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m124:20[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m137:20[22m  [33mwarning[39m  'universalPayload' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m262:55[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m262:78[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m262:78[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m270:7[22m   [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m270:7[22m   [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m271:75[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m272:14[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m272:14[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m297:77[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m297:77[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m326:69[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m326:69[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m365:11[22m  [33mwarning[39m  'nonce' is assigned a value but never used             [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m370:7[22m   [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m370:7[22m   [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m390:14[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m390:14[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m391:34[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m391:34[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m419:14[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m419:14[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m436:34[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m436:34[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m465:82[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m465:82[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m487:69[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m487:69[22m  [33mwarning[39m  Forbidden non-null assertion                           [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/execute-funds-payload.ts[24m[0m
+[0m   [2m77:8[22m   [33mwarning[39m  Forbidden non-null assertion                       [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m88:5[22m   [33mwarning[39m  Forbidden non-null assertion                       [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m91:21[22m  [33mwarning[39m  Forbidden non-null assertion                       [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m105:45[22m  [33mwarning[39m  Forbidden non-null assertion                       [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m210:18[22m  [33mwarning[39m  Unexpected any. Specify a different type           [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m236:24[22m  [33mwarning[39m  Forbidden non-null assertion                       [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m237:18[22m  [33mwarning[39m  Forbidden non-null assertion                       [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m239:69[22m  [33mwarning[39m  Forbidden non-null assertion                       [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m242:23[22m  [33mwarning[39m  Forbidden non-null assertion                       [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m255:13[22m  [33mwarning[39m  'tokenAddr' is assigned a value but never used     [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m255:25[22m  [33mwarning[39m  Forbidden non-null assertion                       [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m261:13[22m  [33mwarning[39m  'payloadBytes' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m277:62[22m  [33mwarning[39m  Unexpected any. Specify a different type           [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m319:77[22m  [33mwarning[39m  Forbidden non-null assertion                       [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m372:69[22m  [33mwarning[39m  Forbidden non-null assertion                       [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/gas-calculator.ts[24m[0m
+[0m  [2m596:18[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/helpers.ts[24m[0m
+[0m   [2m16:10[22m  [33mwarning[39m  'EvmClient' is defined but never used     [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m152:53[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m152:59[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m220:12[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/outbound-sync.ts[24m[0m
+[0m  [2m131:40[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m132:9[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/payload-builder.ts[24m[0m
+[0m  [2m75:43[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/pc20/__tests__/inbound-payload.spec.ts[24m[0m
+[0m  [2m107:19[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m107:19[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m116:12[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m116:12[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m117:12[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/pc20/__tests__/svm.spec.ts[24m[0m
+[0m  [2m286:28[22m  [31merror[39m  Require statement not part of import statement  [2m@typescript-eslint/no-var-requires[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/pc20/tracking.ts[24m[0m
+[0m  [2m128:40[22m  [31merror[39m  Require statement not part of import statement  [2m@typescript-eslint/no-var-requires[22m[0m
+[0m  [2m131:28[22m  [31merror[39m  Require statement not part of import statement  [2m@typescript-eslint/no-var-requires[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/push-chain-tx.ts[24m[0m
+[0m   [2m84:19[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m214:25[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m251:28[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m395:19[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m454:20[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m455:20[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m457:27[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m458:23[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m518:20[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m519:20[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m521:27[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m522:23[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m570:39[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/response-builder.ts[24m[0m
+[0m   [2m30:10[22m  [33mwarning[39m  'PushChain' is defined but never used     [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m64:43[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m65:44[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m65:60[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m66:44[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m66:59[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m180:13[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m185:29[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m191:55[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m195:41[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m222:12[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m248:25[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/route-handlers.ts[24m[0m
+[0m  [2m1154:21[22m  [33mwarning[39m  Forbidden non-null assertion                     [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m2094:5[22m   [33mwarning[39m  'ueaBalance' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m2404:3[22m   [33mwarning[39m  'ctx' is defined but never used                  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m2405:3[22m   [33mwarning[39m  'params' is defined but never used               [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m2406:3[22m   [33mwarning[39m  'executeFn' is defined but never used            [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/signing.ts[24m[0m
+[0m  [2m427:32[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/svm-bridge.ts[24m[0m
+[0m   [2m41:77[22m  [33mwarning[39m  'req' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m212:34[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m212:34[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/svm-helpers.ts[24m[0m
+[0m  [2m107:37[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m107:53[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m115:21[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m188:11[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/tx-transformer.ts[24m[0m
+[0m  [2m97:7[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/orchestrator.spec.ts[24m[0m
+[0m   [2m87:50[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m134:50[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m162:28[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m182:28[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/orchestrator.ts[24m[0m
+[0m    [2m3:31[22m  [33mwarning[39m  'VM' is defined but never used                               [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m37:76[22m  [33mwarning[39m  '_transformToUniversalTxResponse' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m76:41[22m  [33mwarning[39m  Forbidden non-null assertion                                 [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m92:48[22m  [33mwarning[39m  Unexpected any. Specify a different type                     [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m103:50[22m  [33mwarning[39m  Unexpected any. Specify a different type                     [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m104:74[22m  [33mwarning[39m  Unexpected any. Specify a different type                     [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m105:77[22m  [33mwarning[39m  Unexpected any. Specify a different type                     [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/orchestrator.types.ts[24m[0m
+[0m  [2m387:15[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m564:9[22m   [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/payload-builders.ts[24m[0m
+[0m   [2m7:44[22m  [33mwarning[39m  'MULTICALL_SELECTOR' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m14:3[22m   [33mwarning[39m  'ChainTarget' is defined but never used         [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/route-detector.ts[24m[0m
+[0m   [2m17:3[22m   [33mwarning[39m  'TransactionRouteType' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m378:25[22m  [33mwarning[39m  Forbidden non-null assertion                      [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m378:25[22m  [33mwarning[39m  Forbidden non-null assertion                      [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/svm-idl/resolve.spec.ts[24m[0m
+[0m  [2m51:55[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m72:55[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m90:55[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/svm-idl/resolve.ts[24m[0m
+[0m  [2m10:6[22m  [33mwarning[39m  'AccountItem' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/push-chain/push-chain.explorer.spec.ts[24m[0m
+[0m  [2m192:12[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m199:12[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/push-chain/push-chain.reinitialize.spec.ts[24m[0m
+[0m  [2m198:29[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m199:39[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/push-chain/push-chain.signing.spec.ts[24m[0m
+[0m  [2m21:7[22m  [33mwarning[39m  'pushChainSVM' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/push-chain/push-chain.spec.ts[24m[0m
+[0m    [2m12:3[22m   [33mwarning[39m  'isAddress' is defined but never used                         [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m13:3[22m   [33mwarning[39m  'verifyMessage' is defined but never used                     [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m452:9[22m   [33mwarning[39m  'pushPublicClient' is assigned a value but never used         [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m1199:9[22m   [33mwarning[39m  'beforeCounterPCBalance' is assigned a value but never used   [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m1222:9[22m   [33mwarning[39m  'afterCounterPCBalance' is assigned a value but never used    [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m1317:9[22m   [33mwarning[39m  'balanceBeforePC_UEA' is assigned a value but never used      [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m1353:9[22m   [33mwarning[39m  'balanceAfterPC_UEA' is assigned a value but never used       [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m1434:9[22m   [33mwarning[39m  'balanceBeforePC_UEA' is assigned a value but never used      [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m1470:9[22m   [33mwarning[39m  'balanceAfterPC_UEA' is assigned a value but never used       [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m1682:9[22m   [33mwarning[39m  'balanceBeforePC_COUNTER' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m1685:9[22m   [33mwarning[39m  'balanceBeforePC_UEA' is assigned a value but never used      [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m1717:9[22m   [33mwarning[39m  'balanceAfterPC_COUNTER' is assigned a value but never used   [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m1720:9[22m   [33mwarning[39m  'balanceAfterPC_UEA' is assigned a value but never used       [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m1879:35[22m  [33mwarning[39m  Unexpected any. Specify a different type                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m1894:35[22m  [33mwarning[39m  Unexpected any. Specify a different type                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m1910:35[22m  [33mwarning[39m  Unexpected any. Specify a different type                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m1940:9[22m   [33mwarning[39m  'pushClientEVM' is assigned a value but never used            [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m2145:9[22m   [33mwarning[39m  'pcBeforeRecipient' is assigned a value but never used        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m2170:9[22m   [33mwarning[39m  'pcAfterRecipient' is assigned a value but never used         [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m2487:41[22m  [33mwarning[39m  Unexpected any. Specify a different type                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m2504:41[22m  [33mwarning[39m  Unexpected any. Specify a different type                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m2523:41[22m  [33mwarning[39m  Unexpected any. Specify a different type                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m2533:41[22m  [33mwarning[39m  Unexpected any. Specify a different type                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m2556:41[22m  [33mwarning[39m  Unexpected any. Specify a different type                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m2571:41[22m  [33mwarning[39m  Unexpected any. Specify a different type                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m2592:41[22m  [33mwarning[39m  Unexpected any. Specify a different type                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m2602:41[22m  [33mwarning[39m  Unexpected any. Specify a different type                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m2612:41[22m  [33mwarning[39m  Unexpected any. Specify a different type                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m2649:41[22m  [33mwarning[39m  Unexpected any. Specify a different type                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m3328:18[22m  [33mwarning[39m  Unexpected any. Specify a different type                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m3330:14[22m  [33mwarning[39m  Unexpected any. Specify a different type                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m3537:15[22m  [33mwarning[39m  'recipient' is assigned a value but never used                [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m3832:13[22m  [33mwarning[39m  'WETH9' is assigned a value but never used                    [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m3863:13[22m  [33mwarning[39m  'WETH9' is assigned a value but never used                    [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m3865:13[22m  [33mwarning[39m  'USDC' is assigned a value but never used                     [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/push-chain/push-chain.ts[24m[0m
+[0m   [2m33:3[22m   [33mwarning[39m  'UniversalTxResponse' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m244:31[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/push-client/push-client.archive-fallback.spec.ts[24m[0m
+[0m   [2m30:3[22m   [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m127:37[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m133:37[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m148:37[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m155:37[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m162:40[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/push-client/push-client.ts[24m[0m
+[0m  [2m359:42[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/read-state/__integration__/read-state.integration.spec.ts[24m[0m
+[0m   [2m45:38[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m45:38[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m45:77[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m45:77[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m45:117[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m48:68[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m225:12[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m225:29[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/read-state/__tests__/read-events.spec.ts[24m[0m
+[0m  [2m95:12[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m95:24[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/read-state/__tests__/read-tracker.spec.ts[24m[0m
+[0m   [2m26:3[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m104:12[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m104:29[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m274:5[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m282:5[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m385:20[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/read-state/__tests__/read-types.spec.ts[24m[0m
+[0m   [2m30:9[22m  [33mwarning[39m  'removed' is assigned a value but never used            [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m48:8[22m  [33mwarning[39m  '_typed' is defined but never used                      [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m61:9[22m  [33mwarning[39m  'missingEntrypoint' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m63:9[22m  [33mwarning[39m  'registryAbi' is assigned a value but never used        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m65:9[22m  [33mwarning[39m  'legacy' is assigned a value but never used             [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m86:8[22m  [33mwarning[39m  '_loose' is defined but never used                      [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m135:6[22m  [33mwarning[39m  'ExportChecks' is defined but never used                [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/read-state/__tests__/registry.spec.ts[24m[0m
+[0m  [2m91:94[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m97:46[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/read-state/__tests__/revalidate-read.spec.ts[24m[0m
+[0m  [2m55:62[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/read-state/__tests__/svm-account.spec.ts[24m[0m
+[0m  [2m101:25[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m101:25[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m102:23[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m102:23[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m103:27[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m103:27[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m104:25[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m104:25[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/read-state/__tests__/ucallback-codec.spec.ts[24m[0m
+[0m   [2m35:15[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m51:23[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m84:17[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m87:23[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m88:18[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m91:23[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m116:22[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/read-state/read-params.ts[24m[0m
+[0m  [2m254:15[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m295:46[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/universal-tx-detector/__tests__/cascade.spec.ts[24m[0m
+[0m  [2m319:20[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m322:12[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m325:22[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m325:22[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m357:22[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/universal-tx-detector/__tests__/detector-svm-log-index.spec.ts[24m[0m
+[0m  [2m90:7[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/universal-tx-detector/__tests__/detector.live.spec.ts[24m[0m
+[0m  [2m180:25[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m317:29[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m317:29[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m324:14[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m326:9[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m328:14[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m329:14[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m333:27[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m357:33[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m357:33[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/universal-tx-detector/__tests__/normalize.spec.ts[24m[0m
+[0m  [2m154:49[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m248:9[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m254:14[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/universal-tx-detector/cascade.ts[24m[0m
+[0m  [2m16:51[22m  [33mwarning[39m  'PublicClient' is defined but never used              [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m23:3[22m   [33mwarning[39m  'deriveChildUniversalTxId' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/universal-tx-detector/detector-svm.ts[24m[0m
+[0m  [2m242:30[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m243:9[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/universal-tx-detector/detector.ts[24m[0m
+[0m  [2m88:30[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m89:9[22m   [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/universal-tx-detector/svm-events.ts[24m[0m
+[0m  [2m30:11[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/universal/account/account.spec.ts[24m[0m
+[0m  [2m12:3[22m  [33mwarning[39m  'resolveControllerAccount' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/universal/signer/signer.spec.ts[24m[0m
+[0m   [2m38:18[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m68:23[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m82:38[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m136:10[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m200:49[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m334:7[22m   [33mwarning[39m  'domain' is defined but never used        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m335:7[22m   [33mwarning[39m  'types' is defined but never used         [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m336:7[22m   [33mwarning[39m  'primaryType' is defined but never used   [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m337:7[22m   [33mwarning[39m  'message' is defined but never used       [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m339:15[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m340:14[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m342:16[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/universal/signer/signer.ts[24m[0m
+[0m   [2m47:16[22m  [33mwarning[39m  'type' is assigned a value but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m49:5[22m   [33mwarning[39m  Unexpected any. Specify a different type   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m54:58[22m  [33mwarning[39m  Unexpected any. Specify a different type   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m73:11[22m  [33mwarning[39m  Unexpected any. Specify a different type   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m102:11[22m  [33mwarning[39m  Unexpected any. Specify a different type   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m213:29[22m  [33mwarning[39m  Unexpected any. Specify a different type   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m228:36[22m  [33mwarning[39m  Unexpected any. Specify a different type   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m229:36[22m  [33mwarning[39m  Unexpected any. Specify a different type   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m230:36[22m  [33mwarning[39m  Unexpected any. Specify a different type   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m265:47[22m  [33mwarning[39m  'primaryType' is defined but never used    [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m268:46[22m  [33mwarning[39m  Unexpected any. Specify a different type   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m422:31[22m  [33mwarning[39m  Unexpected any. Specify a different type   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m516:44[22m  [33mwarning[39m  'primaryType' is defined but never used    [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m519:44[22m  [33mwarning[39m  Unexpected any. Specify a different type   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m552:44[22m  [33mwarning[39m  'primaryType' is defined but never used    [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m555:44[22m  [33mwarning[39m  Unexpected any. Specify a different type   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m569:23[22m  [33mwarning[39m  Unexpected any. Specify a different type   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m570:23[22m  [33mwarning[39m  Unexpected any. Specify a different type   [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/universal/universal.types.ts[24m[0m
+[0m   [2m22:14[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m23:13[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m24:12[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m25:18[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m26:14[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m30:14[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m31:14[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m32:20[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m34:29[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m35:34[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m35:50[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m36:14[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m42:33[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m43:27[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m47:34[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m47:50[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m48:14[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m54:25[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m54:41[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m57:33[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m58:27[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m60:14[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m130:29[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m167:29[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/utils.spec.ts[24m[0m
+[0m   [2m172:72[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m419:29[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m425:24[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m436:30[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m487:28[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m571:16[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m648:62[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m652:63[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m657:57[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m663:57[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m669:57[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m878:71[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m882:71[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m893:66[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m898:68[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m904:57[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m910:62[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m1215:54[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m1219:55[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m1223:60[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m1227:53[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m1233:62[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m1239:62[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m1245:67[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m1251:60[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m1554:65[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m1563:35[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/utils.ts[24m[0m
+[0m   [2m24:43[22m  [33mwarning[39m  'getAddress' is defined but never used    [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m292:13[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m295:14[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m325:40[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/vm-client/evm-client.chain-symbol.spec.ts[24m[0m
+[0m  [2m64:23[22m  [33mwarning[39m  Forbidden non-null assertion  [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/vm-client/svm-client.ts[24m[0m
+[0m   [2m92:34[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m152:51[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m184:41[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m215:45[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m216:35[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m286:63[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m287:47[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/vm-client/vm-client.types.ts[24m[0m
+[0m  [2m29:14[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m40:10[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[31m[1m✖ 839 problems (7 errors, 832 warnings)[22m[39m[0m
+[0m[31m[1m[22m[39m[31m[1m  3 errors and 0 warnings potentially fixable with the `--fix` option.[22m[39m[0m
+[0m[31m[1m[22m[39m[0m
+Warning: command "eslint ." exited with non-zero status code
+
+
+ NX   Running target lint for project core failed
+
+Failed tasks:
+
+- core:lint
+
+Hint: run the command with --verbose for more details.
+

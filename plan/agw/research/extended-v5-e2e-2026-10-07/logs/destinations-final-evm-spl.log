@@ -1,0 +1,25 @@
+PASS core-e2e packages/core/__e2e__/agw/universal-evm.spec.ts (279.893 s)
+  ● Console
+
+    console.log
+      [ExternalTxVerifier] Verifying EVM tx on eip155:11155111: 0x05842ed536ce0c298233bec9afd807a8c721513fc9092d079cccd916ac70f7bb
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [ExternalTxVerifier] EVM tx 0x05842ed536ce0c298233bec9afd807a8c721513fc9092d079cccd916ac70f7bb on eip155:11155111: status=0x1
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [ExternalTxVerifier] EVM tx CONFIRMED SUCCESS on eip155:11155111
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+PASS core-e2e packages/core/__e2e__/agw/svm-spl-transfer.spec.ts (142.869 s)
+
+Test Suites: 2 passed, 2 total
+Tests:       3 passed, 3 total
+Snapshots:   0 total
+Time:        422.795 s, estimated 807 s
+Ran all test suites within paths "packages/core/__e2e__/agw/svm-spl-transfer.spec.ts", "packages/core/__e2e__/agw/universal-evm.spec.ts".

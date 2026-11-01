@@ -1,0 +1,100 @@
+[
+  {
+    "name": "agw-gas-quote",
+    "at": "2026-10-20T15:25:17.649Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+    "stage": "agent-spl:first-use",
+    "token": "0x4f1A3D22d170a2F4Bddb37845a962322e24f4e34",
+    "requestedGasLimit": "0",
+    "chain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+    "protocolFeePCWei": "0",
+    "quotedGasBudgetPCWei": "10000000000000000000",
+    "gasLimitUsed": "2285",
+    "attachedPCWei": "10000000000000000000"
+  },
+  {
+    "name": "agent-spl-submitted",
+    "at": "2026-10-20T15:25:25.219Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+    "stage": "first-use",
+    "wallet": "0xED6bFE825b8d84A1E6f4F7c9067398F8985CC372",
+    "cea": "DKbAi4YmS5EfdvKHzS2zHKSSPfgiffu3ZddXoY4N2VuX",
+    "ceaATA": "GuKBtW2xo53yMyj915CMCziHyyz1LaGxnfZBUDRJPd9K",
+    "hash": "0x119c89e9ff7c7cccdfc8c071fade2488aa28b0eff7d9b71f7f0cf247c958bbf5"
+  },
+  {
+    "name": "agw-push-gas",
+    "at": "2026-10-20T15:26:23.815Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+    "stage": "agent-spl:first-use",
+    "hash": "0x119c89e9ff7c7cccdfc8c071fade2488aa28b0eff7d9b71f7f0cf247c958bbf5",
+    "block": "24455663",
+    "gasUsed": "468004",
+    "effectiveGasPrice": "1125000000",
+    "transactionGasPaidPCWei": "526504500000000"
+  },
+  {
+    "name": "agent-spl-delivered",
+    "at": "2026-10-20T15:26:23.816Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+    "stage": "first-use",
+    "wallet": "0xED6bFE825b8d84A1E6f4F7c9067398F8985CC372",
+    "hash": "0x119c89e9ff7c7cccdfc8c071fade2488aa28b0eff7d9b71f7f0cf247c958bbf5",
+    "destinationHash": "y8hK7xQWVs4mRupJAJDRBkbt1EnVmtQNxAhPhTbvJbfULrwARFimjvygaDskPawH44dntUaq5Tq6ubDDp7592q1",
+    "destinationFeeLamports": 5000,
+    "computeUnitsConsumed": 116402
+  },
+  {
+    "name": "agw-gas-quote",
+    "at": "2026-10-20T15:26:33.128Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+    "stage": "agent-spl:subsequent",
+    "token": "0x4f1A3D22d170a2F4Bddb37845a962322e24f4e34",
+    "requestedGasLimit": "0",
+    "chain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+    "protocolFeePCWei": "0",
+    "quotedGasBudgetPCWei": "10000000000000000000",
+    "gasLimitUsed": "960",
+    "attachedPCWei": "10000000000000000000"
+  },
+  {
+    "name": "agent-spl-submitted",
+    "at": "2026-10-20T15:26:43.259Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+    "stage": "subsequent",
+    "wallet": "0xED6bFE825b8d84A1E6f4F7c9067398F8985CC372",
+    "cea": "DKbAi4YmS5EfdvKHzS2zHKSSPfgiffu3ZddXoY4N2VuX",
+    "ceaATA": "GuKBtW2xo53yMyj915CMCziHyyz1LaGxnfZBUDRJPd9K",
+    "hash": "0x7980032bb748889f44d9a58e4030dc1338575d03fa78da23531dcf96d6c23e57"
+  },
+  {
+    "name": "agw-push-gas",
+    "at": "2026-10-20T15:27:42.193Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+    "stage": "agent-spl:subsequent",
+    "hash": "0x7980032bb748889f44d9a58e4030dc1338575d03fa78da23531dcf96d6c23e57",
+    "block": "24455695",
+    "gasUsed": "447044",
+    "effectiveGasPrice": "1125000000",
+    "transactionGasPaidPCWei": "502924500000000"
+  },
+  {
+    "name": "agent-spl-delivered",
+    "at": "2026-10-20T15:27:42.195Z",
+    "network": "TESTNET_DONUT",
+    "sourceCommit": "ffd567d3e49b2d27c6f50ad36093274dbac3090f",
+    "stage": "subsequent",
+    "wallet": "0xED6bFE825b8d84A1E6f4F7c9067398F8985CC372",
+    "hash": "0x7980032bb748889f44d9a58e4030dc1338575d03fa78da23531dcf96d6c23e57",
+    "destinationHash": "3G782PfUtqv3THZGt7vH5J9xoscMMFvKwUo215J2Hoh4APYHEHMGDcKBjix6je5y3M2DhoeuENkmqWEFrJgUjmLe",
+    "destinationFeeLamports": 5000,
+    "computeUnitsConsumed": 98301
+  }
+]

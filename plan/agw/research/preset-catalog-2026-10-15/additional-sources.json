@@ -1,0 +1,22 @@
+[
+  {
+    "file": "PancakeIV3SwapRouter.sol",
+    "url": "https://raw.githubusercontent.com/pancakeswap/pancake-v3-contracts/main/projects/smart-router/contracts/interfaces/IV3SwapRouter.sol",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "file": "MERC20.sol",
+    "url": "https://raw.githubusercontent.com/moonwell-fi/moonwell-contracts-v2/main/src/MErc20.sol",
+    "bytes": 11341
+  },
+  {
+    "file": "EigenStrategyManager.sol",
+    "url": "https://raw.githubusercontent.com/Layr-Labs/eigenlayer-contracts/v1.5.0/src/contracts/core/StrategyManager.sol",
+    "bytes": 23355
+  },
+  {
+    "file": "Comptroller.sol",
+    "url": "https://raw.githubusercontent.com/moonwell-fi/moonwell-contracts-v2/main/src/Comptroller.sol",
+    "bytes": 50692
+  }
+]

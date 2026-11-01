@@ -1,0 +1,91 @@
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__agw-local__/agw-local-advanced.spec.ts
+   73:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   85:17  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  295:22  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  311:18  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  337:18  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  426:13  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__agw-local__/agw-local-batch.spec.ts
+   44:16  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   90:37  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   91:46  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   98:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  106:16  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__agw-local__/agw-local-races.spec.ts
+   54:20  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   99:18  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  117:12  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  145:20  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__agw-local__/agw-local.spec.ts
+  47:17  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  48:17  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__agw-local__/harness.ts
+  210:16  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  229:16  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  238:17  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  373:18  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__agw-local__/svm-internals.spec.ts
+   86:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  119:18  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  189:18  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__agw-local__/v4-multiasset.spec.ts
+   12:10  warning  'createWallet' is defined but never used  @typescript-eslint/no-unused-vars
+   78:14  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+   92:18  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+  176:14  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+  188:16  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+  325:16  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+  335:14  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+  353:18  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__agw-local__/vectors.spec.ts
+   56:7   warning  Forbidden non-null assertion             @typescript-eslint/no-non-null-assertion
+   57:7   warning  Forbidden non-null assertion             @typescript-eslint/no-non-null-assertion
+   98:7   warning  Forbidden non-null assertion             @typescript-eslint/no-non-null-assertion
+  207:25  warning  '_a' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  208:25  warning  '_b' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/agw/identity-gas.spec.ts
+  62:123  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/agw/universal-evm.spec.ts
+  27:10  warning  'v4' is defined but never used  @typescript-eslint/no-unused-vars
+  41:17  warning  Forbidden non-null assertion    @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/agw/v4-multiasset.spec.ts
+  17:17  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/agentic/__tests__/codec.spec.ts
+  373:21  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/agentic/__tests__/management.spec.ts
+  12:10  warning  'AgenticCapability' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/agentic/__tests__/native-batch-response.spec.ts
+   2:17  warning  'PUSH_NETWORK' is defined but never used  @typescript-eslint/no-unused-vars
+  41:21  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/agentic/__tests__/reads-context.spec.ts
+  374:5  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/agentic/__tests__/response-surface.spec.ts
+  4:3  warning  'getAddress' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/agentic/__tests__/svm-internals.spec.ts
+  457:21  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/agentic/reads/rules.ts
+   3:3  warning  'isAddress' is defined but never used              @typescript-eslint/no-unused-vars
+  11:3  warning  'CAPABILITY_DEPENDENCY' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/agentic/wallet.ts
+  92:33  warning  '_opts' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 51 problems (0 errors, 51 warnings)

@@ -7,6 +7,8 @@
 
 import { resolvePC20WrapperForReceipt } from './pc20/tracking';
 import { createPublicClient, fallback, http } from 'viem';
+import { Connection } from '@solana/web3.js';
+import bs58 from 'bs58';
 import { CHAIN_INFO, VM_NAMESPACE } from '../../constants/chain';
 import { CHAIN, VM } from '../../constants/enums';
 import { UniversalTxStatus } from '../../generated/uexecutor/v1/types';
@@ -113,15 +115,15 @@ export class OutboundFailedError extends Error {
  * (preserves the silent-success bug fix); if no receipt yet or RPC failure,
  * we keep polling.
  *
- * EVM-only — SVM tiebreaker would need a separate signature lookup path.
+ * EVM receipts and confirmed/finalized Solana signatures are supported.
  */
-async function verifyExternalEvmReceipt(
+async function verifyExternalReceipt(
   ctx: OrchestratorContext,
   destinationChain: CHAIN,
   externalTxHash: string
 ): Promise<'success' | 'reverted' | 'pending' | 'unsupported'> {
   const chainInfo = CHAIN_INFO[destinationChain];
-  if (!chainInfo || chainInfo.vm !== VM.EVM) {
+  if (!chainInfo || (chainInfo.vm !== VM.EVM && chainInfo.vm !== VM.SVM)) {
     return 'unsupported';
   }
   // Guard against unit-test contexts that don't pass a real rpcUrls map —
@@ -132,6 +134,52 @@ async function verifyExternalEvmReceipt(
       ? ctx.rpcUrls[destinationChain]!
       : chainInfo.defaultRPC;
   if (!rpcUrls?.length) return 'unsupported';
+
+  if (chainInfo.vm === VM.SVM) {
+    let signature: string;
+    try {
+      const bytes = externalTxHash.startsWith('0x')
+        ? /^0x[0-9a-fA-F]{128}$/.test(externalTxHash)
+          ? Buffer.from(externalTxHash.slice(2), 'hex')
+          : new Uint8Array()
+        : bs58.decode(externalTxHash);
+      if (bytes.length !== 64) return 'pending';
+      signature = bs58.encode(bytes);
+    } catch {
+      return 'pending';
+    }
+    for (const url of rpcUrls) {
+      try {
+        const connection = new Connection(url, 'confirmed');
+        if (
+          `solana:${(await connection.getGenesisHash()).slice(0, 32)}` !==
+          destinationChain
+        )
+          continue;
+        const result = await connection.getSignatureStatuses([signature], {
+          searchTransactionHistory: true,
+        });
+        const status = result.value[0];
+        // A processed vote can still disappear. Never report success/failure
+        // before the signature is confirmed or finalized on the right cluster.
+        if (
+          !status ||
+          (status.confirmationStatus !== 'confirmed' &&
+            status.confirmationStatus !== 'finalized')
+        )
+          return 'pending';
+        return status.err ? 'reverted' : 'success';
+      } catch (error) {
+        printLog(
+          ctx,
+          `[verifyExternalReceipt] SVM RPC unavailable: ${
+            error instanceof Error ? error.name : 'unknown'
+          }`
+        );
+      }
+    }
+    return 'pending';
+  }
 
   try {
     const client = createPublicClient({
@@ -153,7 +201,7 @@ async function verifyExternalEvmReceipt(
     }
     printLog(
       ctx,
-      `[verifyExternalEvmReceipt] RPC error for ${destinationChain} tx ${externalTxHash}: ${msg}`
+      `[verifyExternalReceipt] RPC error for ${destinationChain} tx ${externalTxHash}: ${msg}`
     );
     return 'pending';
   }
@@ -397,7 +445,7 @@ export async function waitForOutboundTx(
             ob.outboundStatus === OutboundStatus.OBSERVED;
           if (!isCosmosObserved) {
             // Tiebreaker: ask the destination-chain RPC directly.
-            const verdict = await verifyExternalEvmReceipt(
+            const verdict = await verifyExternalReceipt(
               ctx,
               chain,
               ob.observedTx.txHash
@@ -468,11 +516,10 @@ export async function waitForOutboundTx(
             // created, and a repeat export deploys no wrapper so nothing is
             // ever observed to backfill it. Resolve from UniversalCore instead,
             // keyed by the Push-native source token.
-            const pc20Wrapper = await resolvePC20WrapperForReceipt(
-              ctx,
-              ob,
-              { network: ctx.pushNetwork, rpcUrls: ctx.rpcUrls }
-            );
+            const pc20Wrapper = await resolvePC20WrapperForReceipt(ctx, ob, {
+              network: ctx.pushNetwork,
+              rpcUrls: ctx.rpcUrls,
+            });
             const details: OutboundTxDetails = {
               externalTxHash: ob.observedTx.txHash,
               destinationChain: chain,
@@ -738,7 +785,7 @@ export async function waitForAllOutboundTxsV2(
             const isCosmosObserved =
               ob.outboundStatus === OutboundStatus.OBSERVED;
             if (!isCosmosObserved) {
-              const verdict = await verifyExternalEvmReceipt(
+              const verdict = await verifyExternalReceipt(
                 ctx,
                 chain,
                 externalTxHash

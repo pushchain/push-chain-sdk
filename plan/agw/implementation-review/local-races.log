@@ -1,0 +1,44 @@
+FAIL plan/agw/implementation-review/local-races.spec.ts (5.984 s)
+  ✕ R1 a raced creation must not grant permissions on the concurrently created wallet (618 ms)
+  ✕ R4 owner outbound must not restore an allowance revoked after composition (773 ms)
+
+  ● R1 a raced creation must not grant permissions on the concurrently created wallet
+
+    expect(received).toHaveLength(expected)
+
+    Expected length: 0
+    Received length: 1
+    Received array:  ["0xed16789aedd36446aa851df227d231dfdaab75ab95d022e251d179e27fdcee59"]
+
+      32 |   const ids = await h.publicClient.readContract({ address: h.addresses.engine, abi: h.generation.contracts.abis.engine, functionName: 'getPermissionIDs', args: [expected.address] });
+      33 |   // The SDK threw, but the old predicted wallet must not acquire the new permission.
+    > 34 |   expect(ids).toHaveLength(0);
+         |               ^
+      35 | });
+      36 |
+      37 | it('R4 owner outbound must not restore an allowance revoked after composition', async () => {
+
+      at Object.<anonymous> (plan/agw/implementation-review/local-races.spec.ts:34:15)
+
+  ● R4 owner outbound must not restore an allowance revoked after composition
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 0n
+    Received: 50n
+
+      61 |   } finally { rt.execute = execute; }
+      62 |   const remaining = await h.publicClient.readContract({ address: token, abi: TOKEN, functionName: 'allowance', args: [wallet, h.addresses.gateway] });
+    > 63 |   expect(remaining).toBe(BigInt(0));
+         |                     ^
+      64 | });
+      65 |
+
+      at Object.<anonymous> (plan/agw/implementation-review/local-races.spec.ts:63:21)
+
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 2 total
+Snapshots:   0 total
+Time:        6.111 s
+Ran all test suites within paths "plan/agw/implementation-review/local-races.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

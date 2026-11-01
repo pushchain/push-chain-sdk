@@ -1,0 +1,26 @@
+{
+  "run_at": "2026-10-05T18:36:03.715Z",
+  "checks": [
+    {
+      "check": "Old SDK envelope starts with 64; v4 requires version 1. Native grants also need migration.",
+      "pass": true
+    },
+    {
+      "check": "Owner-guide UniversalTerms tuple round-trips two ordered caps; maxUint256 and zero remain distinct.",
+      "pass": true,
+      "note": "Synthetic codec values only; the addresses used as dummy tokens/CEA/target are not a valid grant or chain-valid token fixture."
+    },
+    {
+      "check": "Verified v4 ABI decodes a live empty getConfig; e704d5b ABI rejects the same result.",
+      "pass": true,
+      "block": 23931055,
+      "returndata": "0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "check": "New array-form assertSpent encodes/decodes using explorer-verified ABI.",
+      "pass": true,
+      "selector": "0x997b1856"
+    }
+  ],
+  "limits": "Envelope/ABI compatibility and synthetic wire round-trip only. No rule grant, spend-race execution, SDK full-suite rerun or live funded E2E."
+}

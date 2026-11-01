@@ -1,0 +1,4 @@
+# Preserve imported source and native exports byte-for-byte, including whitespace.
+notion/** -whitespace
+contracts/** -whitespace
+research/**/*.log -whitespace

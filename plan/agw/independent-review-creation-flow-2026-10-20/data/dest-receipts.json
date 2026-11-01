@@ -1,0 +1,189 @@
+{
+ "at": "2026-10-20T16:40:39.547Z",
+ "dest": [
+  {
+   "ns": "eip155:11155111",
+   "hash": "0xf3ed17fa05f700543ec10930d078c6fb793624e44e8ec8fe3f14fbb7cee5cf19",
+   "status": "success",
+   "block": "11956206",
+   "from": "0x9fed6f778a956244c06a3b905ba45bdb2ec3afea",
+   "to": "0xd019eb12d0d6ef8d299661f22b4b7d262ed4b965",
+   "value": "1000000000000",
+   "gasUsed": "1265722",
+   "ceaExecuted": [
+    {
+     "emitter": "0xddc0c8e35863f1478c0485144d2fae959242ce43",
+     "originCaller": "0xD847ca2462405a70c32ff5776e70fE25EA7B26ca",
+     "target": "0xF1552eD5ac48C273570500bD10b10C00E1C418bB",
+     "data": "0xd09de08a"
+    }
+   ],
+   "ceaMatches": true
+  },
+  {
+   "ns": "eip155:11155111",
+   "hash": "0x15f49a09b3879f3cc1ea4c3accddc7431b279da59033f5eb9842a0d4994df50a",
+   "status": "success",
+   "block": "11956213",
+   "from": "0x9fed6f778a956244c06a3b905ba45bdb2ec3afea",
+   "to": "0xd019eb12d0d6ef8d299661f22b4b7d262ed4b965",
+   "value": "1000000000000",
+   "gasUsed": "223683",
+   "ceaExecuted": [
+    {
+     "emitter": "0xddc0c8e35863f1478c0485144d2fae959242ce43",
+     "originCaller": "0xD847ca2462405a70c32ff5776e70fE25EA7B26ca",
+     "target": "0xF1552eD5ac48C273570500bD10b10C00E1C418bB",
+     "data": "0xd09de08a"
+    }
+   ],
+   "ceaMatches": true
+  },
+  {
+   "ns": "eip155:11155111",
+   "ceaCodeBytes": 45,
+   "ceaNativeBalanceNow": "2000000000000"
+  },
+  {
+   "ns": "eip155:84532",
+   "hash": "0x89337900340a39fd1725657e72f146fe5b4b917a58d5db150f052b2222724d6d",
+   "status": "success",
+   "block": "48371096",
+   "from": "0x9fed6f778a956244c06a3b905ba45bdb2ec3afea",
+   "to": "0xb4ba4d5542d1dd48bd3589543660b265b41f16cb",
+   "value": "1000000000000",
+   "gasUsed": "325448",
+   "ceaExecuted": [
+    {
+     "emitter": "0xb0d8079eef1553d3e975947f087eeeb05f02ab1a",
+     "originCaller": "0xB07a90329A3Ef6B20aC80a458069a7D8daE93D58",
+     "target": "0x25a62134B57C42b1733BDF577E48C91d13053138",
+     "data": "0xd09de08a"
+    }
+   ],
+   "ceaMatches": true
+  },
+  {
+   "ns": "eip155:84532",
+   "hash": "0xe81704385810c74cef8d16cb7fe3e2a98805aff9a9f63aaf5008d3d9288a4781",
+   "status": "success",
+   "block": "48371126",
+   "from": "0x9fed6f778a956244c06a3b905ba45bdb2ec3afea",
+   "to": "0xb4ba4d5542d1dd48bd3589543660b265b41f16cb",
+   "value": "1000000000000",
+   "gasUsed": "123187",
+   "ceaExecuted": [
+    {
+     "emitter": "0xb0d8079eef1553d3e975947f087eeeb05f02ab1a",
+     "originCaller": "0xB07a90329A3Ef6B20aC80a458069a7D8daE93D58",
+     "target": "0x25a62134B57C42b1733BDF577E48C91d13053138",
+     "data": "0xd09de08a"
+    }
+   ],
+   "ceaMatches": true
+  },
+  {
+   "ns": "eip155:84532",
+   "ceaCodeBytes": 45,
+   "ceaNativeBalanceNow": "2000000000000"
+  },
+  {
+   "ns": "eip155:421614",
+   "hash": "0x059011ed41d6409e48b70ab47dd02a16eca292e01e68eb721d78df5813f46c98",
+   "status": "success",
+   "block": "321102083",
+   "from": "0x9fed6f778a956244c06a3b905ba45bdb2ec3afea",
+   "to": "0x233b1b1b378eb0aa723097634025a47c4b73a8f7",
+   "value": "1000000000000",
+   "gasUsed": "325424",
+   "ceaExecuted": [
+    {
+     "emitter": "0x97b91433af804877cd11ec522c910c54e04624b5",
+     "originCaller": "0x3130f7F8b10C94A54eC012A4d0e6DAc963f200eb",
+     "target": "0x7F0936bB90e7dcF3eDB47199C2005e7184E44Cf8",
+     "data": "0xd09de08a"
+    }
+   ],
+   "ceaMatches": true
+  },
+  {
+   "ns": "eip155:421614",
+   "hash": "0x54f382ed25d895893f6cd3042ff7ee43e63bc392397c9a9572c424a3589d9df8",
+   "status": "success",
+   "block": "321102318",
+   "from": "0x9fed6f778a956244c06a3b905ba45bdb2ec3afea",
+   "to": "0x233b1b1b378eb0aa723097634025a47c4b73a8f7",
+   "value": "1000000000000",
+   "gasUsed": "123163",
+   "ceaExecuted": [
+    {
+     "emitter": "0x97b91433af804877cd11ec522c910c54e04624b5",
+     "originCaller": "0x3130f7F8b10C94A54eC012A4d0e6DAc963f200eb",
+     "target": "0x7F0936bB90e7dcF3eDB47199C2005e7184E44Cf8",
+     "data": "0xd09de08a"
+    }
+   ],
+   "ceaMatches": true
+  },
+  {
+   "ns": "eip155:421614",
+   "ceaCodeBytes": 45,
+   "ceaNativeBalanceNow": "2000000000000"
+  },
+  {
+   "ns": "eip155:97",
+   "hash": "0x6b5cfb84699948c2b626e2a244b9ff8354d070093d6f8ecb42a228914adfdaa5",
+   "status": "success",
+   "block": "137911931",
+   "from": "0x9fed6f778a956244c06a3b905ba45bdb2ec3afea",
+   "to": "0xe52ac4f8dd3e0263bdf748f3390cdfa1f02be881",
+   "value": "1000000000000",
+   "gasUsed": "325919",
+   "ceaExecuted": [
+    {
+     "emitter": "0xa7384f2b00463e548426cd9c8979dda78ecf60c4",
+     "originCaller": "0x0140403283bB76C1890501067754d1c376189b5D",
+     "target": "0xf4bd8c13DA0F5831D7B6dd3275a39F14eC7dDaA6",
+     "data": "0xd09de08a"
+    }
+   ],
+   "ceaMatches": true
+  },
+  {
+   "ns": "eip155:97",
+   "hash": "0x42adb9167d8f25a81ff01e143cb43e676818d8ce144a08444c890caecd08029a",
+   "status": "success",
+   "block": "137912063",
+   "from": "0x9fed6f778a956244c06a3b905ba45bdb2ec3afea",
+   "to": "0xe52ac4f8dd3e0263bdf748f3390cdfa1f02be881",
+   "value": "1000000000000",
+   "gasUsed": "123637",
+   "ceaExecuted": [
+    {
+     "emitter": "0xa7384f2b00463e548426cd9c8979dda78ecf60c4",
+     "originCaller": "0x0140403283bB76C1890501067754d1c376189b5D",
+     "target": "0xf4bd8c13DA0F5831D7B6dd3275a39F14eC7dDaA6",
+     "data": "0xd09de08a"
+    }
+   ],
+   "ceaMatches": true
+  },
+  {
+   "ns": "eip155:97",
+   "ceaCodeBytes": 45,
+   "ceaNativeBalanceNow": "2000000000000"
+  }
+ ],
+ "walletDelta": {
+  "spl:first-use": {
+   "before": "41000000000000000000",
+   "after": "38930349124935516270",
+   "deltaPC": -2.0696508750644838
+  },
+  "spl:subsequent": {
+   "before": "39021448806523059654",
+   "after": "38151923666016831746",
+   "deltaPC": -0.869525140506228
+  }
+ }
+}

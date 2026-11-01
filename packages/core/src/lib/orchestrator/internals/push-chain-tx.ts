@@ -30,7 +30,7 @@ import type {
 import type { OrchestratorContext } from './context';
 import { fireProgressHook, printLog } from './context';
 import { decodeRevert, formatDecodedRevertForUser } from './error-decoder';
-import { PushChainExecutionError, PushChainBatchExecutionError } from './errors';
+import { PushChainExecutionError, PushChainBatchExecutionError, AtomicBatchUnavailableError } from './errors';
 import { normalizePublicErrorMessage } from '../../formatters';
 
 // ============================================================================
@@ -76,7 +76,7 @@ async function getIndexedPushTransaction(
         receiptWaited = true;
         if (receipt.status === 'reverted') {
           throw new PushChainExecutionError(
-            `${label} — Push Chain transaction ${txHash} reverted`
+            `${label} — Push Chain transaction ${txHash} reverted`, { txHash }
           );
         }
       }
@@ -115,7 +115,8 @@ export async function sendPushTx(
   ctx: OrchestratorContext,
   execute: ExecuteParams,
   eventBuffer: ProgressEvent[],
-  transformFn: TransformToResponseFn
+  transformFn: TransformToResponseFn,
+  requireAtomicBatch = false
 ): Promise<UniversalTxResponse> {
   if (Array.isArray(execute.data)) {
     const calls = execute.data as MultiCall[];
@@ -138,7 +139,17 @@ export async function sendPushTx(
     const executor = getBatchExecutorAddress(
       ctx.universalSigner.account.chain
     );
+    if (requireAtomicBatch) {
+      if (!executor || !ctx.universalSigner.signAuthorization) {
+        throw new AtomicBatchUnavailableError('This operation requires a sender-preserving atomic batch; the signer/network does not support EIP-7702.');
+      }
+      const code = await ctx.pushClient.publicClient.getCode({ address: executor });
+      if (!code || code === '0x') {
+        throw new AtomicBatchUnavailableError(`Atomic batch executor ${executor} is not deployed on the connected network.`);
+      }
+    }
     if (executor && ctx.universalSigner.signAuthorization) {
+      let submittedHash: `0x${string}` | undefined;
       try {
         printLog(
           ctx,
@@ -149,6 +160,7 @@ export async function sendPushTx(
           calls,
           signer: ctx.universalSigner,
         });
+        submittedHash = txHash;
         const txResponse = await getIndexedPushTransaction(
           ctx,
           txHash,
@@ -156,11 +168,18 @@ export async function sendPushTx(
         );
         return await transformFn(txResponse, eventBuffer);
       } catch (err) {
+        if (submittedHash) {
+          if (err instanceof PushChainExecutionError && err.txHash === submittedHash) throw err;
+          throw new PushChainExecutionError(normalizePublicErrorMessage(err), { txHash: submittedHash, pendingTransactionHash: submittedHash, cause: err });
+        }
         // Only fall back when the wallet genuinely can't sign a 7702
         // authorization. This is raised before any broadcast, so falling back
         // to sequential execution cannot double-execute. Any other error
         // (e.g. a real revert) must surface.
         if (!(err instanceof EIP7702NotSupportedError)) throw err;
+        if (requireAtomicBatch) {
+          throw new AtomicBatchUnavailableError('The signer could not authorize EIP-7702; no sequential transactions were sent.', err);
+        }
         printLog(
           ctx,
           `sendPushTx — wallet cannot sign EIP-7702 authorization; falling back to sequential execution`
@@ -300,12 +319,17 @@ export async function sendPushTx(
     value: execute.value,
     signer: ctx.universalSigner,
   });
+  try {
   const txResponse = await getIndexedPushTransaction(
     ctx,
     txHash,
     'sendPushTx'
   );
   return await transformFn(txResponse, eventBuffer);
+  } catch (cause) {
+    if (cause instanceof PushChainExecutionError && cause.txHash === txHash) throw cause;
+    throw new PushChainExecutionError(normalizePublicErrorMessage(cause), { txHash, pendingTransactionHash: txHash, cause });
+  }
 }
 
 // ============================================================================

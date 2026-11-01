@@ -1,0 +1,31 @@
+{
+  "completedAt": "2026-10-20T13:09:46.691Z",
+  "numTotalTests": 3,
+  "numPassedTests": 3,
+  "numFailedTests": 0,
+  "numPendingTests": 0,
+  "success": false,
+  "tests": [
+    {
+      "file": "marketplace/funding.spec.ts",
+      "fullName": "marketplace funding 1. deposits real principal and fee, cancels the market job, then pays an AGW plain job through a controlled manual evaluator",
+      "status": "passed",
+      "duration": 122161,
+      "error": null
+    },
+    {
+      "file": "marketplace/funding.spec.ts",
+      "fullName": "marketplace funding 2. funds a native plain job with an atomic token approval and pays out on live Donut",
+      "status": "passed",
+      "duration": 57058,
+      "error": null
+    },
+    {
+      "file": "marketplace/funding.spec.ts",
+      "fullName": "marketplace funding 3. bridges principal from a fresh BSC origin into the opened wallet and recovers its funds after cancellation",
+      "status": "passed",
+      "duration": 195301,
+      "error": null
+    }
+  ]
+}

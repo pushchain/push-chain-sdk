@@ -1,0 +1,135 @@
+# AGW SDK implementation status
+
+**October 24 — team answers implemented (local v4, uncommitted):** decisions are recorded in the [Harsh](questions-harsh.md), [Aman](questions-aman.md) and [Zaryab](questions-zaryab.md) files.
+- **Presets ship only what works:** Uniswap V3 and Aave V3 on Sepolia, Base Sepolia and Arbitrum Sepolia. Each sends only native ETH from Push and wraps it on arrival (`WETH.deposit()` capped by `maxValue`). DEX swaps WETH and Circle USDC on the destination chain only. STAKING has no chains; PREDICTION, mainnet templates and the other apps are removed. `get` returns `{ rules }`; `readiness` and the `network` option are gone (this supersedes the October 16–21 readiness entries). Supplied assets must be one ETH asset per chain with positive limits.
+- **Tokens-only EVM rules:** ERC20 assets without `allowedCalls` become transfers to the owner's EVM address, plus opt-in `transferTo` recipients; native assets and Solana are refused.
+- **`MOVEABLE.TOKEN.<CHAIN>.ALL`:** expands to every routable token (Sepolia 6, including Circle `.old`) with default limits; `PushChain.utils.agentic.assets.all(chain)` exposes the list.
+- **Smaller fixes:** the 8-function Push limit is reported first; decoded Solana rules with `fromEnd` pins are refused on write; URP's `InnerValueExceedsAllowance` and `BeneficiaryMismatch` are now decoded (they are missing from the compiled ABI).
+- **Validation:** full units, 108 local v6 contract tests, docs/package checks, build, read-only compatibility (6/6: WETH accepts native ETH, routers wrap into it, pools have liquidity, Aave lists the reserve), Donut preparation and factory simulation (6/6), and the registry drift check (0 mismatches). 
+- **Live, October 24:** all six presets pass `agw-presets-acceptance`, each as the unchanged preset with a first and a subsequent agent send of 1e12 wei ETH.
+  - First-use destination gas is up to 1.66M (Sepolia Lending) under the 2M default; later sends use up to 0.41M.
+  - The new `agw-tokens-only` group passes 2/2:
+    - Circle USDC goes back to the owner on Sepolia (`0xdbf6d780…`), and another recipient is refused before broadcast;
+    - `ALL` reads back six tokens with their defaults.
+  - Three DEX failures on the first run were test-side or node-side:
+    - Sepolia: a dropped RPC receipt read.
+    - Arbitrum: the test took the first tier with liquidity, and its 0.05% pool returns 0 USDC for small swaps. The spec and the compatibility script now choose the tier by Uniswap QuoterV2.
+    - Base: the swap landed on Base 37 s after submission, but the node kept that outbound `PENDING` for 50+ minutes. The re-run observed normally; core team, if it recurs.
+
+**October 20 — SDK fixes from the independent review (local v4, uncommitted):**
+- **Routes:** exact node-registered Circle USDC routes on Sepolia, Base Sepolia and Arbitrum Sepolia are now resolved by address for AGW only. DEXES Sepolia and LENDING Arbitrum Sepolia are route-ready; the other seven presets remain blocked.
+- **Gas:** the AGW gas budget never attaches less than the current Push pool cost plus 20%, keeps the over-$10 share, and no longer counts protocolFee twice.
+- **Validation:** Solana rules reject a zero gas ceiling.
+- **Data fix:** the Base Sepolia WETH address is corrected.
+- **Tests:** the live preset suite funds the agent only after its prerequisites pass. A new opt-in `agw-presets-routed` group covers the two ready presets. The scripts record pool cost and signer origin.
+- **Validation results:** 2,267 units pass, 9/9 local v6 preset cases, lib/spec/local typechecks and the core build.
+- **Not yet done:** core confirmation of the `.old` routes and funded runs. [Review](independent-review-creation-flow-2026-10-20/review.md).
+- **Follow-up:**
+  - An explicit gasLimit below the chain base is refused before quoting.
+  - A Solana budget still short after one re-quote is refused before signing.
+  - BNB testnet gas is valued at the Push pool rate, because no BNB/USD feed exists. Route 2 and Route 3 already floor at the pool cost.
+  - New `check-agw-route-registry.js` drift check against uregistry: 20 routes match, 0 mismatches. It found the SDK cannot resolve DAI.sol.
+  - Tests: the agent-door omitted-gas unit; the local suite checks the stored destination; the SPL live test compares every pin and rejects a wrong recipient. That rejection was confirmed read-only at block 24,456,030.
+  - Question drafts and the October 20 README corrections are updated.
+- **Live, 21 October:** the funded `agw-svm-agent-spl` (1/1, with the tightened assertions) and `agw-gas` (4/4, eight deliveries) runs pass on the changed code. `agw-presets-routed`: both route-ready presets pass live. DEXES Sepolia needed a new 1,000,000 multi-step default gas limit, because its subsequent swap ran out of gas at the 500,000 base; LENDING Arbitrum passed. This is the first live outbound over the Circle USDC `.old` routes.
+- **Pre-question findings, 21 October** ([findings](research/pre-question-findings-2026-10-21/README.md)):
+  - Deployed sources identified: node `testnet/donut` `ca3b8d4e`, UniversalCore `core-testnet` `8bc60ae`, Solana gateway built from `pc20-3rd-iteration`.
+  - Live: all three Circle USDC routes deliver (new `agw-exact-routes`, 3/3); SPL Memo v2 works by owner and agent door (new `agw-svm-memo`, 2/2).
+  - Unused destination gas is refunded to the wallet (verified on-chain).
+  - `creditRevert` is not wired anywhere.
+  - The 8-action Push limit is deliberate.
+  - The `fromEnd` pin gap is confirmed.
+- **Question drafts** are split four ways: `questions-harsh.md` (product only, no recommendations), `questions-aman.md` (presets), `questions-zaryab.md` (AGW contracts) and `questions-core-gateway.md` (core and Solana gateway).
+
+**October 20 — exact preset acceptance and Solana gas:** 9 unchanged default payloads pass real-contract creation/readback with local provisioned routes; all 9 live preset cases are explicitly blocked before funding. No compatible routed-token replacements were found in the queried protocols. Fixed omitted Solana gas sizing (legacy million-unit fallback quoted 100 PC); public agent SPL first/subsequent delivery with omitted gas passes on devnet, including ATA/cap refusals. 405 AGW units pass; four EVM first/subsequent scenarios also pass (eight destination deliveries), making ten fresh deliveries including SPL. [Current evidence and limits](research/preset-acceptance-2026-10-20/README.md).
+
+**October 20 — creation error fixes:** typed token-route failures and per-rule details, actual constraint counts, UI-safe userMessage on SDK/revert errors, preserved diagnostics and clearer receipt/cancellation handling. **2,181 units**, **21 local v6 tests**, build/type/package checks pass. DEX UI overflow source remains pending the actual create payload; stock presets stay at 20 conditions. [Review and UI handoff](research/creation-error-review-2026-10-20/README.md). [Git delivery and continuing history](../SDK-CHANGELOG.md); package publication is separate.
+
+**October 18 — lighter CI requested:** PR checks now run SDK-only validation (421 focused units, spec types, build and package checks); contract checkout/Foundry/full API checks are manual opt-in. Local fast checks pass. Release branch v5 `b291b873` is pushed; package publication remains manual. **2,142 full units**, **107 local contract tests** and **9/9 read-only factory simulations** remain the release evidence. The optional fresh-run full CI preparation failure is documented, not reported as passing.
+
+**October 18 — final CI repairs:** invalid runner context and stale contract checkout pin are corrected; two incompatible merged dependency ranges were regenerated with Yarn hardened mode. Clean hardened immutable install passes on v5 `66dc81f8`. The full unfunded verifier passes locally, including **107 local contract tests**, in addition to **2,142 full units** and **9/9 Donut factory simulations**. [Final evidence](research/preset-release-readiness-2026-10-18/README.md).
+
+**October 18 — alpha release readiness:** automatic token/permission defaults, route-aware readiness and explicit destination-funded grants are committed on v4 `2d16bfe0` / v5 `83f9a713`. Sepolia WETH/stETH mappings and address-word metadata are fixed. **2,142 units**, **21 local contract tests**, **9/9 read-only Donut factory simulations**, package checks and isolated v5 immutable install pass. No funded live run or publication was triggered. [Release evidence and limits](research/preset-release-readiness-2026-10-18/README.md). Earlier same-day entries are intermediate states.
+
+**October 18 — preset permission defaults:** user-approved explicit preset policy now supplies token caps, 20 PC outbound ceilings and seven-day expiries. An agent alone returns Rule[] and complete configuration; general-rule/explicit-asset zero defaults remain. **2,129 unit tests**, **18 local contract tests**, build/typechecks/package checks pass. Existing PRC20 availability still limits unmodified default-asset grants. [Preset policy evidence](research/preset-permission-policy-2026-10-18/README.md).
+
+**October 18 — automatic preset tokens:** omitted `assets` now includes curated destination tokens per chain; explicit arrays replace defaults, including `[]`. DEX pairs and lending/staking constraints are generated within v6 size ceilings. This token-only stage is superseded by the preset permission defaults above. **2,119 unit tests**, **18 local v6 contract tests**, build/typechecks/package checks pass. See [evidence](research/preset-default-tokens-2026-10-18/README.md).
+
+**October 16 — preset operation limits and UI readiness:** Implemented token/amount pins, underlying-unit redemption, explicit excluded-call metadata and additive get().readiness. Regenerate then rules.update is documented and contract-tested. **2,111 unit tests**, **54 focused tests**, build/typechecks/package checks pass. **Fresh live acceptance:** Aave passed; EigenLayer and BNB/Venus completed their scenario assertions. Stopped the expanded process at the user’s request during Base setup, so fresh Base/Moonwell acceptance remains incomplete and there is no expanded-suite pass summary. [Changes and evidence](research/preset-configuration-2026-10-16/README.md).
+
+**October 15 — expanded preset live acceptance:** Five additional scenarios passed across focused runs, covering every shipped testnet protocol/chain combination together with the earlier two Sepolia scenarios. Found and fixed AGW explicit ETH token resolution on Base/Arbitrum; no public signature changed. **2,101 unit tests**, **16 local contract tests**, build/typechecks/package checks pass. [Evidence, initial failures and scope limits](research/preset-expanded-live-2026-10-15/README.md).
+
+**October 15 — presets:** Verified mainnet/testnet templates, static tuple paths and the approved zero-cap review/regenerate flow are implemented. Full unit suite: **2,096 passed**, 12 skipped. Preset-focused tests: **44 passed**; review-flow local contract suite: **16 passed**. [Current scope and remaining work](section7-presets.md). Dated entries below are historical where they differ. **Two real Donut→Sepolia protocol scenarios passed** (Uniswap swap and Aave LINK supply/withdraw, separate runs). Mainnet templates are read-only verified. Live app coverage is tracked in [preset acceptance](research/preset-live-2026-10-15/README.md).
+
+**October 14 — v6 integration complete locally:** source `ffd567d`; v6-only deployment/ABIs, atomic indexed creation, automatic outbound approvals, native/EVM EQ/MAX pins, new unlimited sentinels and linked Solana error decoding are integrated.
+
+- **2,073 unit tests passed**, 12 skipped; **99 local contract tests passed**.
+- **69 distinct live scenarios pass across the full run and focused follow-up.** The original run was 67 passed/1 failed (stale allowance assertion), followed by 2/2 passing focused cases, including the new EVM pin alternative proof. Not one clean full invocation.
+- Build, lib/spec/local typechecks, guide examples, package imports/declarations and API comparison pass.
+- V6 code and preset review fixes are now pushed on v4/v5. Native eight-call ceiling clarification and downstream revert credit remain separate items.
+
+[Detailed evidence and commands](research/v6-integration-2026-10-14/status.md).
+
+**Historical — October 12 sections 6/7:** SDK-only feedback and the preset framework are implemented locally. [Section 6 work list](section6-action-items.md) · [Preset scope/decisions](section7-presets.md) · [Open items](pending-items.md).
+
+- Full unit run: **2,075 passed, 0 failed, 12 skipped**. An earlier 100ms timing-test failure passed both on retry and in this final full run.
+- Section-6 real-contract coverage: all 97 cases pass across the suite and focused correction run. Presets add one fixture integration; its complete 11-case multi-asset suite passes.
+- Live section-6 coverage: **65/68 passed initially, then all 3 corrected cases passed**. All 68 cases have passing coverage; this is not one clean full invocation. No app-preset live claim is made with an empty approved catalog.
+- Build, library/spec/local typechecks, guide examples, compiled package imports/declarations and source-versus-built API comparison pass. New preset code has no lint errors.
+- Preset categories are enumerable; production chains remain empty pending catalog approval. Missing preset caps default to zero per the user. Templates omit identity/expiry until supplied. No encoder/ID utilities were re-exposed.
+- SDK changes are grouped in commit `6bd8ad50`; planning is tracked separately on v4 and excluded from the v5 sync. New contract feedback remains undeployed; automatic approvals, atomic factory create and general EVM pins remain gated.
+
+The dated entries below describe earlier checkpoints and are superseded where they conflict with the current summary.
+
+**October 12:** ten native multi-action live E2Es passed in one Donut invocation; malformed-action/required-expiry guards and the N + 4 checkpoint description are fixed. [Acceptance and evidence](research/native-multi-action-e2e-2026-10-12/README.md). Work remains local on `feat/agw-sdk-v4`; public multi-action shape still awaits product sign-off.
+
+**Latest v5 integration:** the new factory, source/artifacts, stored label reads and owner-only rename/reset are integrated. [V5 validation](research/v5-implementation-2026-10-07/README.md) distinguishes current tests from earlier v4 evidence.
+
+**Fresh alignment review:** [October 7 source refresh](research/source-refresh-2026-10-07/README.md) confirms stable deployed code and identified SDK follow-ups G27 (policy-preflight/error parity) and G28 (Solana owner funds-only support). Both are now fixed; [follow-up validation](research/sdk-alignment-fixes-2026-10-07/README.md) records contract-derived errors and actual SOL transfer/replay.
+
+> October 7: [decision alignment and acceptance](research/decision-alignment-2026-10-07/README.md). All settled SDK choices are implemented. Editable labels are now delivered and implemented against v5; no standalone contract delivery item remains.
+
+## Validation
+
+| Level | Current evidence |
+| --- | --- |
+| Unit | 2,034 passed, 0 failed; 12 skipped (includes 20 multi-action native tests) |
+| Actual contracts | 97 passed, 0 failed across 13 Anvil suites (includes 7 multi-action native tests) |
+| New funded tests | Expanded v5 labels, native/lifecycle, EVM, SOL and SPL cases pass across selected runs; [new report](research/extended-v5-e2e-2026-10-07/README.md) records individual runs and the gas-default issue |
+| Build/typechecks | Build and lib/spec/local/AGW-E2E checks pass |
+| Consumer checks | Package imports, compiled declarations, API comparison and guide examples pass |
+| E2E selection | AGW: 68 scenarios/15 files/68 tests; default all remains 76/40/81 |
+
+These are selected live runs. Latest expansion verified 20 distinct labels/EVM/multi-asset/SOL/SPL scenarios across selected runs; earlier v5 native/lifecycle evidence adds ten distinct cases. This is not a full 58-case invocation. Older v4 evidence includes 39 prior cases plus seven additions. See the linked report for the initial 7702 gas failure and verified fix, public API changes, IDL-layout limits and test evidence.
+
+## Per-step matrix
+
+| Step | Deliverable | Current status | Remaining work |
+| --- | --- | --- | --- |
+| 1 | Source/capability contract | V5 deployed source/ABIs pinned and reproduced | Refresh for future releases |
+| 2 | Namespace/types/errors | Implemented; AMBIGUOUS_RULE replaces duplicate-authoring rejection | Approved dual input forms; no pending type decision |
+| 3 | Signer/wallet context | Owner/agent/read-only/identity guards retained | Release review; UEA identity cases pass |
+| 4 | Registry/adapter | Donut v5 registered; unsupported networks fail | Release review; no legacy fallback |
+| 5 | Wallet/checkpoint/rule reads | Native and EVM reads implemented; source tokens/beneficiary offsets reconstructed | Stored label reads and owner rename/reset implemented; ref removed |
+| 6 | Normalization/codecs | Native/EVM envelope 1, ordered caps, hard-zero/max total, empty-list routing | Confirmed defaults; named-IDL compiler implemented |
+| 7 | Create/add/revoke | Index-bound create, partial recovery, atomic writes; same-agent multiples allowed | Release review; deployed create/identity/batching paths verified |
+| 8 | Atomic update | Native per-action and universal all-token assertions before revoke/grant | Public native/EVM/SVM lifecycle implemented |
+| 9 | Owner/allowance | Owner path unrestricted; explicit separate allowance retained | Release review; production allowance/token debit and delivery verified |
+| 10 | Native agent sends | Sender-preserving atomic batches retained | Existing ambiguity guard retained; contract validation/error mapping verified |
+| 11 | EVM outbound | V5 asset membership, maxGasPerCall, wallet CEA/refunds, signer gas and responses | Release review; Sepolia success/failure and UEA cases verified |
+| 12 | SVM destinations | Public named-IDL lifecycle, send and replay implemented; four new public cases pass live | Maintain documented supported-layout limits; prior failure retry timing remains operational follow-up |
+| 13 | Responses/progress/errors | V5 ABIs and prior canonical replay/wait fixes retained | Delayed-index replay/polling tested with real contracts/receipts; no remaining SDK-owned response gap |
+| 14 | E2E | 48 opt-in scenarios registered; selected coverage includes public owner transfers and mapped simulation errors | Selected native/EVM/SVM acceptance complete |
+| 15 | Web2 | Prior implementation retained and included in full unit run | Consumer migration notes supplied; existing Web2 unit acceptance passes |
+| 16 | compileCard | Outside standalone AGW; absent public export | Future marketplace scope |
+| 17 | Documentation/release | Current status/gaps/handoff updated | Label delivery and release review |
+
+## Remaining dependencies
+
+Open items, owners and the multi-action native rule decision: [pending items](pending-items.md).
+
+Product choices are settled. Rule ref is removed; zero native PC defaults and the current token model are retained; dual native/EVM raw/index inputs are approved; named IDL Solana authoring is implemented. Contract validation is authoritative; AMBIGUOUS_RULE remains the SDK response to multiple candidates. No selection interface change is required.
+
+Freshly fetched contracts already validate explicit rulesIds and reject unauthorized actions. V5 supplies stored labels and setLabel, now enabled by the SDK. [Contract delivery items](questions-zaryab.md). `creditRevert` remains a separate Push-core executor dependency; ordinary returned funds do not lower policy spend.
+
+Latest coverage expansion: five additional registered E2Es, wallet-isolation and UEA intermediate-read assertions, live independent token budgets and SPL recipient credit. The source-mint resolver fix adds four regression units; no caller-facing API changed. [Evidence and gas-default follow-up](research/extended-v5-e2e-2026-10-07/README.md).

@@ -1,0 +1,148 @@
+[
+  {
+    "chain": "eip155:11155111",
+    "block": "11917113",
+    "contracts": [
+      {
+        "name": "uniswap",
+        "address": "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E",
+        "bytes": 24497,
+        "codeHash": "0xe7f98ee73dfe6d5c96cbf8936920f496b1b82f24326d6a415b4144a2252271de"
+      },
+      {
+        "name": "aave",
+        "address": "0x6Ae43d3271ff6888e7Fc43Fd7321a503ff738951",
+        "bytes": 2333,
+        "codeHash": "0xdfd31513a60cc252ec0bbcf0e7bdb7f9ba35fab80c1bb9ce0543436b8fe92e49",
+        "reserves": [
+          "0xFF34B3d4Aee8ddCd6F9AFFFB6Fe49bD371b8a357",
+          "0xf8Fb3713D459D7C1018BD0A49D19b4C44290EBE5",
+          "0x94a9D9AC8a22534E3FaCa9F4e7F2E2cf85d5E4C8",
+          "0x29f2D40B0605204364af54EC677bD022dA425d03",
+          "0xC558DBdd856501FCd9aaF1E62eae57A9F0629a3c",
+          "0xaA8E23Fb1079EA71e0a56F48a2aA51851D8433D0",
+          "0x88541670E55cC00bEEFD87eB59EDd1b7C511AC9a",
+          "0x6d906e526a4e2Ca02097BA9d0caA3c382F52278E",
+          "0xc4bF5CbDaBE595361438F8c6a187bDc330539c60"
+        ]
+      },
+      {
+        "name": "eigen",
+        "address": "0x2E3D6c0744b10eb0A4e6F679F71554a39Ec47a5D",
+        "bytes": 2115,
+        "codeHash": "0x54a3a9ef2209a3bc2f00d3ca72d5b987776a6cb8db96acefb244610d08de0174",
+        "paused": "0"
+      }
+    ],
+    "actualChainId": 11155111
+  },
+  {
+    "chain": "eip155:84532",
+    "block": "48129503",
+    "contracts": [
+      {
+        "name": "uniswap",
+        "address": "0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4",
+        "bytes": 24497,
+        "codeHash": "0x60e9352f5af4eee63b41456f85bf80c63044e98123ad599d41d87f2d068de0be"
+      },
+      {
+        "name": "aave",
+        "address": "0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27",
+        "bytes": 1853,
+        "codeHash": "0xc97b7e16966b0eafd8bc9eebf8937ee34f1bf0f3d3907d978dedc6148811b0f5",
+        "reserves": [
+          "0xba50Cd2A20f6DA35D788639E581bca8d0B5d4D5f",
+          "0x0a215D8ba66387DCA84B284D18c3B4ec3de6E54a",
+          "0x54114591963CF60EF3aA63bEfD6eC263D98145a4",
+          "0x4200000000000000000000000000000000000006",
+          "0xD171b9694f7A2597Ed006D41f7509aaD4B485c4B",
+          "0x810D46F9a9027E28F9B01F75E2bdde839dA61115"
+        ]
+      },
+      {
+        "name": "moonwellUSDBC",
+        "address": "0x876852425331a113d8E432eFFB3aC5BEf38f033a",
+        "bytes": 7261,
+        "codeHash": "0x2efdd202d2faf3c6f2e7fcae24b7b42a8ccc39b34691a8817e8765d33d79d569",
+        "underlying": "0x4616975f7E6045FD9737e95bC527e9e14c727BD2"
+      },
+      {
+        "name": "moonwellWETH",
+        "address": "0x2F39a349A79492a70E152760ce7123A1933eCf28",
+        "bytes": 7261,
+        "codeHash": "0x2efdd202d2faf3c6f2e7fcae24b7b42a8ccc39b34691a8817e8765d33d79d569",
+        "underlying": "0x663A6F02d547dFd639BF689FED298712f2FB69Fb"
+      },
+      {
+        "name": "comptroller",
+        "address": "0xC72ba45f2Ae134F21DAEb2b7B5fd5De0064Ee9bB",
+        "bytes": 1391,
+        "codeHash": "0xe0cfbdabe281c5e3cba2e1670f2f18c96ae98d9c942a5df487200278a79ee40c"
+      }
+    ],
+    "actualChainId": 84532
+  },
+  {
+    "chain": "eip155:421614",
+    "block": "319263861",
+    "contracts": [
+      {
+        "name": "uniswap",
+        "address": "0x101F443B4d1b059569D643917553c771E1b9663E",
+        "bytes": 24497,
+        "codeHash": "0xb7f0bed5258473e73513f604660efed135a05124470796b6b9fec9ca12e22367"
+      },
+      {
+        "name": "aave",
+        "address": "0xBfC91D59fdAA134A4ED45f7B584cAf96D7792Eff",
+        "bytes": 1892,
+        "codeHash": "0xd75b4365d675956c42b20584bb92e557c2a0cd1b692d8c0c2b4fea848bc9a44e",
+        "reserves": [
+          "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+          "0x1dF462e2712496373A347f8ad10802a5E95f053D"
+        ]
+      }
+    ],
+    "actualChainId": 421614
+  },
+  {
+    "chain": "eip155:97",
+    "block": "136845129",
+    "contracts": [
+      {
+        "name": "pancake",
+        "address": "0x9a489505a00cE272eAa5e07Dba6491314CaE3796",
+        "bytes": 24316,
+        "codeHash": "0xb1f063c41d7b1ea99d1d2e4f85bb1ca6e655ec0f028e0d5c41a3338884e169d4"
+      },
+      {
+        "name": "venusUSDT",
+        "address": "0xb7526572FFE56AB9D7489838Bf2E18e3323b441A",
+        "bytes": 4744,
+        "codeHash": "0x064370ceee002fe570b8800e8f1b69231a6448667dc40f65e58047778d408813",
+        "underlying": "0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c"
+      },
+      {
+        "name": "venusUSDC",
+        "address": "0xD5C4C2e2facBEB59D0216D0595d63FcDc6F9A1a7",
+        "bytes": 4744,
+        "codeHash": "0x064370ceee002fe570b8800e8f1b69231a6448667dc40f65e58047778d408813",
+        "underlying": "0x16227D60f7a0e586C66B005219dfc887D13C9531"
+      },
+      {
+        "name": "comptroller",
+        "address": "0x94d1820b2D1c7c7452A163983Dc888CEC546b77D",
+        "bytes": 1508,
+        "codeHash": "0x4b4e586288eed4781d5ccd0ff329746c38ed2c4bfd4472c1986f5bf663ad0ba0"
+      },
+      {
+        "name": "stakeHub",
+        "address": "0x0000000000000000000000000000000000002002",
+        "bytes": 47087,
+        "codeHash": "0xdd27dda318f66bdc14973b8a35e7681ead1c1f75228696c2e75f0483bd6ecc64"
+      }
+    ],
+    "actualChainId": 97
+  }
+]

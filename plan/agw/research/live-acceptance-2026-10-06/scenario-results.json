@@ -1,0 +1,183 @@
+{
+  "chainId": 42101,
+  "sourceCommit": "e8db74815cfbbf5389593805e464fe8d85f7f735",
+  "scenariosPassed": 25,
+  "method": "Distinct registered scenarios passed across sequential selected runs; not a claim of one complete group invocation. Initial failures were corrected and retested; selection skips are not passes.",
+  "results": [
+    {
+      "id": "agw-create-bare",
+      "status": "passed",
+      "evidenceLogs": [
+        "logs/agw-live-management.log"
+      ]
+    },
+    {
+      "id": "agw-create-rules",
+      "status": "passed",
+      "evidenceLogs": [
+        "logs/agw-live-native-smoke.log"
+      ]
+    },
+    {
+      "id": "agw-funding-pc",
+      "status": "passed",
+      "evidenceLogs": [
+        "logs/agw-live-native-remaining.log"
+      ]
+    },
+    {
+      "id": "agw-funding-allowance",
+      "status": "passed",
+      "evidenceLogs": [
+        "logs/agw-live-native-remaining.log"
+      ]
+    },
+    {
+      "id": "agw-native-batch",
+      "status": "passed",
+      "evidenceLogs": [
+        "logs/agw-live-native-remaining.log"
+      ]
+    },
+    {
+      "id": "agw-native-batch-rollback",
+      "status": "passed",
+      "evidenceLogs": [
+        "logs/agw-live-native-remaining.log"
+      ]
+    },
+    {
+      "id": "agw-native-agent",
+      "status": "passed",
+      "evidenceLogs": [
+        "logs/agw-live-native-smoke.log"
+      ]
+    },
+    {
+      "id": "agw-native-owner",
+      "status": "passed",
+      "evidenceLogs": [
+        "logs/agw-live-native-smoke.log"
+      ]
+    },
+    {
+      "id": "agw-native-over-cap",
+      "status": "passed",
+      "evidenceLogs": [
+        "logs/agw-live-native-smoke.log"
+      ]
+    },
+    {
+      "id": "agw-native-stranger",
+      "status": "passed",
+      "evidenceLogs": [
+        "logs/agw-live-native-smoke.log"
+      ]
+    },
+    {
+      "id": "agw-native-revoked",
+      "status": "passed",
+      "evidenceLogs": [
+        "logs/agw-live-final-cases.log"
+      ]
+    },
+    {
+      "id": "agw-native-expired",
+      "status": "passed",
+      "evidenceLogs": [
+        "logs/agw-live-final-cases.log"
+      ]
+    },
+    {
+      "id": "agw-lifecycle-add",
+      "status": "passed",
+      "evidenceLogs": [
+        "logs/agw-live-final-cases.log"
+      ]
+    },
+    {
+      "id": "agw-lifecycle-update",
+      "status": "passed",
+      "evidenceLogs": [
+        "logs/agw-live-final-cases.log"
+      ]
+    },
+    {
+      "id": "agw-lifecycle-checkpoints",
+      "status": "passed",
+      "evidenceLogs": [
+        "logs/agw-live-final-cases.log"
+      ]
+    },
+    {
+      "id": "agw-lifecycle-revoke-all",
+      "status": "passed",
+      "evidenceLogs": [
+        "logs/agw-live-final-cases.log"
+      ]
+    },
+    {
+      "id": "agw-universal-outbound",
+      "status": "passed",
+      "evidenceLogs": [
+        "logs/agw-live-positive-buffered.log"
+      ]
+    },
+    {
+      "id": "agw-v4-multi-asset",
+      "status": "passed",
+      "evidenceLogs": [
+        "logs/agw-live-multiasset.log"
+      ]
+    },
+    {
+      "id": "agw-v4-call-only",
+      "status": "passed",
+      "evidenceLogs": [
+        "logs/agw-live-callonly.log"
+      ]
+    },
+    {
+      "id": "agw-universal-dest-revert",
+      "status": "passed",
+      "evidenceLogs": [
+        "logs/agw-live-positive-buffered.log"
+      ]
+    },
+    {
+      "id": "agw-identity-evm",
+      "status": "passed",
+      "evidenceLogs": [
+        "logs/agw-live-final-cases.log"
+      ]
+    },
+    {
+      "id": "agw-identity-first-use",
+      "status": "passed",
+      "evidenceLogs": [
+        "logs/agw-live-final-cases.log"
+      ]
+    },
+    {
+      "id": "agw-identity-solana",
+      "status": "passed",
+      "evidenceLogs": [
+        "logs/agw-live-final-cases.log"
+      ]
+    },
+    {
+      "id": "agw-responses-hooks",
+      "status": "passed",
+      "evidenceLogs": [
+        "logs/agw-live-native-remaining.log"
+      ]
+    },
+    {
+      "id": "agw-responses-replay",
+      "status": "passed",
+      "evidenceLogs": [
+        "logs/agw-live-native-remaining.log"
+      ]
+    }
+  ]
+}

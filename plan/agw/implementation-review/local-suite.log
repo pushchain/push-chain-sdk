@@ -1,0 +1,10 @@
+PASS core-agw-local packages/core/__agw-local__/agw-local-advanced.spec.ts (5.378 s)
+PASS core-agw-local packages/core/__agw-local__/agw-local.spec.ts
+PASS core-agw-local packages/core/__agw-local__/vectors.spec.ts
+
+Test Suites: 3 passed, 3 total
+Tests:       32 passed, 32 total
+Snapshots:   0 total
+Time:        7.575 s, estimated 17 s
+Ran all test suites.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

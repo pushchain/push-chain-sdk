@@ -1,0 +1,67 @@
+[
+  {
+    "url": "https://raw.githubusercontent.com/Uniswap/sdks/main/sdks/sdk-core/src/addresses.ts",
+    "file": "addresses.ts",
+    "bytes": 34373
+  },
+  {
+    "url": "https://raw.githubusercontent.com/Uniswap/swap-router-contracts/main/contracts/interfaces/IV3SwapRouter.sol",
+    "file": "IV3SwapRouter.sol",
+    "bytes": 3104
+  },
+  {
+    "url": "https://raw.githubusercontent.com/pancakeswap/pancake-developer/master/docs/pages/contracts/v3/addresses.md",
+    "file": "addresses.md",
+    "bytes": 5240
+  },
+  {
+    "url": "https://raw.githubusercontent.com/bgd-labs/aave-address-book/main/src/AaveV3Sepolia.sol",
+    "file": "AaveV3Sepolia.sol",
+    "bytes": 14061
+  },
+  {
+    "url": "https://raw.githubusercontent.com/bgd-labs/aave-address-book/main/src/AaveV3BaseSepolia.sol",
+    "file": "AaveV3BaseSepolia.sol",
+    "bytes": 12139
+  },
+  {
+    "url": "https://raw.githubusercontent.com/bgd-labs/aave-address-book/main/src/AaveV3ArbitrumSepolia.sol",
+    "file": "AaveV3ArbitrumSepolia.sol",
+    "bytes": 6099
+  },
+  {
+    "url": "https://raw.githubusercontent.com/aave-dao/aave-v3-origin/main/src/contracts/interfaces/IPool.sol",
+    "file": "IPool.sol",
+    "bytes": 36349
+  },
+  {
+    "url": "https://raw.githubusercontent.com/moonwell-fi/moonwell-contracts-v2/main/chains/84532.json",
+    "file": "84532.json",
+    "bytes": 5954
+  },
+  {
+    "url": "https://raw.githubusercontent.com/moonwell-fi/moonwell-contracts-v2/main/src/MToken.sol",
+    "file": "MToken.sol",
+    "bytes": 79960
+  },
+  {
+    "url": "https://raw.githubusercontent.com/VenusProtocol/venus-protocol/develop/deployments/bsctestnet_addresses.json",
+    "file": "bsctestnet_addresses.json",
+    "bytes": 25480
+  },
+  {
+    "url": "https://raw.githubusercontent.com/VenusProtocol/venus-protocol/develop/contracts/Tokens/VTokens/VBep20.sol",
+    "file": "VBep20.sol",
+    "bytes": 12891
+  },
+  {
+    "url": "https://raw.githubusercontent.com/Layr-Labs/eigenlayer-contracts/main/README.md",
+    "file": "README.md",
+    "bytes": 61045
+  },
+  {
+    "url": "https://raw.githubusercontent.com/bnb-chain/bsc-genesis-contract/master/contracts/StakeHub.sol",
+    "file": "StakeHub.sol",
+    "bytes": 53484
+  }
+]

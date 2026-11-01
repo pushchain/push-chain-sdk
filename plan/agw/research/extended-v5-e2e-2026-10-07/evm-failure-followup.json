@@ -1,0 +1,14 @@
+{
+  "VAULT": "0xD019Eb12D0d6eF8D299661f22B4B7d262eD4b965",
+  "CEA_PROXY_IMPLEMENTATION": "0x425291f35BA1A94Bd2dcC2dC097c2B55700A1fB6",
+  "CEA_IMPLEMENTATION": "0x1972646e4208c5Fe20914c3E09Ba339df43D9CB0",
+  "deploy": {
+    "result": "0xFA06Ea99a62c760d11d40B787eAd7225b69d3aCf"
+  },
+  "call500000": {
+    "error": "Execution reverted for an unknown reason.",
+    "details": "execution reverted"
+  },
+  "call5000000": {},
+  "estimatedFreshCeaFinalizationGas": "1304470"
+}

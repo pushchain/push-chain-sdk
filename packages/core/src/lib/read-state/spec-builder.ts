@@ -13,7 +13,7 @@ import {
 import { UNIVERSAL_CALLBACK_EVM } from '../constants/abi/universalCallback.evm';
 import { UEA_FACTORY_ABI } from '../constants/abi/uea-factory';
 import { UEA_FACTORY } from '../constants/chain';
-import { DEFAULT_EXPIRY_BLOCKS, MIN_CONFIRMATIONS_FLOOR, READ_NAMESPACE, READ_PREFLIGHT_STALE_MS } from '../constants/read-state';
+import { DEFAULT_EXPIRY_BLOCKS, MIN_CONFIRMATIONS_FLOOR, READ_NAMESPACE, READ_PREFLIGHT_STALE_MS, WEB2_READ_CHAIN } from '../constants/read-state';
 import { sizeCallbackBudget } from './budget';
 import { computeReadQueryKey } from './registry';
 import { resolveDestination } from './destination';
@@ -137,7 +137,7 @@ export function buildReadSpecFromPreflight(
   return {
     callback: params.callback,
     queryKey: computeReadQueryKey(params.destination, params.query),
-    chain: dest.caip2 as ReadChain,
+    chain: (isWeb2 ? WEB2_READ_CHAIN : dest.caip2) as ReadChain,
     spec,
     specTuple: toTuple(spec),
     encodedSpec: encodeSpec(spec),

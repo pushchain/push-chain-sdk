@@ -1,0 +1,14 @@
+PASS core-e2e __e2e__/agw/presets-expanded-live.spec.ts (493.47 s)
+  agw presets expanded
+    ✓ 2. DEX swap on eip155:84532 (188470 ms)
+    ✓ 3. DEX swap and Aave round trip on eip155:421614 (302405 ms)
+    ○ skipped 1. EigenLayer Sepolia deposit credits shares to the wallet
+    ○ skipped 4. DEX swap and Venus round trip on eip155:97
+    ○ skipped 5. Base Aave and both Moonwell markets supply and redeem wallet positions
+
+Test Suites: 1 passed, 1 total
+Tests:       3 skipped, 2 passed, 5 total
+Snapshots:   0 total
+Time:        493.525 s
+Ran all test suites within paths "__e2e__/agw/presets-expanded-live.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

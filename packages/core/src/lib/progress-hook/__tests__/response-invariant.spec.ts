@@ -170,6 +170,15 @@ const STUB_ARGS: Record<PROGRESS_HOOK, unknown[]> = {
   [PROGRESS_HOOK.UEA_MIG_9901]: ['v2.0.0'],
   [PROGRESS_HOOK.UEA_MIG_9902]: [],
   [PROGRESS_HOOK.UEA_MIG_9903]: [],
+  // Agentic wallet
+  [PROGRESS_HOOK.AGENTIC_TX_101]: ['0xwallet', 0, false],
+  [PROGRESS_HOOK.AGENTIC_TX_102]: ['0xwallet', 'atomic'],
+  [PROGRESS_HOOK.AGENTIC_TX_104]: [['0xrule']],
+  [PROGRESS_HOOK.AGENTIC_TX_105]: [{ rulesIds: ['0xrule'] }],
+  [PROGRESS_HOOK.AGENTIC_TX_106]: ['label'],
+  [PROGRESS_HOOK.AGENTIC_TX_107]: ['0xrule', 'eip155:42101', 'agent'],
+  [PROGRESS_HOOK.AGENTIC_TX_199_01]: ['create', '0xhash'],
+  [PROGRESS_HOOK.AGENTIC_TX_199_02]: ['create', 'NO_RULES_FOR_CHAIN', 'no rule', { name: 'X' }],
   // Read state (READ-TX 101–199, 001/999) — positional args as in progress-hook.ts
   [PROGRESS_HOOK.READ_TX_101]: ['eip155:11155111', 'eip155', 0],
   [PROGRESS_HOOK.READ_TX_102_01]: ['eip155:11155111'],

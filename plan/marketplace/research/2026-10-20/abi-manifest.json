@@ -1,0 +1,47 @@
+{
+  "source_commit": "443b4e2dd9ca5dd9ffc8efebdfcecd619dd66c47",
+  "files": [
+    {
+      "file": "contracts/abi/AgenticCommerce.json",
+      "sha256": "6d6e09266fab0bc4c2e6a54933e53446c9dd207ea22a90071852428e9146992e",
+      "functions": 36,
+      "events": 23,
+      "errors": 22
+    },
+    {
+      "file": "contracts/abi/JobSpecBuilder.json",
+      "sha256": "0069a5e52d7000e17b5730cfdabe49bd2989c38adfed6b95f1a74d5f632a975a",
+      "functions": 1,
+      "events": 0,
+      "errors": 4
+    },
+    {
+      "file": "contracts/abi/RulesBindingHook.json",
+      "sha256": "cab42ebf25c34b63b4e51270b91a95740d7de7826c89cae5ff08a36fb3ff8b77",
+      "functions": 10,
+      "events": 2,
+      "errors": 8
+    },
+    {
+      "file": "contracts/abi/UniversalMarketplace.json",
+      "sha256": "06b639855612125c71f99b51aa69fbaa1b6bbb5d989505cfb4417fd6bfc20859",
+      "functions": 48,
+      "events": 17,
+      "errors": 30
+    },
+    {
+      "file": "contracts/abi/UniversalMarketplaceErrors.json",
+      "sha256": "48e821171747d9f22f1a3ef45525fb8bd02540a79976428700b088afcfdc090f",
+      "functions": 0,
+      "events": 0,
+      "errors": 40
+    },
+    {
+      "file": "contracts/abi/UniversalMarketplaceRules.json",
+      "sha256": "d72c043567ef1d3165493271dc93d3b8b9263000016946391a27991abe78996e",
+      "functions": 2,
+      "events": 0,
+      "errors": 14
+    }
+  ]
+}

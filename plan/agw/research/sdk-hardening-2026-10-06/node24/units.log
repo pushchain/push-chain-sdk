@@ -1,0 +1,23 @@
+PASS core packages/core/src/lib/orchestrator/__tests__/outbound-confirmation-gate.spec.ts
+PASS core packages/core/src/lib/orchestrator/__tests__/outbound-svm-confirmation.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/svm-internals.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/outbound-response.spec.ts
+PASS core packages/core/src/lib/orchestrator/svm-idl/resolve.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/management.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/send.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/svm-backend.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/response-surface.spec.ts
+PASS core packages/core/src/lib/orchestrator/svm-idl/build-payload.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/native-batch-response.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/rules-policy.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/codec.spec.ts
+PASS core packages/core/src/lib/orchestrator/svm-idl/registry.spec.ts
+PASS core packages/core/src/lib/agentic/__tests__/reads-context.spec.ts
+PASS core packages/core/src/lib/orchestrator/svm-idl/ix-encoder.spec.ts
+PASS core packages/core/src/lib/orchestrator/svm-idl/normalize-address.spec.ts
+
+Test Suites: 17 passed, 17 total
+Tests:       254 passed, 254 total
+Snapshots:   0 total
+Time:        4.22 s
+Ran all test suites matching /agentic|outbound-(confirmation-gate|svm-confirmation)|svm-idl/i.

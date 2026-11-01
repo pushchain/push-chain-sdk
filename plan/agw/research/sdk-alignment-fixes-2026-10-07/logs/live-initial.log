@@ -1,0 +1,41 @@
+FAIL core-e2e __e2e__/agw/svm-public.spec.ts (365.387 s)
+  agw public svm
+    ✓ 1. named IDL grant reads exact constraints and replaces atomically (94872 ms)
+    ✓ 2. public send confirms actual CEA transfer and preserves replay identity (85612 ms)
+    ✕ 3. contract simulation maps account and data refusals without state changes (8726 ms)
+    ✓ 4. public revoke removes the Solana rule and subsequent sends are refused (9615 ms)
+    ✓ 5. owner funds-only transfer reaches the recipient and replays with the same amount (87056 ms)
+    ✓ 6. agents still require an instruction and owner allowance failures do not sign (14818 ms)
+
+  ● agw public svm › 3. contract simulation maps account and data refusals without state changes
+
+    expect(received).rejects.toMatchObject(expected)
+
+    - Expected  - 4
+    + Received  + 1
+
+      Object {
+    -   "decodedError": Object {
+    -     "name": "PolicyCheckReverted(SvmAccountPinMismatch)",
+    -   },
+    -   "name": "AgenticRevertError",
+    +   "name": "AgenticError",
+      }
+
+      266 |         to: { chain: SVM_WIRE_CHAIN, address: SVM_WIRE_PROGRAM },
+      267 |         data: data(BigInt(1), wrong),
+    > 268 |       })
+          |         ^
+      269 |     ).rejects.toMatchObject({
+      270 |       name: 'AgenticRevertError',
+      271 |       decodedError: { name: 'PolicyCheckReverted(SvmAccountPinMismatch)' },
+
+      at Object.toMatchObject (../../node_modules/expect/build/index.js:218:22)
+      at Object.<anonymous> (__e2e__/agw/svm-public.spec.ts:268:15)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 5 passed, 6 total
+Snapshots:   0 total
+Time:        365.408 s
+Ran all test suites within paths "__e2e__/agw/svm-public.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

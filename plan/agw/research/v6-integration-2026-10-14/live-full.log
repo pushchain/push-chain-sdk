@@ -1,0 +1,262 @@
+Running 68 scenarios (group: agw) across 15 spec files.
+
+PASS core-e2e __e2e__/agw/native-multi-action.spec.ts (508.98 s)
+FAIL core-e2e __e2e__/agw/v5-multiasset.spec.ts (260.148 s)
+  ● Console
+
+    console.log
+      [ExternalTxVerifier] Verifying EVM tx on eip155:11155111: 0x688f7b1f1e0fd9b9f4980e7373d4bbf33115639dfa3a9bc55ab62c4cb916d879
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [ExternalTxVerifier] EVM tx 0x688f7b1f1e0fd9b9f4980e7373d4bbf33115639dfa3a9bc55ab62c4cb916d879 on eip155:11155111: status=0x1
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [ExternalTxVerifier] EVM tx CONFIRMED SUCCESS on eip155:11155111
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [ExternalTxVerifier] Verifying EVM tx on eip155:11155111: 0x393204e3277d38d6d32b483e28ace107e77ff250a5f01069b8567b9ae9bff9a6
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [ExternalTxVerifier] EVM tx 0x393204e3277d38d6d32b483e28ace107e77ff250a5f01069b8567b9ae9bff9a6 on eip155:11155111: status=0x1
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [ExternalTxVerifier] EVM tx CONFIRMED SUCCESS on eip155:11155111
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+  ● agw v5 multi-asset › 3. both assets execute independently after one token budget is exhausted
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1n
+    Received: 0n
+
+      322 |           args: [made.wallet, f.manifest.addresses.gateway],
+      323 |         })
+    > 324 |       ).toBe(BigInt(1));
+          |         ^
+      325 |       const expected = i === 0 ? [amounts[0], BigInt(0)] : amounts;
+      326 |       expect(await spent()).toEqual(expected);
+      327 |       const nonce = await f.push.getTransactionCount({
+
+      at Object.<anonymous> (__e2e__/agw/v5-multiasset.spec.ts:324:9)
+
+PASS core-e2e __e2e__/agw/native-policy-extended.spec.ts (342.326 s)
+PASS core-e2e __e2e__/agw/universal-evm.spec.ts (243.886 s)
+  ● Console
+
+    console.log
+      [ExternalTxVerifier] Verifying EVM tx on eip155:11155111: 0x95d0ceef78c3ed71940a51aa89a7d21ab5e26e3beef6a1af4f17bf9da90c4a82
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [ExternalTxVerifier] EVM tx 0x95d0ceef78c3ed71940a51aa89a7d21ab5e26e3beef6a1af4f17bf9da90c4a82 on eip155:11155111: status=0x1
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [ExternalTxVerifier] EVM tx CONFIRMED SUCCESS on eip155:11155111
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+PASS core-e2e __e2e__/agw/management-extended.spec.ts (189.914 s)
+PASS core-e2e __e2e__/agw/labels.spec.ts (320.545 s)
+PASS core-e2e __e2e__/agw/svm-public.spec.ts (303.803 s)
+PASS core-e2e __e2e__/agw/identity-gas.spec.ts (152.794 s)
+  ● Console
+
+    console.log
+      [4.00s] AGENTIC-TX-107: Rule Resolved
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [4.01s] SEND-TX-101: Origin Chain Detected
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [4.02s] SEND-TX-102-01: Estimating Gas
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [4.33s] SEND-TX-103-01: Resolving Universal Execution Account
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [4.63s] SEND-TX-103-02: Universal Execution Account Resolved
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [4.63s] SEND-TX-103-03-04: Prepaid Deposit Estimated
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [6.57s] SEND-TX-104-01: Awaiting Transaction
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [7.79s] SEND-TX-105-01: Gas Funding In Progress
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [17.35s] SEND-TX-105-02: Gas Funding Confirmed
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [17.35s] SEND-TX-107: Broadcasting to Push Chain
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [48.56s] SEND-TX-199-01: Push Chain Tx Success
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [48.56s] AGENTIC-TX-199-01: Agentic Operation Done
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [50.63s] AGENTIC-TX-107: Rule Resolved
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [1.21s] AGENTIC-TX-107: Rule Resolved
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [50.63s] SEND-TX-101: Origin Chain Detected
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [1.21s] SEND-TX-101: Origin Chain Detected
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [50.63s] SEND-TX-102-01: Estimating Gas
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [1.21s] SEND-TX-102-01: Estimating Gas
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [50.92s] SEND-TX-103-01: Resolving Universal Execution Account
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [1.50s] SEND-TX-103-01: Resolving Universal Execution Account
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [51.51s] SEND-TX-103-02: Universal Execution Account Resolved
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [2.09s] SEND-TX-103-02: Universal Execution Account Resolved
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [51.51s] SEND-TX-103-03-04: Prepaid Deposit Estimated
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [2.09s] SEND-TX-103-03-04: Prepaid Deposit Estimated
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [52.14s] SEND-TX-104-02: Awaiting Signature
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [2.72s] SEND-TX-104-02: Awaiting Signature
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [52.15s] SEND-TX-104-03: Verification Success
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [2.73s] SEND-TX-104-03: Verification Success
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [52.15s] SEND-TX-107: Broadcasting to Push Chain
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [2.73s] SEND-TX-107: Broadcasting to Push Chain
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [59.21s] SEND-TX-199-01: Push Chain Tx Success
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [9.79s] SEND-TX-199-01: Push Chain Tx Success
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [59.21s] AGENTIC-TX-199-01: Agentic Operation Done
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [9.79s] AGENTIC-TX-199-01: Agentic Operation Done
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+PASS core-e2e __e2e__/agw/native-exec.spec.ts (149.925 s)
+PASS core-e2e __e2e__/agw/lifecycle.spec.ts (91.985 s)
+PASS core-e2e __e2e__/agw/svm-spl-transfer.spec.ts (127.507 s)
+PASS core-e2e __e2e__/agw/native-batch.spec.ts (75.302 s)
+PASS core-e2e __e2e__/agw/responses-hooks.spec.ts (65.453 s)
+PASS core-e2e __e2e__/agw/funding-allowance.spec.ts (44.439 s)
+PASS core-e2e __e2e__/agw/create.spec.ts (28.674 s)
+
+Test Suites: 1 failed, 14 passed, 15 total
+Tests:       1 failed, 1 skipped, 67 passed, 69 total
+Snapshots:   0 total
+Time:        2905.962 s
+Ran all test suites within paths "__e2e__/agw/create.spec.ts", "__e2e__/agw/funding-allowance.spec.ts", "__e2e__/agw/native-batch.spec.ts", "__e2e__/agw/native-exec.spec.ts", "__e2e__/agw/lifecycle.spec.ts", "__e2e__/agw/universal-evm.spec.ts", "__e2e__/agw/v5-multiasset.spec.ts", "__e2e__/agw/identity-gas.spec.ts", "__e2e__/agw/responses-hooks.spec.ts", "__e2e__/agw/svm-public.spec.ts", "__e2e__/agw/labels.spec.ts", "__e2e__/agw/svm-spl-transfer.spec.ts", "__e2e__/agw/native-multi-action.spec.ts", "__e2e__/agw/management-extended.spec.ts", "__e2e__/agw/native-policy-extended.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

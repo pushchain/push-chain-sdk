@@ -1,0 +1,89 @@
+{
+  "fetched_at": "2026-10-05T18:32:09.520781+00:00",
+  "repo": "https://github.com/pushchain/push-agentic-wallets",
+  "branch": "deploy-agw",
+  "documentation_head": "10a24f101e2e6e0a9b76517b29f5cdb1aa967796",
+  "deployment_reported_source": "e8db74815cfbbf5389593805e464fe8d85f7f735",
+  "files": [
+    {
+      "path": "CLAUDE.md",
+      "sha256": "56d65e9f11394d0ee94080e8a01117d92e586044b2d0d8da9e272d5fcb0fc650",
+      "bytes": 25637
+    },
+    {
+      "path": "docs/1_AGW.md",
+      "sha256": "6b111652c2ce78b3e227b0838fc3ed2f32b6f0f7eb10146f2352730e327abe45",
+      "bytes": 103201
+    },
+    {
+      "path": "docs/2_UniversalRulesPolicy.md",
+      "sha256": "3a5d943dda72396b46d38ef72ea6b7c456368bfd8fee11334675457d4dc42b1b",
+      "bytes": 58915
+    },
+    {
+      "path": "docs/5_SDK_Owner_Integration.md",
+      "sha256": "a77c3cdc4dbbb791ed1c9df6bdaa9e01b85f221fb7173bfa7e73f89f9eeb4175",
+      "bytes": 28355
+    },
+    {
+      "path": "docs/addresses/donut.md",
+      "sha256": "aaab188fbc2bf52afc4aaf2f99ec02c99a34dd5ba006e1f55f7c922f85c6ad3c",
+      "bytes": 8178
+    },
+    {
+      "path": "foundry.toml",
+      "sha256": "172ef5d44d9cc6740f18d6ef25d6f3e62cfdc129d1bd45ddcecec24dbd698765",
+      "bytes": 3892
+    },
+    {
+      "path": "src/AGW.sol",
+      "sha256": "9d3fa4c96e7ed0fa74e155aa11c96ffaa0d80fe9a45683ba433a8ba49d30e821",
+      "bytes": 60814
+    },
+    {
+      "path": "src/AGWFactory.sol",
+      "sha256": "49f950e247923c71bd0abcfedc02d9b7f21d340b76454173293aa33763793e50",
+      "bytes": 17740
+    },
+    {
+      "path": "src/interfaces/IAGW.sol",
+      "sha256": "72ba3f081c5ad454fdee29aa313216f47d3a1759afccde0ad2360e3af03cf1bb",
+      "bytes": 11608
+    },
+    {
+      "path": "src/interfaces/IUniversalRulesPolicy.sol",
+      "sha256": "6443532c02ff15008faaf9cb8ba59d372d30baee2a3f3c1e82ced3124c95d310",
+      "bytes": 6978
+    },
+    {
+      "path": "src/libraries/AgentConfigLib.sol",
+      "sha256": "e2bb3478da66a3b510da7a27eb48e35ca8c4bb74b5d0cb844d3b8e99a15b2e20",
+      "bytes": 1866
+    },
+    {
+      "path": "src/libraries/Errors.sol",
+      "sha256": "e664a8a4496b1ebe2ad4def28ff914e8ea034bd366b3d26cf6a9e5e76ba46d66",
+      "bytes": 24953
+    },
+    {
+      "path": "src/libraries/Types.sol",
+      "sha256": "37ff942bd22e03e3868282381a030423773f16988f4463433e8068cf04ccb552",
+      "bytes": 27486
+    },
+    {
+      "path": "src/policies/UniversalRulesPolicy.sol",
+      "sha256": "0cb721d5ea77bbd8402b4909df7a21672c44abd3ca814c1cb139330c3d557e52",
+      "bytes": 97043
+    },
+    {
+      "path": "src/validators/AgentValidator.sol",
+      "sha256": "d0ada31e5cb516823421115f5568f9457d4edb6def64526784864761751c7964",
+      "bytes": 4941
+    },
+    {
+      "path": "test/unit/28_multiAsset.t.sol",
+      "sha256": "be653d4dc115b9d85d34223957e8b8fe3bdac0d5ea63da1cd51c574fcaacfea5",
+      "bytes": 27595
+    }
+  ]
+}

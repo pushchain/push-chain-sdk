@@ -1,0 +1,30 @@
+{
+  "observedAt": "2026-10-20T11:20:11.358467+00:00",
+  "unit": {
+    "passed": 2205,
+    "skipped": 12,
+    "failed": 0
+  },
+  "fork": {
+    "passed": 6,
+    "failed": 0
+  },
+  "readonlyLive": {
+    "passed": 2,
+    "failed": 0
+  },
+  "fundedLive": {
+    "runnerExitCode": 0,
+    "passed": 1,
+    "failed": 0,
+    "originalReporterSuccessField": false,
+    "note": "Known reporter callback sampling discrepancy; passing test status/counts and actual runner exit 0 retained."
+  },
+  "build": "passed",
+  "specTypes": "passed",
+  "forkTypes": "passed",
+  "newProductionLint": "passed with zero warnings",
+  "guideBlocks": 4,
+  "packageAndDeclarationChecks": "passed",
+  "sourceBuiltApiMatches": true
+}

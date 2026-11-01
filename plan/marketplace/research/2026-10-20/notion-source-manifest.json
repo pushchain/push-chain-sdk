@@ -1,0 +1,57 @@
+{
+  "exported_at": "2026-10-20T09:44:55.670557+00:00",
+  "method": "signed-in Chrome UI, Markdown & CSV, stack index with subpages",
+  "archive": "notion-export.zip",
+  "archive_sha256": "14778ebb329966c82950c6ffad8e0a6324ea041221b58e426b3a9de4b6a66fb4",
+  "comments_included": false,
+  "pages": [
+    {
+      "page_id": "3e9188aea7f48118b90ac9b267496295",
+      "url": "https://app.notion.com/p/3e9188aea7f48118b90ac9b267496295",
+      "local_file": "notion/2-universal-marketplace.md",
+      "export_entry": "Private & Shared/AGW + UniversalMarketplace + 8183 + UniversalEvalu/2 Universal Marketplace 3e9188aea7f48118b90ac9b267496295.md",
+      "sha256": "a4313308d8a7ae836dc32c6202b37892a34ea683b9600d18481e6ec858808c64",
+      "bytes": 23371
+    },
+    {
+      "page_id": "3ea188aea7f481e2961ed97129f3a4e6",
+      "url": "https://app.notion.com/p/3ea188aea7f481e2961ed97129f3a4e6",
+      "local_file": "notion/6-sdk-universal-marketplace.md",
+      "export_entry": "Private & Shared/AGW + UniversalMarketplace + 8183 + UniversalEvalu/6 SDK Universal Marketplace 3ea188aea7f481e2961ed97129f3a4e6.md",
+      "sha256": "2fa9093f077601b16f5a0410def51df5f0dd2c7324d96402fa3b9dddd2d4ef91",
+      "bytes": 48935
+    },
+    {
+      "page_id": "3e9188aea7f48188a838c3a740d8c858",
+      "url": "https://app.notion.com/p/3e9188aea7f48188a838c3a740d8c858",
+      "local_file": "notion/3-8183-job-kernel-and-hook.md",
+      "export_entry": "Private & Shared/AGW + UniversalMarketplace + 8183 + UniversalEvalu/3 8183 (job kernel and hook) 3e9188aea7f48188a838c3a740d8c858.md",
+      "sha256": "0e9100c1eba4ff3e163f15ef1725a00f044fec19be95a744aed064be0037b030",
+      "bytes": 11616
+    },
+    {
+      "page_id": "3ea188aea7f481e0a137f5a896723376",
+      "url": "https://app.notion.com/p/3ea188aea7f481e0a137f5a896723376",
+      "local_file": "notion/7-sdk-8183-job.md",
+      "export_entry": "Private & Shared/AGW + UniversalMarketplace + 8183 + UniversalEvalu/7 SDK 8183 Job 3ea188aea7f481e0a137f5a896723376.md",
+      "sha256": "bfb79eadeaba235da9b9bde28ef598ca5163a2caf489e4cee313c2166a433080",
+      "bytes": 16646
+    },
+    {
+      "page_id": "3e9188aea7f4817bb03ef4c78c883f8b",
+      "url": "https://app.notion.com/p/3e9188aea7f4817bb03ef4c78c883f8b",
+      "local_file": "notion/4-universal-evaluation.md",
+      "export_entry": "Private & Shared/AGW + UniversalMarketplace + 8183 + UniversalEvalu/4 Universal Evaluation 3e9188aea7f4817bb03ef4c78c883f8b.md",
+      "sha256": "2271987bba0cbfd9e5a3790168437c4820cc81b815043f37060e5294658fb3f4",
+      "bytes": 19325
+    },
+    {
+      "page_id": "3ea188aea7f48197a3b3cfdedfa74fee",
+      "url": "https://app.notion.com/p/3ea188aea7f48197a3b3cfdedfa74fee",
+      "local_file": "notion/8-sdk-evaluation-placeholder.md",
+      "export_entry": "Private & Shared/AGW + UniversalMarketplace + 8183 + UniversalEvalu/8 SDK Evaluation (retired, placeholder) 3ea188aea7f48197a3b3cfdedfa74fee.md",
+      "sha256": "5a1acc551814a9b05868fc9b3d3dacfb8cbdf26414e9bac240ffbf970e2d1b0c",
+      "bytes": 2301
+    }
+  ]
+}

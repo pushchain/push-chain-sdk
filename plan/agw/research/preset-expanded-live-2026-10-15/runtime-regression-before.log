@@ -1,0 +1,62 @@
+FAIL core packages/core/src/lib/agentic/__tests__/runtime-token-chain.spec.ts
+  ✓ resolves explicit native ETH on eip155:11155111 to the same burn token as omitted native funds (1 ms)
+  ✕ resolves explicit native ETH on eip155:84532 to the same burn token as omitted native funds (2 ms)
+  ✕ resolves explicit native ETH on eip155:421614 to the same burn token as omitted native funds
+  ✕ does not infer a token from a different destination chain
+  ✓ preserves an explicit Push PRC20 reference for subsequent source-chain validation
+
+  ● resolves explicit native ETH on eip155:84532 to the same burn token as omitted native funds
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "0xc7007af2B24D4eb963fc9633B0c66e1d2D90Fc21"
+    Received: "0x2971824Db68229D087931155C2b8bB820B275809"
+
+      16 | ] as const)('resolves explicit native ETH on %s to the same burn token as omitted native funds', (chain, token, expected) => {
+      17 |   const rt = runtime();
+    > 18 |   expect(rt.resolvePrc20(token, chain)).toBe(getAddress(expected));
+         |                                         ^
+      19 |   expect(rt.resolvePrc20({ ...token }, chain)).toBe(rt.resolvePrc20(undefined, chain));
+      20 |   expect(rt.resolvePrc20(token.address, chain)).toBe(getAddress(expected));
+      21 | });
+
+      at src/lib/agentic/__tests__/runtime-token-chain.spec.ts:18:41
+
+  ● resolves explicit native ETH on eip155:421614 to the same burn token as omitted native funds
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "0xc0a821a1AfEd1322c5e15f1F4586C0B8cE65400e"
+    Received: "0x2971824Db68229D087931155C2b8bB820B275809"
+
+      16 | ] as const)('resolves explicit native ETH on %s to the same burn token as omitted native funds', (chain, token, expected) => {
+      17 |   const rt = runtime();
+    > 18 |   expect(rt.resolvePrc20(token, chain)).toBe(getAddress(expected));
+         |                                         ^
+      19 |   expect(rt.resolvePrc20({ ...token }, chain)).toBe(rt.resolvePrc20(undefined, chain));
+      20 |   expect(rt.resolvePrc20(token.address, chain)).toBe(getAddress(expected));
+      21 | });
+
+      at src/lib/agentic/__tests__/runtime-token-chain.spec.ts:18:41
+
+  ● does not infer a token from a different destination chain
+
+    expect(received).toThrow()
+
+    Received function did not throw
+
+      21 | });
+      22 | it('does not infer a token from a different destination chain', () => {
+    > 23 |   expect(() => runtime().resolvePrc20(MOVEABLE_TOKEN_CONSTANTS.BASE_SEPOLIA.USDC, CHAIN.ARBITRUM_SEPOLIA)).toThrow();
+         |                                                                                                            ^
+      24 | });
+      25 | it('preserves an explicit Push PRC20 reference for subsequent source-chain validation', () => {
+      26 |   const token: PushChainMoveableToken = { symbol: 'pETH_ARB', decimals: 18, mechanism: 'approve', address: addresses.pETH_ARB, prc20Address: addresses.pETH_ARB, sourceChain: CHAIN.ARBITRUM_SEPOLIA };
+
+      at Object.<anonymous> (src/lib/agentic/__tests__/runtime-token-chain.spec.ts:23:108)
+
+Test Suites: 1 failed, 1 total
+Tests:       3 failed, 2 passed, 5 total
+Snapshots:   0 total
+Time:        2.386 s
+Ran all test suites within paths "packages/core/src/lib/agentic/__tests__/runtime-token-chain.spec.ts".

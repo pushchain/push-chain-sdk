@@ -1,0 +1,10 @@
+{
+  "checkedAt": "2026-10-05T20:59:38.387Z",
+  "mode": "read-only",
+  "factory": "0xaF88D0FD947afAe7bBb8F34e8417DCfc165e1aaF",
+  "derived": {
+    "address": "0x6842327d839C4f429c20c0103Dd6E366f3A5758f",
+    "index": 0,
+    "deployed": false
+  }
+}

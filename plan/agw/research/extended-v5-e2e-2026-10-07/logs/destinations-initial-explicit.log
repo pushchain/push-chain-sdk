@@ -1,0 +1,144 @@
+FAIL core-e2e packages/core/__e2e__/agw/universal-evm.spec.ts (759.246 s)
+  ● agw universal evm › 1. positive-amount outbound: allowance pull/burn, the wallet CEA executes on Sepolia, receipts and replay identity
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "success"
+    Received: "timeout"
+
+      159 |     expect(receipt.status).toBe(1);
+      160 |     expect(receipt.from).toBe(wallet);
+    > 161 |     expect(receipt.externalStatus).toBe('success');
+          |                                    ^
+      162 |     expect(receipt.externalTxHash).toBeTruthy();
+      163 |     await verifyExternalTransaction(receipt.externalTxHash as string, SEPOLIA);
+      164 |     const destinationReceipt = await sep.getTransactionReceipt({
+
+      at Object.<anonymous> (__e2e__/agw/universal-evm.spec.ts:161:36)
+
+PASS core-e2e packages/core/__e2e__/agw/v5-multiasset.spec.ts (374.118 s)
+  ● Console
+
+    console.log
+      [ExternalTxVerifier] Verifying EVM tx on eip155:11155111: 0x418ca768b33baf4ba472ac8b9349dad42dd02d99ff3c045a0fe76d34722902cd
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [ExternalTxVerifier] Attempt 1 failed, retrying in 10000ms...
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [ExternalTxVerifier] EVM tx 0x418ca768b33baf4ba472ac8b9349dad42dd02d99ff3c045a0fe76d34722902cd on eip155:11155111: status=0x1
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [ExternalTxVerifier] EVM tx CONFIRMED SUCCESS on eip155:11155111
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [ExternalTxVerifier] Verifying EVM tx on eip155:11155111: 0xa984c11996b92faacad565f4762dcf5dfdccf114060d9d2ba75b570e093fcbed
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [ExternalTxVerifier] EVM tx 0xa984c11996b92faacad565f4762dcf5dfdccf114060d9d2ba75b570e093fcbed on eip155:11155111: status=0x1
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [ExternalTxVerifier] EVM tx CONFIRMED SUCCESS on eip155:11155111
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [ExternalTxVerifier] Verifying EVM tx on eip155:11155111: 0x5e2c328d16d3c6a9c728683ad1988698d69f9c5310ede64b56aa43d18add327d
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [ExternalTxVerifier] EVM tx 0x5e2c328d16d3c6a9c728683ad1988698d69f9c5310ede64b56aa43d18add327d on eip155:11155111: status=0x1
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+    console.log
+      [ExternalTxVerifier] EVM tx CONFIRMED SUCCESS on eip155:11155111
+
+      at console.log (__e2e__/shared/logger.ts:42:5)
+
+FAIL core-e2e packages/core/__e2e__/agw/svm-spl-transfer.spec.ts (47.75 s)
+  ● agw svm spl transfer › 1. owner funds-only SPL delivery credits the recipient ATA and preserves burn, allowance and replay
+
+    AgenticError: SOURCE_TOKEN_ADDRESS read on 0x4f1A3D22d170a2F4Bddb37845a962322e24f4e34 failed at block 23994097
+
+      51 |       })) as T;
+      52 |     } catch (cause) {
+    > 53 |       throw new AgenticError(
+         |             ^
+      54 |         this.failCode,
+      55 |         `${functionName} read on ${address} failed at block ${this.blockNumber}`,
+      56 |         {
+
+      at Snapshot.read (src/lib/agentic/reads/snapshot.ts:53:13)
+      at async quoteSvmRequest (src/lib/agentic/execution/svm-quote.ts:39:15)
+      at async sendPublicSvm (src/lib/agentic/execution/svm-public.ts:146:19)
+      at async Object.<anonymous> (__e2e__/agw/svm-spl-transfer.spec.ts:121:16)
+
+    Cause:
+    ContractFunctionExecutionError: Position `32` is out of bounds (`0 < position < 32`).
+
+    Contract Call:
+      address:   0x4f1A3D22d170a2F4Bddb37845a962322e24f4e34
+      function:  SOURCE_TOKEN_ADDRESS()
+
+    Docs: https://viem.sh/docs/contract/readContract
+    Version: viem@2.27.2
+
+      43 |   ): Promise<T> {
+      44 |     try {
+    > 45 |       return (await this.reader.readContract({
+         |               ^
+      46 |         address,
+      47 |         abi,
+      48 |         functionName,
+
+      at getContractError (../../node_modules/viem/utils/errors/getContractError.ts:78:10)
+      at readContract (../../node_modules/viem/actions/public/readContract.ts:136:27)
+      at async Snapshot.read (src/lib/agentic/reads/snapshot.ts:45:15)
+      at async quoteSvmRequest (src/lib/agentic/execution/svm-quote.ts:39:15)
+      at async sendPublicSvm (src/lib/agentic/execution/svm-public.ts:146:19)
+      at async Object.<anonymous> (__e2e__/agw/svm-spl-transfer.spec.ts:121:16)
+
+    Cause:
+    PositionOutOfBoundsError: Position `32` is out of bounds (`0 < position < 32`).
+
+    Version: viem@2.27.2
+
+      43 |   ): Promise<T> {
+      44 |     try {
+    > 45 |       return (await this.reader.readContract({
+         |               ^
+      46 |         address,
+      47 |         abi,
+      48 |         functionName,
+
+      at Object.assertPosition (../../node_modules/viem/utils/cursor.ts:79:13)
+      at Object.setPosition (../../node_modules/viem/utils/cursor.ts:210:10)
+      at decodeString (../../node_modules/viem/utils/abi/decodeAbiParameters.ts:357:12)
+      at decodeParameter (../../node_modules/viem/utils/abi/decodeAbiParameters.ts:113:39)
+      at decodeAbiParameters (../../node_modules/viem/utils/abi/decodeAbiParameters.ts:75:31)
+      at decodeFunctionResult (../../node_modules/viem/utils/abi/decodeFunctionResult.ts:161:37)
+      at readContract (../../node_modules/viem/actions/public/readContract.ts:129:32)
+      at async Snapshot.read (src/lib/agentic/reads/snapshot.ts:45:15)
+      at async quoteSvmRequest (src/lib/agentic/execution/svm-quote.ts:39:15)
+      at async sendPublicSvm (src/lib/agentic/execution/svm-public.ts:146:19)
+      at async Object.<anonymous> (__e2e__/agw/svm-spl-transfer.spec.ts:121:16)
+
+Test Suites: 2 failed, 1 passed, 3 total
+Tests:       2 failed, 4 passed, 6 total
+Snapshots:   0 total
+Time:        1181.178 s
+Ran all test suites within paths "packages/core/__e2e__/agw/universal-evm.spec.ts", "packages/core/__e2e__/agw/v5-multiasset.spec.ts", "packages/core/__e2e__/agw/svm-spl-transfer.spec.ts".

@@ -1,0 +1,30 @@
+PASS core-agw-local packages/core/__agw-local__/v5-multiasset.spec.ts (8.915 s)
+PASS core-agw-local packages/core/__agw-local__/labels.spec.ts
+PASS core-agw-local packages/core/__agw-local__/svm-backend.spec.ts (7.016 s)
+PASS core-agw-local packages/core/__agw-local__/svm-public.spec.ts
+PASS core-agw-local packages/core/__agw-local__/agw-local-advanced.spec.ts
+PASS core-agw-local packages/core/__agw-local__/svm-differential.spec.ts
+  ● Console
+
+    console.log
+      {"corpus":"svm-grant","seed":23063,"cases":107,"accepted":38,"rejected":69,"mismatches":[]}
+
+      at Object.<anonymous> (__agw-local__/svm-differential.spec.ts:226:13)
+
+    console.log
+      {"corpus":"svm-payload","seed":23063,"cases":88,"accepted":6,"rejected":82,"mismatches":[]}
+
+      at Object.<anonymous> (__agw-local__/svm-differential.spec.ts:407:13)
+
+PASS core-agw-local packages/core/__agw-local__/agw-local-races.spec.ts
+PASS core-agw-local packages/core/__agw-local__/delayed-index.spec.ts
+PASS core-agw-local packages/core/__agw-local__/agw-local.spec.ts
+PASS core-agw-local packages/core/__agw-local__/svm-internals.spec.ts
+PASS core-agw-local packages/core/__agw-local__/agw-local-batch.spec.ts
+PASS core-agw-local packages/core/__agw-local__/vectors.spec.ts
+
+Test Suites: 12 passed, 12 total
+Tests:       90 passed, 90 total
+Snapshots:   0 total
+Time:        38.433 s
+Ran all test suites.

@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-26",
+  "v4Implementation": "ad75da0ed9bb03d80273a4eff84ca67c4c03421e",
+  "v5Implementation": "1076106b17692935ffcdba9b55a210dec00d970b",
+  "v5PlanChanges": [],
+  "v5PreservedMetadata": [
+    "packages/core/CHANGELOG.md",
+    "packages/core/package.json",
+    "yarn.lock"
+  ],
+  "v5Version": "6.0.27-alpha.7",
+  "v5Unit": {
+    "passed": 2306,
+    "skipped": 12,
+    "failed": 0
+  },
+  "v5LocalEvaluator": {
+    "passed": 9,
+    "failed": 0
+  },
+  "v4PortableFixtureTests": 20,
+  "compiledMatchesSource": true,
+  "scope": "SDK implementation, tests and consumer docs on both branches. Plan/research evidence on v4 only. No package publication. Remote push is a separate final Git operation."
+}

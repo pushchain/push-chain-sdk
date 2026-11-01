@@ -1,0 +1,8 @@
+{
+  "url": "https://registry.npmjs.org/@pancakeswap/smart-router/-/smart-router-7.8.0.tgz",
+  "integrity": "sha512-sBO48pIdWIsrBsclf/zdYlDJ/7n4f45HLterJW9yLPaLVzAY65/GbJbbFAxbPlIyIByyjwmeq1OB8V/5hIq11w==",
+  "files": [
+    "package/dist/evm/abis/ISwapRouter02.d.ts.map",
+    "package/dist/evm/abis/ISwapRouter02.d.ts"
+  ]
+}

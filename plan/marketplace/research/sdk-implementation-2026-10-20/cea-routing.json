@@ -1,0 +1,85 @@
+{
+  "at": "2026-10-20T10:42:17.933Z",
+  "rows": [
+    {
+      "chain": "eip155:11155111",
+      "sdkFactory": "0x5E191fbBe22F8866C5e4250557664fCE760e8870",
+      "marketplaceFactory": "0x8ED594A83301FEc545fC6c19fc12cF7111777029",
+      "sdkGateway": "0x05bD7a3D18324c1F7e216f7fBF2b15985aE5281A",
+      "marketFactoryCEA": [
+        "0x33996E73ee53988B4c446457e5f497e9a4B87B0D",
+        false
+      ],
+      "marketFactoryImpl": "0x0a4F7be62B56830070266be81114edB93e68DA09",
+      "gatewayFactory": {
+        "error": "The contract function \"ceaFactory\" reverted."
+      },
+      "marketFactoryGateway": "0x05bD7a3D18324c1F7e216f7fBF2b15985aE5281A",
+      "sdkCEA": [
+        "0x0ec3c8720D66929edec8Ff23Dfa47B888d9aC111",
+        false
+      ],
+      "sdkFactoryGateway": "0x05bD7a3D18324c1F7e216f7fBF2b15985aE5281A"
+    },
+    {
+      "chain": "eip155:84532",
+      "sdkFactory": "0x7e8CeeDA043ED1460540616103dD57581a66C856",
+      "marketplaceFactory": "0x0A75ca7736b488Eb41675ADc3b3156BACF659F55",
+      "sdkGateway": "0xFD4fef1F43aFEc8b5bcdEEc47f35a1431479aC16",
+      "marketFactoryImpl": "0x6c9Cfef12155bEE91ecD6d0C8f516cABA2890656",
+      "marketFactoryGateway": "0xFD4fef1F43aFEc8b5bcdEEc47f35a1431479aC16",
+      "marketFactoryCEA": [
+        "0xf1981b90F0207135B396F698F33119FaED32e5cF",
+        false
+      ],
+      "gatewayFactory": {
+        "error": "The contract function \"ceaFactory\" reverted."
+      },
+      "sdkCEA": [
+        "0x6437D6B60D2Ba2a76e0f791d84286020c2e93cBC",
+        false
+      ],
+      "sdkFactoryGateway": "0xFD4fef1F43aFEc8b5bcdEEc47f35a1431479aC16"
+    },
+    {
+      "chain": "eip155:421614",
+      "sdkFactory": "0x65572FFa81c230360a8a53C1682C7f0Ee321E5E7",
+      "marketplaceFactory": "0x88DC189275078Cf509E4Cc773F089c8ad07b7EA2",
+      "sdkGateway": "0x2cd870e0166Ba458dEC615168Fd659AacD795f34",
+      "sdkCEA": [
+        "0xC9bCC1c420Fb0Ef862ba2f7082a8449641cAad1f",
+        false
+      ],
+      "gatewayFactory": {
+        "error": "The contract function \"ceaFactory\" reverted."
+      },
+      "marketFactoryCEA": [
+        "0xcE8377D906a057fEBBF5c898729B2D31644AFAf2",
+        false
+      ],
+      "marketFactoryImpl": "0x512d1B8C185a0Fd533a69f8973A3DD6513233009",
+      "sdkFactoryGateway": "0x2cd870e0166Ba458dEC615168Fd659AacD795f34",
+      "marketFactoryGateway": "0x2cd870e0166Ba458dEC615168Fd659AacD795f34"
+    },
+    {
+      "chain": "eip155:97",
+      "sdkFactory": "0x3f1B16e0B072d472951C4563d29d3da6a3EE3Ce8",
+      "marketplaceFactory": "0x3f1B16e0B072d472951C4563d29d3da6a3EE3Ce8",
+      "sdkGateway": "0x44aFFC61983F4348DdddB886349eb992C061EaC0",
+      "sdkCEA": [
+        "0x3223037344F37C1bf32a0d6b13035d55d88F39C7",
+        false
+      ],
+      "marketFactoryGateway": "0x44aFFC61983F4348DdddB886349eb992C061EaC0",
+      "sdkFactoryGateway": "0x44aFFC61983F4348DdddB886349eb992C061EaC0",
+      "marketFactoryCEA": [
+        "0x3223037344F37C1bf32a0d6b13035d55d88F39C7",
+        false
+      ],
+      "marketFactoryImpl": "0x0ff5d8b7d9Ac3ee2Ad420e9b70Ed6Dc465f593e9",
+      "gatewayFactory": {
+        "error": "The contract function \"ceaFactory\" reverted with the following reason:\nexecution reverted: 0x"
+      }
+    }
+  ]
+}

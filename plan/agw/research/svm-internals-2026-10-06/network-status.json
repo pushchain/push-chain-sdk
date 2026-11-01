@@ -1,0 +1,13 @@
+{
+  "checked_at": "2026-10-05T20:56:15.612784+00:00",
+  "rpc": "https://evm.donut.rpc.push.org/",
+  "read_only_method": "eth_chainId",
+  "status": "blocked",
+  "reason": "DNS resolution failed in restricted-network sandbox",
+  "env_file_present": "packages/core/.env",
+  "private_keys_loaded": false,
+  "funding_authorized": true,
+  "funding_submitted": false,
+  "anvil_status": "localhost RPC unavailable",
+  "alternative_contract_checks": "10 passing in-process Foundry checks"
+}

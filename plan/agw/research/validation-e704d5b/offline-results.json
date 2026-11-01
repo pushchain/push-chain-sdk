@@ -1,0 +1,10 @@
+[
+  {
+    "check": "tests-offline",
+    "exit_code": 0
+  },
+  {
+    "check": "review-tests-offline",
+    "exit_code": 0
+  }
+]

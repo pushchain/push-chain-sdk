@@ -1,0 +1,10 @@
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__agw-local__/svm-internals.spec.ts
+   86:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  119:18  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  189:18  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/agentic/__tests__/svm-internals.spec.ts
+  457:21  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+✖ 4 problems (0 errors, 4 warnings)

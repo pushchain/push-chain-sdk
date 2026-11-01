@@ -1,0 +1,48 @@
+{
+  "wallet": {
+    "removed": [],
+    "added": [],
+    "output_changed": {}
+  },
+  "factory": {
+    "removed": [],
+    "added": [],
+    "output_changed": {}
+  },
+  "policy": {
+    "removed": [
+      "error AssetMismatch(address,address)",
+      "event OutboundMetered(bytes32,address,address,uint256)",
+      "event RevertCredited(bytes32,bytes32,address,uint256)",
+      "function assertSpent(bytes32,address,uint256)",
+      "function creditRevert(bytes32,address,bytes32,uint256)"
+    ],
+    "added": [
+      "error AssetListOutOfRange(uint256)",
+      "error AssetNotAllowed(address)",
+      "error AssetSpentMismatch(address,uint256,uint256)",
+      "error DuplicateAsset(address)",
+      "error SpentLengthMismatch(uint256,uint256)",
+      "error UnsupportedEnvelopeVersion(uint256)",
+      "event OutboundMetered(bytes32,address,address,address,uint256)",
+      "event RevertCredited(bytes32,bytes32,address,address,uint256)",
+      "function assertSpent(bytes32,address,uint256[])",
+      "function creditRevert(bytes32,address,bytes32,address,uint256)"
+    ],
+    "output_changed": {
+      "function getConfig(bytes32,address)": {
+        "old": "(bool,uint48,bytes32,address,address,uint256,uint256,uint256,uint256,(address,bytes4,uint16,bool,uint256)[])",
+        "new": "(bool,uint48,address,uint256,(address,uint256,uint256,uint256)[],(address,bytes4,uint16,bool,uint256)[])"
+      },
+      "function getSvmConfig(bytes32,address)": {
+        "old": "(bool,uint48,bytes32,bytes32,address,uint256,uint256,uint256,uint256,bytes32[],(bytes32,bytes8,uint8,bool,uint8)[],(uint8,uint8,bytes32)[],(uint8,bool,uint16,uint16,uint8,uint8,bytes32,uint64,uint64)[])",
+        "new": "(bool,uint48,bytes32,bytes32,uint256,(address,uint256,uint256,uint256)[],bytes32[],(bytes32,bytes8,uint8,bool,uint8)[],(uint8,uint8,bytes32)[],(uint8,bool,uint16,uint16,uint8,uint8,bytes32,uint64,uint64)[])"
+      }
+    }
+  },
+  "engine": {
+    "removed": [],
+    "added": [],
+    "output_changed": {}
+  }
+}

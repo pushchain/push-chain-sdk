@@ -1,0 +1,48 @@
+FAIL core-e2e __e2e__/agw/presets-expanded-live.spec.ts (602.662 s)
+  agw presets expanded
+    ✕ 2 DEX swap on eip155:84532 and matching lending round trip where available (41322 ms)
+    ✕ 3 DEX swap on eip155:421614 and matching lending round trip where available (38665 ms)
+    ✓ 4 DEX swap on eip155:97 and matching lending round trip where available (303120 ms)
+    ✓ 5. Base Aave and both Moonwell markets supply and redeem wallet positions (218165 ms)
+    ○ skipped 1. EigenLayer Sepolia deposit credits shares to the wallet
+
+  ● agw presets expanded › 2 DEX swap on eip155:84532 and matching lending round trip where available
+
+    AgenticError: wallet 0x075524ed04cFa47f28e2e79641c93dc3aDAFeE57 holds 0 of 0x2971824Db68229D087931155C2b8bB820B275809; this outbound burns 1000000000000
+
+      275 |     }
+      276 |     if (tokenBalance < out.amount) {
+    > 277 |       throw new AgenticError(
+          |             ^
+      278 |         AGENTIC_ERROR_CODE.WALLET_BALANCE_INSUFFICIENT,
+      279 |         `wallet ${wallet} holds ${tokenBalance} of ${out.token}; this outbound burns ${out.amount}`
+      280 |       );
+
+      at agenticSend (src/lib/agentic/execution/send.ts:277:13)
+      at async send (__e2e__/agw/presets-expanded-live.spec.ts:130:14)
+      at async wrap (__e2e__/agw/presets-expanded-live.spec.ts:208:3)
+      at async /Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/agw/presets-expanded-live.spec.ts:366:7
+
+  ● agw presets expanded › 3 DEX swap on eip155:421614 and matching lending round trip where available
+
+    AgenticError: wallet 0x9Cb7c388E67A94f40aDeFdbF8b09a93a3Bedeb63 holds 0 of 0x2971824Db68229D087931155C2b8bB820B275809; this outbound burns 1000000000000
+
+      275 |     }
+      276 |     if (tokenBalance < out.amount) {
+    > 277 |       throw new AgenticError(
+          |             ^
+      278 |         AGENTIC_ERROR_CODE.WALLET_BALANCE_INSUFFICIENT,
+      279 |         `wallet ${wallet} holds ${tokenBalance} of ${out.token}; this outbound burns ${out.amount}`
+      280 |       );
+
+      at agenticSend (src/lib/agentic/execution/send.ts:277:13)
+      at async send (__e2e__/agw/presets-expanded-live.spec.ts:130:14)
+      at async wrap (__e2e__/agw/presets-expanded-live.spec.ts:208:3)
+      at async /Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/agw/presets-expanded-live.spec.ts:366:7
+
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 1 skipped, 2 passed, 5 total
+Snapshots:   0 total
+Time:        602.684 s
+Ran all test suites within paths "__e2e__/agw/presets-expanded-live.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

@@ -1,0 +1,153 @@
+FAIL core-e2e __e2e__/agw/svm-public.spec.ts (34.947 s)
+  agw public svm
+    ✕ 1. named IDL grant reads exact constraints and replaces atomically (1 ms)
+    ✕ 2. public send confirms actual CEA transfer and preserves replay identity
+    ✕ 3. substituted named accounts and excessive instruction amounts fail before signing
+    ✕ 4. public revoke removes the Solana rule and subsequent sends are refused
+
+  ● agw public svm › 1. named IDL grant reads exact constraints and replaces atomically
+
+    AgenticRevertError: sendPushTx — Push Chain transaction 0x3b434310de5fd2542a0a062c3cd2734abcc07ce921b0f497bb32cc1284853d76 reverted
+
+      135 |   if (decoded || err instanceof PushChainExecutionError) {
+      136 |     const e = err as { message?: string; gatewayTxHash?: string; decodedError?: DecodedErrorPayload };
+    > 137 |     return new AgenticRevertError(e?.message ?? decoded?.name ?? 'AGW revert', {
+          |            ^
+      138 |       decodedError: decoded ?? e?.decodedError,
+      139 |       gatewayTxHash: e?.gatewayTxHash,
+      140 |       agenticCode: decoded?.name,
+
+      at wrapSendError (src/lib/agentic/management/common.ts:137:12)
+      at createFailure (src/lib/agentic/management/create.ts:250:32)
+      at createWallet (src/lib/agentic/management/create.ts:140:27)
+      at async Object.<anonymous> (__e2e__/agw/svm-public.spec.ts:140:18)
+
+    Cause:
+    PushChainExecutionError: sendPushTx — Push Chain transaction 0x3b434310de5fd2542a0a062c3cd2734abcc07ce921b0f497bb32cc1284853d76 reverted
+
+      76 |         receiptWaited = true;
+      77 |         if (receipt.status === 'reverted') {
+    > 78 |           throw new PushChainExecutionError(
+         |                 ^
+      79 |             `${label} — Push Chain transaction ${txHash} reverted`
+      80 |           );
+      81 |         }
+
+      at getIndexedPushTransaction (src/lib/orchestrator/internals/push-chain-tx.ts:78:17)
+      at async sendPushTx (src/lib/orchestrator/internals/push-chain-tx.ts:162:28)
+      at async executeStandardPayload (src/lib/orchestrator/internals/execute-standard.ts:173:12)
+      at async Orchestrator.executeWithPolicy (src/lib/orchestrator/orchestrator.ts:471:11)
+      at async createWallet (src/lib/agentic/management/create.ts:138:10)
+      at async Object.<anonymous> (__e2e__/agw/svm-public.spec.ts:140:18)
+
+  ● agw public svm › 2. public send confirms actual CEA transfer and preserves replay identity
+
+    AgenticRevertError: sendPushTx — Push Chain transaction 0x3b434310de5fd2542a0a062c3cd2734abcc07ce921b0f497bb32cc1284853d76 reverted
+
+      135 |   if (decoded || err instanceof PushChainExecutionError) {
+      136 |     const e = err as { message?: string; gatewayTxHash?: string; decodedError?: DecodedErrorPayload };
+    > 137 |     return new AgenticRevertError(e?.message ?? decoded?.name ?? 'AGW revert', {
+          |            ^
+      138 |       decodedError: decoded ?? e?.decodedError,
+      139 |       gatewayTxHash: e?.gatewayTxHash,
+      140 |       agenticCode: decoded?.name,
+
+      at wrapSendError (src/lib/agentic/management/common.ts:137:12)
+      at createFailure (src/lib/agentic/management/create.ts:250:32)
+      at createWallet (src/lib/agentic/management/create.ts:140:27)
+      at async Object.<anonymous> (__e2e__/agw/svm-public.spec.ts:140:18)
+
+    Cause:
+    PushChainExecutionError: sendPushTx — Push Chain transaction 0x3b434310de5fd2542a0a062c3cd2734abcc07ce921b0f497bb32cc1284853d76 reverted
+
+      76 |         receiptWaited = true;
+      77 |         if (receipt.status === 'reverted') {
+    > 78 |           throw new PushChainExecutionError(
+         |                 ^
+      79 |             `${label} — Push Chain transaction ${txHash} reverted`
+      80 |           );
+      81 |         }
+
+      at getIndexedPushTransaction (src/lib/orchestrator/internals/push-chain-tx.ts:78:17)
+      at async sendPushTx (src/lib/orchestrator/internals/push-chain-tx.ts:162:28)
+      at async executeStandardPayload (src/lib/orchestrator/internals/execute-standard.ts:173:12)
+      at async Orchestrator.executeWithPolicy (src/lib/orchestrator/orchestrator.ts:471:11)
+      at async createWallet (src/lib/agentic/management/create.ts:138:10)
+      at async Object.<anonymous> (__e2e__/agw/svm-public.spec.ts:140:18)
+
+  ● agw public svm › 3. substituted named accounts and excessive instruction amounts fail before signing
+
+    AgenticRevertError: sendPushTx — Push Chain transaction 0x3b434310de5fd2542a0a062c3cd2734abcc07ce921b0f497bb32cc1284853d76 reverted
+
+      135 |   if (decoded || err instanceof PushChainExecutionError) {
+      136 |     const e = err as { message?: string; gatewayTxHash?: string; decodedError?: DecodedErrorPayload };
+    > 137 |     return new AgenticRevertError(e?.message ?? decoded?.name ?? 'AGW revert', {
+          |            ^
+      138 |       decodedError: decoded ?? e?.decodedError,
+      139 |       gatewayTxHash: e?.gatewayTxHash,
+      140 |       agenticCode: decoded?.name,
+
+      at wrapSendError (src/lib/agentic/management/common.ts:137:12)
+      at createFailure (src/lib/agentic/management/create.ts:250:32)
+      at createWallet (src/lib/agentic/management/create.ts:140:27)
+      at async Object.<anonymous> (__e2e__/agw/svm-public.spec.ts:140:18)
+
+    Cause:
+    PushChainExecutionError: sendPushTx — Push Chain transaction 0x3b434310de5fd2542a0a062c3cd2734abcc07ce921b0f497bb32cc1284853d76 reverted
+
+      76 |         receiptWaited = true;
+      77 |         if (receipt.status === 'reverted') {
+    > 78 |           throw new PushChainExecutionError(
+         |                 ^
+      79 |             `${label} — Push Chain transaction ${txHash} reverted`
+      80 |           );
+      81 |         }
+
+      at getIndexedPushTransaction (src/lib/orchestrator/internals/push-chain-tx.ts:78:17)
+      at async sendPushTx (src/lib/orchestrator/internals/push-chain-tx.ts:162:28)
+      at async executeStandardPayload (src/lib/orchestrator/internals/execute-standard.ts:173:12)
+      at async Orchestrator.executeWithPolicy (src/lib/orchestrator/orchestrator.ts:471:11)
+      at async createWallet (src/lib/agentic/management/create.ts:138:10)
+      at async Object.<anonymous> (__e2e__/agw/svm-public.spec.ts:140:18)
+
+  ● agw public svm › 4. public revoke removes the Solana rule and subsequent sends are refused
+
+    AgenticRevertError: sendPushTx — Push Chain transaction 0x3b434310de5fd2542a0a062c3cd2734abcc07ce921b0f497bb32cc1284853d76 reverted
+
+      135 |   if (decoded || err instanceof PushChainExecutionError) {
+      136 |     const e = err as { message?: string; gatewayTxHash?: string; decodedError?: DecodedErrorPayload };
+    > 137 |     return new AgenticRevertError(e?.message ?? decoded?.name ?? 'AGW revert', {
+          |            ^
+      138 |       decodedError: decoded ?? e?.decodedError,
+      139 |       gatewayTxHash: e?.gatewayTxHash,
+      140 |       agenticCode: decoded?.name,
+
+      at wrapSendError (src/lib/agentic/management/common.ts:137:12)
+      at createFailure (src/lib/agentic/management/create.ts:250:32)
+      at createWallet (src/lib/agentic/management/create.ts:140:27)
+      at async Object.<anonymous> (__e2e__/agw/svm-public.spec.ts:140:18)
+
+    Cause:
+    PushChainExecutionError: sendPushTx — Push Chain transaction 0x3b434310de5fd2542a0a062c3cd2734abcc07ce921b0f497bb32cc1284853d76 reverted
+
+      76 |         receiptWaited = true;
+      77 |         if (receipt.status === 'reverted') {
+    > 78 |           throw new PushChainExecutionError(
+         |                 ^
+      79 |             `${label} — Push Chain transaction ${txHash} reverted`
+      80 |           );
+      81 |         }
+
+      at getIndexedPushTransaction (src/lib/orchestrator/internals/push-chain-tx.ts:78:17)
+      at async sendPushTx (src/lib/orchestrator/internals/push-chain-tx.ts:162:28)
+      at async executeStandardPayload (src/lib/orchestrator/internals/execute-standard.ts:173:12)
+      at async Orchestrator.executeWithPolicy (src/lib/orchestrator/orchestrator.ts:471:11)
+      at async createWallet (src/lib/agentic/management/create.ts:138:10)
+      at async Object.<anonymous> (__e2e__/agw/svm-public.spec.ts:140:18)
+
+Test Suites: 1 failed, 1 total
+Tests:       4 failed, 4 total
+Snapshots:   0 total
+Time:        34.965 s
+Ran all test suites within paths "__e2e__/agw/svm-public.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

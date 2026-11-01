@@ -1,0 +1,45 @@
+{
+  "args": [
+    "forge",
+    "test",
+    "--root",
+    "/var/folders/4_/d47r2_4s1wb3x2dvmt2ghp800000gp/T/marketplace-review-443b4e2-_ib864pr",
+    "--match-path",
+    "test/8183-tests/ReviewGaps.t.sol",
+    "--match-test",
+    "test_review_",
+    "--offline",
+    "--json"
+  ],
+  "exit_code": 0,
+  "seconds": 70.58,
+  "counts": {
+    "Success": 4
+  },
+  "tests": [
+    {
+      "suite": "test/8183-tests/ReviewGaps.t.sol:ReviewLocalGaps",
+      "test": "test_review_cardFeeIsReferenceAndFundOnlyChecksAcceptedBudget()",
+      "status": "Success",
+      "reason": null
+    },
+    {
+      "suite": "test/8183-tests/ReviewGaps.t.sol:ReviewLocalGaps",
+      "test": "test_review_nonNoneIsAcceptedButReplacementPayloadIsInert()",
+      "status": "Success",
+      "reason": null
+    },
+    {
+      "suite": "test/8183-tests/ReviewGaps.t.sol:ReviewRealAgwCancellation",
+      "test": "test_review_cancelFreesWalletButOldAndNewGrantsBothRemainLive()",
+      "status": "Success",
+      "reason": null
+    },
+    {
+      "suite": "test/8183-tests/ReviewGaps.t.sol:ReviewRealAgwCancellation",
+      "test": "test_review_ownerCanAtomicallyCancelAndRevokeWithoutNewAgwRole()",
+      "status": "Success",
+      "reason": null
+    }
+  ]
+}

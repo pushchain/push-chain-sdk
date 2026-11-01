@@ -1,0 +1,140 @@
+{
+  "blockNumber": "24447347",
+  "sourceCommit": "443b4e2dd9ca5dd9ffc8efebdfcecd619dd66c47",
+  "results": [
+    {
+      "artifact": "UniversalMarketplace.json",
+      "component": "marketplace",
+      "address": "0xd683545f84698df4341b0031c892c53384ff30be",
+      "optimizerRuns": 1000,
+      "sourceBytes": 22156,
+      "liveBytes": 22156,
+      "exactMatch": false,
+      "executableMatchExcludingMetadata": true,
+      "builderLinkResolved": true,
+      "librarySelfAddressNormalized": false,
+      "executableHash": "0xa427de90878b45e09c78f4ff2dfb9158aa3d737349777960b7247e799ec1ba38",
+      "expectedExecutableHash": "0xa427de90878b45e09c78f4ff2dfb9158aa3d737349777960b7247e799ec1ba38",
+      "candidateProfiles": [
+        {
+          "artifact": "UniversalMarketplace.json",
+          "optimizerRuns": 1000,
+          "sourceBytes": 22156,
+          "executableMatchExcludingMetadata": true
+        }
+      ]
+    },
+    {
+      "artifact": "AgenticCommerce.marketplace-size.json",
+      "component": "kernel",
+      "address": "0x1d631e9d0e0a7a7423743c3076054c784af8fa40",
+      "optimizerRuns": 1000,
+      "sourceBytes": 10930,
+      "liveBytes": 10930,
+      "exactMatch": false,
+      "executableMatchExcludingMetadata": true,
+      "builderLinkResolved": false,
+      "librarySelfAddressNormalized": false,
+      "executableHash": "0x718bd7e85b020816b8893dbb594a58677754c3caad687b4ba3862711daf4e84e",
+      "expectedExecutableHash": "0x718bd7e85b020816b8893dbb594a58677754c3caad687b4ba3862711daf4e84e",
+      "candidateProfiles": [
+        {
+          "artifact": "AgenticCommerce.json",
+          "optimizerRuns": 99999,
+          "sourceBytes": 14282,
+          "executableMatchExcludingMetadata": false
+        },
+        {
+          "artifact": "AgenticCommerce.marketplace-size.json",
+          "optimizerRuns": 1000,
+          "sourceBytes": 10930,
+          "executableMatchExcludingMetadata": true
+        }
+      ]
+    },
+    {
+      "artifact": "RulesBindingHook.marketplace-size.json",
+      "component": "hook",
+      "address": "0x58bd6951b653b5028aa77b4904e83df668bcef7e",
+      "optimizerRuns": 1000,
+      "sourceBytes": 3477,
+      "liveBytes": 3477,
+      "exactMatch": false,
+      "executableMatchExcludingMetadata": true,
+      "builderLinkResolved": false,
+      "librarySelfAddressNormalized": false,
+      "executableHash": "0x655c3c92cb2c58404bec34fb1480174312de73f6acaa3770d41ac62ff57ba204",
+      "expectedExecutableHash": "0x655c3c92cb2c58404bec34fb1480174312de73f6acaa3770d41ac62ff57ba204",
+      "candidateProfiles": [
+        {
+          "artifact": "RulesBindingHook.json",
+          "optimizerRuns": 99999,
+          "sourceBytes": 4499,
+          "executableMatchExcludingMetadata": false
+        },
+        {
+          "artifact": "RulesBindingHook.marketplace-size.json",
+          "optimizerRuns": 1000,
+          "sourceBytes": 3477,
+          "executableMatchExcludingMetadata": true
+        }
+      ]
+    },
+    {
+      "artifact": "UniversalMarketplaceRules.marketplace-size.json",
+      "component": "rules",
+      "address": "0x5b98A8E0df5b918DF76cD2BE84bA7995B39dfd44",
+      "optimizerRuns": 1000,
+      "sourceBytes": 7832,
+      "liveBytes": 7832,
+      "exactMatch": false,
+      "executableMatchExcludingMetadata": true,
+      "builderLinkResolved": false,
+      "librarySelfAddressNormalized": false,
+      "executableHash": "0xfbb751181bf0aa2e3ab5273277d689fca1531126a6390c29450d3b394e9be18e",
+      "expectedExecutableHash": "0xfbb751181bf0aa2e3ab5273277d689fca1531126a6390c29450d3b394e9be18e",
+      "candidateProfiles": [
+        {
+          "artifact": "UniversalMarketplaceRules.json",
+          "optimizerRuns": 99999,
+          "sourceBytes": 9376,
+          "executableMatchExcludingMetadata": false
+        },
+        {
+          "artifact": "UniversalMarketplaceRules.marketplace-size.json",
+          "optimizerRuns": 1000,
+          "sourceBytes": 7832,
+          "executableMatchExcludingMetadata": true
+        }
+      ]
+    },
+    {
+      "artifact": "JobSpecBuilder.marketplace-size.json",
+      "component": "builder",
+      "address": "0x2de1e3F053b0bBa0cE0C6953144534a0b055f59e",
+      "optimizerRuns": 1000,
+      "sourceBytes": 5597,
+      "liveBytes": 5597,
+      "exactMatch": false,
+      "executableMatchExcludingMetadata": true,
+      "builderLinkResolved": false,
+      "librarySelfAddressNormalized": false,
+      "executableHash": "0x85280ca6b74a0b851f8524c435d2c6e5a60fe6e16e924e7c98b59361650d061b",
+      "expectedExecutableHash": "0x85280ca6b74a0b851f8524c435d2c6e5a60fe6e16e924e7c98b59361650d061b",
+      "candidateProfiles": [
+        {
+          "artifact": "JobSpecBuilder.json",
+          "optimizerRuns": 99999,
+          "sourceBytes": 6352,
+          "executableMatchExcludingMetadata": false
+        },
+        {
+          "artifact": "JobSpecBuilder.marketplace-size.json",
+          "optimizerRuns": 1000,
+          "sourceBytes": 5597,
+          "executableMatchExcludingMetadata": true
+        }
+      ]
+    }
+  ]
+}

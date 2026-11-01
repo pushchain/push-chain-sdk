@@ -1,0 +1,10 @@
+PASS core-e2e __e2e__/agw/presets-expanded-live.spec.ts (175.399 s)
+  agw presets expanded
+    ✓ 1. EigenLayer Sepolia deposit credits shares to the wallet (174162 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       1 passed, 1 total
+Snapshots:   0 total
+Time:        175.423 s
+Ran all test suites within paths "__e2e__/agw/presets-expanded-live.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

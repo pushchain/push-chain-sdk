@@ -1,0 +1,1194 @@
+
+> nx run core:lint
+
+> eslint .
+
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__agw-local__/agw-local-advanced.spec.ts
+   73:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   85:17  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  295:22  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  311:18  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  337:18  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  426:13  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__agw-local__/agw-local-batch.spec.ts
+   44:16  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   90:37  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   91:46  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   98:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  106:16  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__agw-local__/agw-local-races.spec.ts
+   54:20  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   99:18  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  117:12  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  145:20  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__agw-local__/agw-local.spec.ts
+  47:17  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  48:17  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__agw-local__/harness.ts
+  210:16  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  229:16  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  238:17  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  373:18  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__agw-local__/v4-multiasset.spec.ts
+   12:10  warning  'createWallet' is defined but never used  @typescript-eslint/no-unused-vars
+   78:14  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+   92:18  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+  176:14  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+  188:16  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+  325:16  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+  335:14  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+  353:18  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__agw-local__/vectors.spec.ts
+   56:7   warning  Forbidden non-null assertion             @typescript-eslint/no-non-null-assertion
+   57:7   warning  Forbidden non-null assertion             @typescript-eslint/no-non-null-assertion
+   98:7   warning  Forbidden non-null assertion             @typescript-eslint/no-non-null-assertion
+  207:25  warning  '_a' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  208:25  warning  '_b' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/agw/identity-gas.spec.ts
+  62:123  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/agw/universal-evm.spec.ts
+  25:10  warning  'v4' is defined but never used  @typescript-eslint/no-unused-vars
+  39:17  warning  Forbidden non-null assertion    @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/agw/v4-multiasset.spec.ts
+  17:17  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/cross-chain/cascade-amm.spec.ts
+  1715:41  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  1897:41  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  2003:41  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  2096:41  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  2167:41  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  2256:41  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/cross-chain/cea-to-push-erc20.spec.ts
+   92:12  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   95:12  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  102:12  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/cross-chain/forced-sizer.spec.ts
+  36:17  warning  'PUSH_NETWORK' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/cross-chain/fresh-wallet.spec.ts
+  92:16  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/cross-chain/multi-child-r3-sepolia.spec.ts
+  83:7  warning  'VALUE_RECEIVER' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/cross-chain/peth-bridge.spec.ts
+  114:77  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  132:76  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  149:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  165:35  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+  174:50  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+  218:21  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+  241:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  261:21  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+  271:28  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+  295:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/cross-chain/uoa-multi-hop.spec.ts
+  43:7   warning  'SOL_COUNTER_PDA' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  44:7   warning  'SOL_TARGET' is assigned a value but never used        @typescript-eslint/no-unused-vars
+  45:7   warning  'SOL_ZERO_ADDRESS' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  51:7   warning  'bscPublicClient' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  52:7   warning  'pushPublicClient' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  68:27  warning  Unexpected any. Specify a different type               @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/docs-examples/07-transaction-scenarios/route1.spec.ts
+  357:7   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  357:7   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  360:46  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  364:16  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  389:20  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/docs-examples/07-transaction-scenarios/route2.spec.ts
+  297:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  386:7   warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+  389:46  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+  412:60  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/docs-examples/07-transaction-scenarios/route3.spec.ts
+  375:7   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  375:7   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  378:46  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  384:16  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  404:20  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/docs-examples/08-multichain-transactions/multichain-transactions.spec.ts
+  218:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  232:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  398:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  455:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  523:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  536:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/docs-examples/13-read-state/fixtures/universal_read_batch.js
+  4:1  error  Projects should use relative imports to import from other files within the same project. Use "./path/to/file" instead of import from "@pushchain/core"  @nx/enforce-module-boundaries
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/docs-examples/13-read-state/fixtures/universal_read_evm_balance.js
+  4:1  error  Projects should use relative imports to import from other files within the same project. Use "./path/to/file" instead of import from "@pushchain/core"  @nx/enforce-module-boundaries
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/docs-examples/13-read-state/fixtures/universal_read_resume.js
+  4:1  error  Projects should use relative imports to import from other files within the same project. Use "./path/to/file" instead of import from "@pushchain/core"  @nx/enforce-module-boundaries
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/docs-examples/13-read-state/playgrounds.spec.ts
+   20:63  error    Unexpected empty async function  @typescript-eslint/no-empty-function
+   69:43  warning  Forbidden non-null assertion     @typescript-eslint/no-non-null-assertion
+   74:16  warning  Forbidden non-null assertion     @typescript-eslint/no-non-null-assertion
+  102:23  warning  Forbidden non-null assertion     @typescript-eslint/no-non-null-assertion
+  104:30  warning  Forbidden non-null assertion     @typescript-eslint/no-non-null-assertion
+  115:19  warning  Forbidden non-null assertion     @typescript-eslint/no-non-null-assertion
+  116:18  warning  Forbidden non-null assertion     @typescript-eslint/no-non-null-as(node:31858) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+sertion
+  132:23  warning  Forbidden non-null assertion     @typescript-eslint/no-non-null-assertion
+  146:19  warning  Forbidden non-null assertion     @typescript-eslint/no-non-null-assertion
+  149:12  warning  Forbidden non-null assertion     @typescript-eslint/no-non-null-assertion
+  174:43  warning  Forbidden non-null assertion     @typescript-eslint/no-non-null-assertion
+  180:36  warning  Forbidden non-null assertion     @typescript-eslint/no-non-null-assertion
+  184:27  warning  Forbidden non-null assertion     @typescript-eslint/no-non-null-assertion
+  184:69  warning  Forbidden non-null assertion     @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/docs-examples/13-read-state/read-state.spec.ts
+  56:12  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  56:32  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/docs-examples/_helpers/docs-fund.ts
+  95:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/evm/inbound/rescue-funds.spec.ts
+  165:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  227:15  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/evm/outbound/cea-to-smart-contracts.spec.ts
+  48:3  warning  'UGPC_PRECOMPILE' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/evm/outbound/cea-to-uea.spec.ts
+  1411:15  warning  'tx' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/evm/outbound/uea-to-cea.spec.ts
+  2277:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2330:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/evm/pc20/pc20-inbound.spec.ts
+  15:10  warning  'PUSH_NETWORK' is defined but never used                @typescript-eslint/no-unused-vars
+  21:3   warning  'waitToleratingFeeCreditBug' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/evm/pc20/pc20-roundtrip.spec.ts
+  17:3  warning  'waitToleratingFeeCreditBug' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/push/account-conversion/eth.spec.ts
+  176:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  177:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  181:55   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  181:80   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  192:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  193:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  244:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  245:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  246:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  250:50   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  250:75   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  277:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  278:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  314:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  315:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  320:108  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  350:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  351:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  352:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  355:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  356:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  378:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  379:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  380:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  408:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  409:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  410:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  411:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  415:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  416:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  417:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  420:50   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  420:76   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  420:97   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  442:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  443:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  470:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  471:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  474:73   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  474:99   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/push/account-conversion/solana.spec.ts
+   78:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   79:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   81:58  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   81:83  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   92:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   93:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  121:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  122:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  136:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  137:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  138:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  139:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  140:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  160:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  161:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  162:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  183:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  184:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/push/fee-lock-cap-raise.spec.ts
+   60:19  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  170:38  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/push/native.spec.ts
+  389:7   warning  'mainPushClient' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  428:16  warning  Forbidden non-null assertion                         @typescript-eslint/no-non-null-assertion
+  517:16  warning  Forbidden non-null assertion                         @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/push/pool-depth-diagnostic.spec.ts
+  27:24  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/push/progress-hooks.spec.ts
+  383:19  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  594:25  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/push/utilities.spec.ts
+  128:79  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/_shared.ts
+  54:70  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/evm/any-mutability.spec.ts
+  34:48  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/evm/api-coverage.spec.ts
+  18:48  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  30:48  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  53:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  53:31  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/evm/app-batch.spec.ts
+  38:12   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  38:29   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  46:48   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  67:67   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  71:12   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  71:32   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  76:48   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  81:107  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/evm/balance-eoa.spec.ts
+  23:57  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  59:12  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  59:32  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/evm/balance-uea.spec.ts
+  25:116  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  52:12   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  52:32   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/evm/callback-reverts.spec.ts
+  22:48  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  36:12  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  36:32  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/evm/contract-call.spec.ts
+  28:48  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/evm/registry.spec.ts
+  14:57  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  40:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  40:36  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/lifecycle/expiry.spec.ts
+  25:57  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/lifecycle/track-lookup.spec.ts
+  21:48  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/svm/account-idl.spec.ts
+  20:53   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  25:59   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  27:48   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  45:48   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  62:12   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  62:31   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  63:102  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  70:14   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  70:52   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  79:44   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/svm/lamports.spec.ts
+  19:53  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  22:48  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/svm/raw-account.spec.ts
+  13:48  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/tools/live-read-uea.ts
+   57:15   warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+   57:63   warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+   57:101  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+  103:18   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  106:46   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  107:143  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/read/web2/json.spec.ts
+  15:48  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/scripts/e2e-7702-multicall.ts
+   93:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  132:28  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/shared/evm-client.ts
+  14:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/shared/svm-client.ts
+  10:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/svm/inbound/uea-to-push.spec.ts
+  16:10  warning  'MOVEABLE_TOKENS' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/svm/outbound/cea-to-eoa.spec.ts
+  15:61  warning  'encodeFunctionData' is defined but never used         @typescript-eslint/no-unused-vars
+  24:3   warning  'COUNTER_ADDRESS_PAYABLE' is defined but never used    @typescript-eslint/no-unused-vars
+  25:3   warning  'COUNTER_ABI_PAYABLE' is defined but never used        @typescript-eslint/no-unused-vars
+  27:10  warning  'COUNTER_ABI' is defined but never used                @typescript-eslint/no-unused-vars
+  37:7   warning  'pushPublicClient' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/svm/outbound/cea-to-uea.spec.ts
+  39:3  warning  'buildReceiveSolAccounts' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/svm/outbound/eoa-to-cea.spec.ts
+  23:3  warning  'SOL_ZERO_ADDRESS' is defined but never used         @typescript-eslint/no-unused-vars
+  25:3  warning  'COUNTER_PDA' is defined but never used              @typescript-eslint/no-unused-vars
+  28:3  warning  'buildReceiveSolAccounts' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/svm/outbound/eoa-to-smart-contracts.spec.ts
+  86:19  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/__e2e__/svm/outbound/uea-to-cea.spec.ts
+  43:3  warning  'buildReceiveSolAccounts' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/scripts/poll-outbound.ts
+   24:3   warning  'UniversalTxStatus' is defined but never used     @typescript-eslint/no-unused-vars
+   25:3   warning  'OutboundStatus' is defined but never used        @typescript-eslint/no-unused-vars
+  236:19  warning  'intervalMs' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  236:31  warning  'timeoutMs' is assigned a value but never used    @typescript-eslint/no-unused-vars
+  260:30  warning  Forbidden non-null assertion                      @typescript-eslint/no-non-null-assertion
+  292:29  warning  'childUtxIds' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/scripts/probe-multihop-track.ts
+  36:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  40:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  41:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  42:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  55:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/scripts/test-uea-migration.ts
+   80:122  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  165:20   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  166:20   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  168:27   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  169:23   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  191:17   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/agentic/__tests__/codec.spec.ts
+  373:21  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/agentic/__tests__/management.spec.ts
+  12:10  warning  'AgenticCapability' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/agentic/__tests__/native-batch-response.spec.ts
+   2:17  warning  'PUSH_NETWORK' is defined but never used  @typescript-eslint/no-unused-vars
+  41:21  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/agentic/__tests__/reads-context.spec.ts
+  329:5  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/agentic/__tests__/response-surface.spec.ts
+  4:3  warning  'getAddress' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/agentic/reads/rules.ts
+  11:3  warning  'CAPABILITY_DEPENDENCY' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/agentic/wallet.ts
+  92:33  warning  '_opts' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/cache/cache.ts
+   4:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  38:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  56:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/constants/__tests__/svm-gateway-idl.spec.ts
+  13:22  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/internal/buffer.ts
+  4:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/internal/global-buffer-polyfill.ts
+  3:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/account-status.spec.ts
+  274:15  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  286:15  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/cascade-composition.spec.ts
+  363:13  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  431:13  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  447:13  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  480:13  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  552:12  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  618:12  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  686:12  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  758:13  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  774:13  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  811:13  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  887:13  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/context-helpers-tracker.spec.ts
+   36:47  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   39:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  167:14  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/gas-usd-sizer.spec.ts
+   26:25  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+   32:7   warning  'PC_USD_1E8' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   35:44  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+   41:57  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+   65:10  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+   71:10  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  215:59  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  231:10  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  243:31  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  252:65  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  281:10  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  297:31  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/gateway-uea-account.spec.ts
+    9:10  warning  'CHAIN_INFO' is defined but never used      @typescript-eslint/no-unused-vars
+   14:3   warning  'AccountStatus' is defined but never used   @typescript-eslint/no-unused-vars
+   62:10  warning  Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+   68:10  warning  Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+   86:10  warning  Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+  223:12  warning  Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+  231:12  warning  Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+  243:12  warning  Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+  251:12  warning  Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+  264:12  warning  Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+  441:11  warning  'first' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/payload-builders.spec.ts
+   11:44  warning  'MULTICALL_SELECTOR' is defined but never used  @typescript-eslint/no-unused-vars
+  152:24  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+  152:24  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+  175:12  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+  176:12  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+  325:12  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+  326:12  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+  365:12  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+  373:12  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+  374:12  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+  516:12  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+  517:12  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+  575:12  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+  576:12  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+  577:12  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+  578:12  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+  599:12  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+  600:12  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+  620:12  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/preflight.spec.ts
+   54:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   72:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   73:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   93:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   94:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   97:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  156:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  158:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  179:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  199:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  200:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  297:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  394:13  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+  394:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  423:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  424:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  440:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  456:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/push-chain-tx-retry.spec.ts
+   12:31  warning  'VM' is defined but never used            @typescript-eslint/no-unused-vars
+   49:85  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  102:72  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  239:64  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  261:72  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/rescue-svm-confirmation.spec.ts
+   13:10  warning  'bytesToHex' is defined but never used                     @typescript-eslint/no-unused-vars
+   13:22  warning  'hexToBytes' is defined but never used                     @typescript-eslint/no-unused-vars
+   15:10  warning  'VM' is defined but never used                             @typescript-eslint/no-unused-vars
+   29:33  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+   30:26  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+   34:43  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+   39:32  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+   43:7   warning  'mockEvmConfirmations' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   44:7   warning  'mockSvmConfirmations' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  148:10  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  154:10  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  155:37  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  167:36  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  188:49  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  194:48  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  203:55  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  209:47  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  218:81  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  227:56  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  231:51  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  255:54  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  263:61  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  347:30  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  349:30  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  351:30  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  356:14  warning  Forbidden non-null assertion                               @typescript-eslint/no-non-null-assertion
+  357:14  warning  Forbidden non-null assertion                               @typescript-eslint/no-non-null-assertion
+  367:14  warning  Forbidden non-null assertion                               @typescript-eslint/no-non-null-assertion
+  368:14  warning  Forbidden non-null assertion                               @typescript-eslint/no-non-null-assertion
+  375:52  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  435:25  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  566:43  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  612:41  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  702:25  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  705:12  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  706:39  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  751:13  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  751:61  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  765:23  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  794:10  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  816:25  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  819:12  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  820:39  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  835:25  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  838:12  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  839:39  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+  852:10  warning  Unexpected any. Specify a different type                   @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/response-builder-push-revert.spec.ts
+  64:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  66:70  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/send-transaction-progress-hook.spec.ts
+   79:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  199:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/signing-payload.spec.ts
+   19:3   warning  'encodeAbiParameters' is defined but never used  @typescript-eslint/no-unused-vars
+   20:3   warning  'encodePacked' is defined but never used         @typescript-eslint/no-unused-vars
+   25:31  warning  'VM' is defined but never used                   @typescript-eslint/no-unused-vars
+  144:46  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  148:46  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  157:46  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  161:49  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  232:10  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  239:51  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  248:48  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  252:54  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  261:78  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  265:83  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  606:10  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  619:58  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  651:48  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  659:54  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  666:59  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  677:51  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  690:10  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  711:10  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  740:10  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  750:51  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  767:68  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  772:82  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  922:37  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  932:37  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  941:37  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  950:37  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/source-hash-resolution.spec.ts
+  24:8   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  34:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  58:70  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  74:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  91:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/terminal-suppression.spec.ts
+  26:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  27:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  28:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/track-transaction-guard.spec.ts
+  21:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  23:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  30:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  38:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  44:64  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/tx-transformer-gas.spec.ts
+    10:15  warning  'UniversalTxReceipt' is defined but never used  @typescript-eslint/no-unused-vars
+    22:32  warning  'PayableToken' is defined but never used        @typescript-eslint/no-unused-vars
+    22:46  warning  'MoveableToken' is defined but never used       @typescript-eslint/no-unused-vars
+    28:52  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+    44:60  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+    65:47  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+   110:64  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+   115:10  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+   121:10  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+   122:37  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+   144:63  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+   165:63  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+   174:63  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+   183:63  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+   193:63  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+   202:63  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+   215:63  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+   224:63  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+   505:14  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+   529:14  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+   614:12  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+   663:12  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+   693:12  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+   709:12  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+   839:58  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+   850:27  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+   850:27  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+   866:27  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+   866:27  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+   880:27  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+   880:27  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+   955:87  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+   994:27  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+   994:27  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+  1015:27  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+  1015:27  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+  1028:27  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+  1028:27  warning  Forbidden non-null assertion                    @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/__tests__/tx-transformer-multichain.spec.ts
+   10:10  warning  'encodeAbiParameters' is defined but never used     @typescript-eslint/no-unused-vars
+   15:10  warning  'UEA_MULTICALL_SELECTOR' is defined but never used  @typescript-eslint/no-unused-vars
+   15:34  warning  'ZERO_ADDRESS' is defined but never used            @typescript-eslint/no-unused-vars
+  107:18  warning  Forbidden non-null assertion                        @typescript-eslint/no-non-null-assertion
+  108:18  warning  Forbidden non-null assertion                        @typescript-eslint/no-non-null-assertion
+  128:18  warning  Forbidden non-null assertion                        @typescript-eslint/no-non-null-assertion
+  149:18  warning  Forbidden non-null assertion                        @typescript-eslint/no-non-null-assertion
+  168:13  warning  Forbidden non-null assertion                        @typescript-eslint/no-non-null-assertion
+  241:15  warning  Forbidden non-null assertion                        @typescript-eslint/no-non-null-assertion
+  279:15  warning  Forbidden non-null assertion                        @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/account-manager.ts
+  113:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  205:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/cascade.ts
+    18:22  warning  'UNIVERSAL_GATEWAY_ADDRESSES' is defined but never used  @typescript-eslint/no-unused-vars
+   123:23  warning  Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+   136:11  warning  Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+   180:3   warning  'callbacks' is defined but never used                    @typescript-eslint/no-unused-vars
+   613:27  warning  Forbidden non-null assertion                             @typescript-eslint/no-non-null-assertion
+   636:15  warning  'gatewayProgramHex' is assigned a value but never used   @typescript-eslint/no-unused-vars
+   668:11  warning  'amount' is assigned a value but never used              @typescript-eslint/no-unused-vars
+   741:13  warning  'tokenAddress' is assigned a value but never used        @typescript-eslint/no-unused-vars
+   746:9   warning  'amount' is assigned a value but never used              @typescript-eslint/no-unused-vars
+   747:9   warning  'nativeValue' is assigned a value but never used         @typescript-eslint/no-unused-vars
+   802:11  warning  'chain' is assigned a value but never used               @typescript-eslint/no-unused-vars
+  1711:29  warning  Forbidden non-null assertion                             @typescript-eslint/no-non-null-assertion
+  2678:45  warning  Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/confirmation.ts
+  134:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  135:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/context.ts
+  135:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/execute-funds-only.ts
+   18:10  warning  'EvmClient' is defined but never used                  @typescript-eslint/no-unused-vars
+   82:8   warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+   92:5   warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+   95:18  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+   96:18  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  123:21  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  123:21  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  124:20  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  124:20  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  137:20  warning  'universalPayload' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  262:55  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  262:78  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  262:78  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  270:7   warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  270:7   warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  271:75  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  272:14  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  272:14  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  297:77  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  297:77  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  326:69  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  326:69  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  365:11  warning  'nonce' is assigned a value but never used             @typescript-eslint/no-unused-vars
+  370:7   warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  370:7   warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  390:14  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  390:14  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  391:34  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  391:34  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  419:14  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  419:14  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  436:34  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  436:34  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  465:82  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  465:82  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  487:69  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+  487:69  warning  Forbidden non-null assertion                           @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/execute-funds-payload.ts
+   77:8   warning  Forbidden non-null assertion                       @typescript-eslint/no-non-null-assertion
+   88:5   warning  Forbidden non-null assertion                       @typescript-eslint/no-non-null-assertion
+   91:21  warning  Forbidden non-null assertion                       @typescript-eslint/no-non-null-assertion
+  105:45  warning  Forbidden non-null assertion                       @typescript-eslint/no-non-null-assertion
+  210:18  warning  Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  236:24  warning  Forbidden non-null assertion                       @typescript-eslint/no-non-null-assertion
+  237:18  warning  Forbidden non-null assertion                       @typescript-eslint/no-non-null-assertion
+  239:69  warning  Forbidden non-null assertion                       @typescript-eslint/no-non-null-assertion
+  242:23  warning  Forbidden non-null assertion                       @typescript-eslint/no-non-null-assertion
+  255:13  warning  'tokenAddr' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  255:25  warning  Forbidden non-null assertion                       @typescript-eslint/no-non-null-assertion
+  261:13  warning  'payloadBytes' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  277:62  warning  Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  319:77  warning  Forbidden non-null assertion                       @typescript-eslint/no-non-null-assertion
+  372:69  warning  Forbidden non-null assertion                       @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/gas-calculator.ts
+  596:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/helpers.ts
+   16:10  warning  'EvmClient' is defined but never used     @typescript-eslint/no-unused-vars
+  152:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  152:59  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  220:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/outbound-sync.ts
+  131:40  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  132:9   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/payload-builder.ts
+  75:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/pc20/__tests__/inbound-payload.spec.ts
+  107:19  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  107:19  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  116:12  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  116:12  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  117:12  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/pc20/__tests__/svm.spec.ts
+  286:28  error  Require statement not part of import statement  @typescript-eslint/no-var-requires
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/pc20/tracking.ts
+  128:40  error  Require statement not part of import statement  @typescript-eslint/no-var-requires
+  131:28  error  Require statement not part of import statement  @typescript-eslint/no-var-requires
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/push-chain-tx.ts
+   84:19  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  227:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  264:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  408:19  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  467:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  468:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  470:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  471:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  531:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  532:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  534:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  535:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  583:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/response-builder.ts
+   30:10  warning  'PushChain' is defined but never used     @typescript-eslint/no-unused-vars
+   64:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   65:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   65:60  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   66:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   66:59  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  180:13  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  185:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  191:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  195:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  222:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  248:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/route-handlers.ts
+  1154:21  warning  Forbidden non-null assertion                     @typescript-eslint/no-non-null-assertion
+  2094:5   warning  'ueaBalance' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  2404:3   warning  'ctx' is defined but never used                  @typescript-eslint/no-unused-vars
+  2405:3   warning  'params' is defined but never used               @typescript-eslint/no-unused-vars
+  2406:3   warning  'executeFn' is defined but never used            @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/signing.ts
+  427:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/svm-bridge.ts
+   41:77  warning  'req' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  212:34  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+  212:34  warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/svm-helpers.ts
+  107:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  107:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  115:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  188:11  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/internals/tx-transformer.ts
+  97:7  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/orchestrator.spec.ts
+   87:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  134:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  162:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  182:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/orchestrator.ts
+    3:31  warning  'VM' is defined but never used                               @typescript-eslint/no-unused-vars
+   37:76  warning  '_transformToUniversalTxResponse' is defined but never used  @typescript-eslint/no-unused-vars
+   76:41  warning  Forbidden non-null assertion                                 @typescript-eslint/no-non-null-assertion
+   92:48  warning  Unexpected any. Specify a different type                     @typescript-eslint/no-explicit-any
+  103:50  warning  Unexpected any. Specify a different type                     @typescript-eslint/no-explicit-any
+  104:74  warning  Unexpected any. Specify a different type                     @typescript-eslint/no-explicit-any
+  105:77  warning  Unexpected any. Specify a different type                     @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/orchestrator.types.ts
+  387:15  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  566:9   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/payload-builders.ts
+   7:44  warning  'MULTICALL_SELECTOR' is defined but never used  @typescript-eslint/no-unused-vars
+  14:3   warning  'ChainTarget' is defined but never used         @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/route-detector.ts
+   17:3   warning  'TransactionRouteType' is defined but never used  @typescript-eslint/no-unused-vars
+  378:25  warning  Forbidden non-null assertion                      @typescript-eslint/no-non-null-assertion
+  378:25  warning  Forbidden non-null assertion                      @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/svm-idl/resolve.spec.ts
+  51:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  72:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  90:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/orchestrator/svm-idl/resolve.ts
+  10:6  warning  'AccountItem' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/push-chain/push-chain.explorer.spec.ts
+  192:12  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  199:12  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/push-chain/push-chain.reinitialize.spec.ts
+  198:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  199:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/push-chain/push-chain.signing.spec.ts
+  21:7  warning  'pushChainSVM' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/push-chain/push-chain.spec.ts
+    12:3   warning  'isAddress' is defined but never used                         @typescript-eslint/no-unused-vars
+    13:3   warning  'verifyMessage' is defined but never used                     @typescript-eslint/no-unused-vars
+   452:9   warning  'pushPublicClient' is assigned a value but never used         @typescript-eslint/no-unused-vars
+  1199:9   warning  'beforeCounterPCBalance' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  1222:9   warning  'afterCounterPCBalance' is assigned a value but never used    @typescript-eslint/no-unused-vars
+  1317:9   warning  'balanceBeforePC_UEA' is assigned a value but never used      @typescript-eslint/no-unused-vars
+  1353:9   warning  'balanceAfterPC_UEA' is assigned a value but never used       @typescript-eslint/no-unused-vars
+  1434:9   warning  'balanceBeforePC_UEA' is assigned a value but never used      @typescript-eslint/no-unused-vars
+  1470:9   warning  'balanceAfterPC_UEA' is assigned a value but never used       @typescript-eslint/no-unused-vars
+  1682:9   warning  'balanceBeforePC_COUNTER' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  1685:9   warning  'balanceBeforePC_UEA' is assigned a value but never used      @typescript-eslint/no-unused-vars
+  1717:9   warning  'balanceAfterPC_COUNTER' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  1720:9   warning  'balanceAfterPC_UEA' is assigned a value but never used       @typescript-eslint/no-unused-vars
+  1879:35  warning  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  1894:35  warning  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  1910:35  warning  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  1940:9   warning  'pushClientEVM' is assigned a value but never used            @typescript-eslint/no-unused-vars
+  2145:9   warning  'pcBeforeRecipient' is assigned a value but never used        @typescript-eslint/no-unused-vars
+  2170:9   warning  'pcAfterRecipient' is assigned a value but never used         @typescript-eslint/no-unused-vars
+  2487:41  warning  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  2504:41  warning  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  2523:41  warning  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  2533:41  warning  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  2556:41  warning  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  2571:41  warning  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  2592:41  warning  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  2602:41  warning  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  2612:41  warning  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  2649:41  warning  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  3328:18  warning  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  3330:14  warning  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  3537:15  warning  'recipient' is assigned a value but never used                @typescript-eslint/no-unused-vars
+  3832:13  warning  'WETH9' is assigned a value but never used                    @typescript-eslint/no-unused-vars
+  3863:13  warning  'WETH9' is assigned a value but never used                    @typescript-eslint/no-unused-vars
+  3865:13  warning  'USDC' is assigned a value but never used                     @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/push-chain/push-chain.ts
+   33:3   warning  'UniversalTxResponse' is defined but never used  @typescript-eslint/no-unused-vars
+  244:31  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/push-client/push-client.archive-fallback.spec.ts
+   30:3   warning  Forbidden non-null assertion              @typescript-eslint/no-non-null-assertion
+  127:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  133:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  148:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  155:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  162:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/push-client/push-client.ts
+  359:42  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/read-state/__integration__/read-state.integration.spec.ts
+   45:38   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   45:38   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   45:77   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   45:77   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   45:117  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   48:68   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  225:12   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  225:29   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/read-state/__tests__/read-events.spec.ts
+  95:12  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  95:24  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/read-state/__tests__/read-tracker.spec.ts
+   26:3   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  104:12  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  104:29  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  274:5   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  282:5   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  385:20  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/read-state/__tests__/read-types.spec.ts
+   30:9  warning  'removed' is assigned a value but never used            @typescript-eslint/no-unused-vars
+   48:8  warning  '_typed' is defined but never used                      @typescript-eslint/no-unused-vars
+   61:9  warning  'missingEntrypoint' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   63:9  warning  'registryAbi' is assigned a value but never used        @typescript-eslint/no-unused-vars
+   65:9  warning  'legacy' is assigned a value but never used             @typescript-eslint/no-unused-vars
+   86:8  warning  '_loose' is defined but never used                      @typescript-eslint/no-unused-vars
+  135:6  warning  'ExportChecks' is defined but never used                @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/read-state/__tests__/registry.spec.ts
+  91:94  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  97:46  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/read-state/__tests__/revalidate-read.spec.ts
+  55:62  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/read-state/__tests__/svm-account.spec.ts
+  101:25  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  101:25  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  102:23  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  102:23  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  103:27  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  103:27  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  104:25  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  104:25  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/read-state/__tests__/ucallback-codec.spec.ts
+   35:15  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   51:23  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   84:17  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   87:23  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   88:18  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+   91:23  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  116:22  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/read-state/read-params.ts
+  254:15  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  295:46  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/universal-tx-detector/__tests__/cascade.spec.ts
+  319:20  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  322:12  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  325:22  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  325:22  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  357:22  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/universal-tx-detector/__tests__/detector-svm-log-index.spec.ts
+  90:7  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/universal-tx-detector/__tests__/detector.live.spec.ts
+  180:25  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  317:29  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  317:29  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  324:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  326:9   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  328:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  329:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  333:27  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  357:33  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  357:33  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/universal-tx-detector/__tests__/normalize.spec.ts
+  154:49  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  248:9   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  254:14  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/universal-tx-detector/cascade.ts
+  16:51  warning  'PublicClient' is defined but never used              @typescript-eslint/no-unused-vars
+  23:3   warning  'deriveChildUniversalTxId' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/universal-tx-detector/detector-svm.ts
+  242:30  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  243:9   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/universal-tx-detector/detector.ts
+  88:30  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  89:9   warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/universal-tx-detector/svm-events.ts
+  30:11  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/universal/account/account.spec.ts
+  12:3  warning  'resolveControllerAccount' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/universal/signer/signer.spec.ts
+   38:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   68:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   82:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  136:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  200:49  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  334:7   warning  'domain' is defined but never used        @typescript-eslint/no-unused-vars
+  335:7   warning  'types' is defined but never used         @typescript-eslint/no-unused-vars
+  336:7   warning  'primaryType' is defined but never used   @typescript-eslint/no-unused-vars
+  337:7   warning  'message' is defined but never used       @typescript-eslint/no-unused-vars
+  339:15  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  340:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  342:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/universal/signer/signer.ts
+   47:16  warning  'type' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   49:5   warning  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+   54:58  warning  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+   73:11  warning  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  102:11  warning  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  213:29  warning  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  228:36  warning  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  229:36  warning  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  230:36  warning  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  265:47  warning  'primaryType' is defined but never used    @typescript-eslint/no-unused-vars
+  268:46  warning  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  422:31  warning  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  516:44  warning  'primaryType' is defined but never used    @typescript-eslint/no-unused-vars
+  519:44  warning  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  552:44  warning  'primaryType' is defined but never used    @typescript-eslint/no-unused-vars
+  555:44  warning  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  569:23  warning  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  570:23  warning  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/universal/universal.types.ts
+   22:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   23:13  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   24:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   25:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   26:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   30:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   31:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   32:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   34:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   35:34  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   35:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   36:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   42:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   43:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   47:34  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   47:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   48:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   54:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   54:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   57:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   58:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   60:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  130:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  167:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/utils.spec.ts
+   172:72  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   419:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   425:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   436:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   487:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   571:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   648:62  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   652:63  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   657:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   663:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   669:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   878:71  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   882:71  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   893:66  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   898:68  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   904:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   910:62  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1215:54  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1219:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1223:60  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1227:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1233:62  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1239:62  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1245:67  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1251:60  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1554:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1563:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/utils.ts
+   24:43  warning  'getAddress' is defined but never used    @typescript-eslint/no-unused-vars
+  292:13  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  295:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  326:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/vm-client/evm-client.chain-symbol.spec.ts
+  64:23  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/vm-client/svm-client.ts
+   92:34  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  152:51  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  184:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  215:45  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  216:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  286:63  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  287:47  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/src/lib/vm-client/vm-client.types.ts
+  29:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  40:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 861 problems (7 errors, 854 warnings)
+  3 errors and 0 warnings potentially fixable with the `--fix` option.
+
+Warning: command "eslint ." exited with non-zero status code
+
+
+ NX   Running target lint for project core failed
+
+Failed tasks:
+
+- core:lint
+
+Hint: run the command with --verbose for more details.

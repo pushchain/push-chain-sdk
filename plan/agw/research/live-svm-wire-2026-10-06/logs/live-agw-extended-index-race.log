@@ -1,0 +1,225 @@
+node:internal/modules/cjs/loader:1215
+  throw err;
+  ^
+
+Error: Cannot find module '/Users/shoaibmohammed/Desktop/work/PUSH/push-chain-sdk/packages/core/node_modules/jest/bin/jest.js'
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+    at Module._load (node:internal/modules/cjs/loader:1043:27)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+    at node:internal/main/run_main_module:28:49 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+
+Node.js v20.19.2
+FAIL core-e2e packages/core/__e2e__/agw-extended/management.spec.ts
+  ● Test suite failed to run
+
+    [96mpackages/core/__e2e__/agw-extended/management.spec.ts[0m:[93m104[0m:[93m5[0m - [91merror[0m[90m TS1005: [0m'try' expected.
+
+    [7m104[0m     finally { rt.execute = original; }
+    [7m   [0m [91m    ~~~~~~~[0m
+
+Test Suites: 1 failed, 1 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        0.532 s, estimated 239 s
+Ran all test suites within paths "packages/core/__e2e__/agw-extended/management.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
+FAIL core-e2e packages/core/__e2e__/agw-extended/management.spec.ts (32.417 s)
+  agw extended management
+    ✕ 6. index race commits no grants to the competing wallet and retry takes the next slot (19822 ms)
+    ○ skipped 1. prefunding a derived address survives deployment and info/list keep owner index and label
+    ○ skipped 2. same-agent multiplicity is ambiguous before signing and selective revoke restores uncached lookup
+    ○ skipped 3. multi-rule add and revoke are atomic batches with exact checkpoint counts
+    ○ skipped 4. invalid revoke targets preserve enabled rules and signer nonce
+    ○ skipped 5. intervening agent spend refuses a stale replacement without changing grants or checkpoints
+
+  ● agw extended management › 6. index race commits no grants to the competing wallet and retry takes the next slot
+
+    expect(received).toMatchObject(expected)
+
+    - Expected  - 4
+    + Received  + 1
+
+      Object {
+    -   "code": "INDEX_RACE",
+    -   "details": Object {
+    -     "committed": false,
+    -   },
+    +   "code": "PUSH_CHAIN_EXECUTION_FAILED",
+      }
+
+      102 |       causeDecodedErrorName: observed?.cause?.decodedError?.name,
+      103 |     });
+    > 104 |     expect(raceError).toMatchObject({ code: 'INDEX_RACE', details: { committed: false } });
+          |                       ^
+      105 |     } finally { rt.execute = original; }
+      106 |     if (!competing) throw new Error('Race injection did not run');
+      107 |     expect((await f.owner.agentic.wallet(competing.wallet).rules.list()).rules).toEqual([]);
+
+      at Object.<anonymous> (__e2e__/agw-extended/management.spec.ts:104:23)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 5 skipped, 6 total
+Snapshots:   0 total
+Time:        32.442 s
+Ran all test suites within paths "packages/core/__e2e__/agw-extended/management.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
+FAIL core-e2e packages/core/__e2e__/agw-extended/management.spec.ts (30.927 s)
+  agw extended management
+    ✕ 6. index race commits no grants to the competing wallet and retry takes the next slot (18356 ms)
+    ○ skipped 1. prefunding a derived address survives deployment and info/list keep owner index and label
+    ○ skipped 2. same-agent multiplicity is ambiguous before signing and selective revoke restores uncached lookup
+    ○ skipped 3. multi-rule add and revoke are atomic batches with exact checkpoint counts
+    ○ skipped 4. invalid revoke targets preserve enabled rules and signer nonce
+    ○ skipped 5. intervening agent spend refuses a stale replacement without changing grants or checkpoints
+
+  ● agw extended management › 6. index race commits no grants to the competing wallet and retry takes the next slot
+
+    expect(received).toMatchObject(expected)
+
+    - Expected  - 4
+    + Received  + 1
+
+      Object {
+    -   "code": "INDEX_RACE",
+    -   "details": Object {
+    -     "committed": false,
+    -   },
+    +   "code": "PUSH_CHAIN_EXECUTION_FAILED",
+      }
+
+      113 |       errorLayers,
+      114 |     });
+    > 115 |     expect(raceError).toMatchObject({ code: 'INDEX_RACE', details: { committed: false } });
+          |                       ^
+      116 |     } finally { rt.execute = original; }
+      117 |     if (!competing) throw new Error('Race injection did not run');
+      118 |     expect((await f.owner.agentic.wallet(competing.wallet).rules.list()).rules).toEqual([]);
+
+      at Object.<anonymous> (__e2e__/agw-extended/management.spec.ts:115:23)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 5 skipped, 6 total
+Snapshots:   0 total
+Time:        30.944 s, estimated 33 s
+Ran all test suites within paths "packages/core/__e2e__/agw-extended/management.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
+FAIL core-e2e packages/core/__e2e__/agw-extended/management.spec.ts (28.745 s)
+  agw extended management
+    ✕ 6. index race commits no grants to the competing wallet and retry takes the next slot (17599 ms)
+    ○ skipped 1. prefunding a derived address survives deployment and info/list keep owner index and label
+    ○ skipped 2. same-agent multiplicity is ambiguous before signing and selective revoke restores uncached lookup
+    ○ skipped 3. multi-rule add and revoke are atomic batches with exact checkpoint counts
+    ○ skipped 4. invalid revoke targets preserve enabled rules and signer nonce
+    ○ skipped 5. intervening agent spend refuses a stale replacement without changing grants or checkpoints
+
+  ● agw extended management › 6. index race commits no grants to the competing wallet and retry takes the next slot
+
+    expect(received).toMatchObject(expected)
+
+    - Expected  - 4
+    + Received  + 1
+
+      Object {
+    -   "code": "INDEX_RACE",
+    -   "details": Object {
+    -     "committed": false,
+    -   },
+    +   "code": "PUSH_CHAIN_EXECUTION_FAILED",
+      }
+
+      114 |       nestedDecodedErrorName: observed?.cause?.cause?.decodedError?.name,
+      115 |     });
+    > 116 |     expect(raceError).toMatchObject({ code: 'INDEX_RACE', details: { committed: false } });
+          |                       ^
+      117 |     } finally { rt.execute = original; }
+      118 |     if (!competing) throw new Error('Race injection did not run');
+      119 |     expect((await f.owner.agentic.wallet(competing.wallet).rules.list()).rules).toEqual([]);
+
+      at Object.<anonymous> (__e2e__/agw-extended/management.spec.ts:116:23)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 5 skipped, 6 total
+Snapshots:   0 total
+Time:        28.767 s, estimated 31 s
+Ran all test suites within paths "packages/core/__e2e__/agw-extended/management.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
+FAIL core-e2e packages/core/__e2e__/agw-extended/management.spec.ts
+  ● Test suite failed to run
+
+    [96mpackages/core/__e2e__/agw-extended/management.spec.ts[0m:[93m95[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'message' does not exist on type '{ code?: string | undefined; name?: string | undefined; details?: Record<string, unknown> | undefined; transactionHashes?: `0x${string}`[] | undefined; pendingTransactionHash?: `0x${string}` | undefined; decodedError?: { ...; } | undefined; cause?: { ...; } | undefined; }'.
+
+    [7m95[0m     const messageLayers = [observed?.message, observed?.cause?.message, observed?.cause?.cause?.message]
+    [7m  [0m [91m                                     ~~~~~~~[0m
+    [96mpackages/core/__e2e__/agw-extended/management.spec.ts[0m:[93m95[0m:[93m64[0m - [91merror[0m[90m TS2339: [0mProperty 'message' does not exist on type '{ name?: string | undefined; decodedError?: { name?: string | undefined; } | undefined; gatewayTxHash?: `0x${string}` | undefined; transactionHashes?: `0x${string}`[] | undefined; cause?: { name?: string | undefined; decodedError?: { ...; } | undefined; } | undefined; }'.
+
+    [7m95[0m     const messageLayers = [observed?.message, observed?.cause?.message, observed?.cause?.cause?.message]
+    [7m  [0m [91m                                                               ~~~~~~~[0m
+    [96mpackages/core/__e2e__/agw-extended/management.spec.ts[0m:[93m95[0m:[93m97[0m - [91merror[0m[90m TS2339: [0mProperty 'message' does not exist on type '{ name?: string | undefined; decodedError?: { name?: string | undefined; } | undefined; }'.
+
+    [7m95[0m     const messageLayers = [observed?.message, observed?.cause?.message, observed?.cause?.cause?.message]
+    [7m  [0m [91m                                                                                                ~~~~~~~[0m
+
+Test Suites: 1 failed, 1 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        0.48 s, estimated 29 s
+Ran all test suites within paths "packages/core/__e2e__/agw-extended/management.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
+FAIL core-e2e packages/core/__e2e__/agw-extended/management.spec.ts (38.232 s)
+  agw extended management
+    ✕ 6. index race commits no grants to the competing wallet and retry takes the next slot (23598 ms)
+    ○ skipped 1. prefunding a derived address survives deployment and info/list keep owner index and label
+    ○ skipped 2. same-agent multiplicity is ambiguous before signing and selective revoke restores uncached lookup
+    ○ skipped 3. multi-rule add and revoke are atomic batches with exact checkpoint counts
+    ○ skipped 4. invalid revoke targets preserve enabled rules and signer nonce
+    ○ skipped 5. intervening agent spend refuses a stale replacement without changing grants or checkpoints
+
+  ● agw extended management › 6. index race commits no grants to the competing wallet and retry takes the next slot
+
+    expect(received).toMatchObject(expected)
+
+    - Expected  - 4
+    + Received  + 1
+
+      Object {
+    -   "code": "INDEX_RACE",
+    -   "details": Object {
+    -     "committed": false,
+    -   },
+    +   "code": "PUSH_CHAIN_EXECUTION_FAILED",
+      }
+
+      124 |       customErrorSelectors,
+      125 |     });
+    > 126 |     expect(raceError).toMatchObject({ code: 'INDEX_RACE', details: { committed: false } });
+          |                       ^
+      127 |     } finally { rt.execute = original; }
+      128 |     if (!competing) throw new Error('Race injection did not run');
+      129 |     expect((await f.owner.agentic.wallet(competing.wallet).rules.list()).rules).toEqual([]);
+
+      at Object.<anonymous> (__e2e__/agw-extended/management.spec.ts:126:23)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 5 skipped, 6 total
+Snapshots:   0 total
+Time:        38.253 s
+Ran all test suites within paths "packages/core/__e2e__/agw-extended/management.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
+PASS core-e2e packages/core/__e2e__/agw-extended/management.spec.ts (67.19 s)
+  agw extended management
+    ✓ 6. index race commits no grants to the competing wallet and retry takes the next slot (50016 ms)
+    ○ skipped 1. prefunding a derived address survives deployment and info/list keep owner index and label
+    ○ skipped 2. same-agent multiplicity is ambiguous before signing and selective revoke restores uncached lookup
+    ○ skipped 3. multi-rule add and revoke are atomic batches with exact checkpoint counts
+    ○ skipped 4. invalid revoke targets preserve enabled rules and signer nonce
+    ○ skipped 5. intervening agent spend refuses a stale replacement without changing grants or checkpoints
+
+Test Suites: 1 passed, 1 total
+Tests:       5 skipped, 1 passed, 6 total
+Snapshots:   0 total
+Time:        67.209 s
+Ran all test suites within paths "packages/core/__e2e__/agw-extended/management.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

@@ -1,0 +1,62 @@
+Running 3 scenarios (group: agw-svm-wire) across 1 spec files.
+
+FAIL core-e2e __e2e__/agw-svm-wire/outbound.spec.ts (20.197 s)
+  agw svm wire
+    ✕ 1. positive outbound: actual CEA transfer and counter execution, receipt and replay (1 ms)
+    ✕ 2. substituted account and oversized instruction amount fail before submission
+    ✕ 3. destination program failure is classified and does not restore policy spend
+
+  ● agw svm wire › 1. positive outbound: actual CEA transfer and counter execution, receipt and replay
+
+    TypeError: Cannot read properties of undefined (reading 'signer')
+
+      37 |
+      38 |   const universalSigner =
+    > 39 |     await PushChain.utils.signer.toUniversalFromKeypair(walletClient, {
+         |                           ^
+      40 |       chain: opts.chain,
+      41 |       library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+      42 |     });
+
+      at createEvmPushClient (__e2e__/shared/evm-client.ts:39:27)
+      at setupAgw (__e2e__/agw/_fixture.ts:77:67)
+      at async Object.<anonymous> (__e2e__/agw-svm-wire/outbound.spec.ts:83:9)
+
+  ● agw svm wire › 2. substituted account and oversized instruction amount fail before submission
+
+    TypeError: Cannot read properties of undefined (reading 'signer')
+
+      37 |
+      38 |   const universalSigner =
+    > 39 |     await PushChain.utils.signer.toUniversalFromKeypair(walletClient, {
+         |                           ^
+      40 |       chain: opts.chain,
+      41 |       library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+      42 |     });
+
+      at createEvmPushClient (__e2e__/shared/evm-client.ts:39:27)
+      at setupAgw (__e2e__/agw/_fixture.ts:77:67)
+      at async Object.<anonymous> (__e2e__/agw-svm-wire/outbound.spec.ts:83:9)
+
+  ● agw svm wire › 3. destination program failure is classified and does not restore policy spend
+
+    TypeError: Cannot read properties of undefined (reading 'signer')
+
+      37 |
+      38 |   const universalSigner =
+    > 39 |     await PushChain.utils.signer.toUniversalFromKeypair(walletClient, {
+         |                           ^
+      40 |       chain: opts.chain,
+      41 |       library: PushChain.CONSTANTS.LIBRARY.ETHEREUM_VIEM,
+      42 |     });
+
+      at createEvmPushClient (__e2e__/shared/evm-client.ts:39:27)
+      at setupAgw (__e2e__/agw/_fixture.ts:77:67)
+      at async Object.<anonymous> (__e2e__/agw-svm-wire/outbound.spec.ts:83:9)
+
+Test Suites: 1 failed, 1 total
+Tests:       3 failed, 3 total
+Snapshots:   0 total
+Time:        20.219 s
+Ran all test suites within paths "__e2e__/agw-svm-wire/outbound.spec.ts".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

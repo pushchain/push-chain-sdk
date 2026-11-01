@@ -1,0 +1,286 @@
+{
+  "at": "2026-10-20T17:37:26.676Z",
+  "readOnly": true,
+  "network": "TESTNET_DONUT",
+  "note": "Current quotes only; first-use and subsequent labels describe gas-limit inputs, not executed transactions.",
+  "origins": [
+    {
+      "signerOrigin": "eip155:42101",
+      "pushBlockBefore": "24458913",
+      "cases": [
+        {
+          "chain": "eip155:11155111",
+          "stage": "default-new-account",
+          "inputGasLimit": "2000000",
+          "protocolFee": "0",
+          "nativeValueForGas": "10000000000000000000",
+          "gasLimitUsed": "2000000",
+          "gasFee": "2200036000000",
+          "poolPcIn": "3218360887313289",
+          "attachedPCWei": "10000000000000000000",
+          "fits20PCCeiling": true
+        },
+        {
+          "chain": "eip155:11155111",
+          "stage": "route-default-zero-input",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "10000000000000000000",
+          "gasLimitUsed": "500000",
+          "gasFee": "550009000000",
+          "poolPcIn": "804590193808946",
+          "attachedPCWei": "10000000000000000000",
+          "fits20PCCeiling": true
+        },
+        {
+          "chain": "eip155:84532",
+          "stage": "default-new-account",
+          "inputGasLimit": "2000000",
+          "protocolFee": "0",
+          "nativeValueForGas": "10000000000000000000",
+          "gasLimitUsed": "2000000",
+          "gasFee": "13200000000000",
+          "poolPcIn": "591543988922286942",
+          "attachedPCWei": "10000000000000000000",
+          "fits20PCCeiling": true
+        },
+        {
+          "chain": "eip155:84532",
+          "stage": "route-default-zero-input",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "10000000000000000000",
+          "gasLimitUsed": "500000",
+          "gasFee": "3300000000000",
+          "poolPcIn": "147885927165951477",
+          "attachedPCWei": "10000000000000000000",
+          "fits20PCCeiling": true
+        },
+        {
+          "chain": "eip155:421614",
+          "stage": "default-new-account",
+          "inputGasLimit": "2000000",
+          "protocolFee": "0",
+          "nativeValueForGas": "10000000000000000000",
+          "gasLimitUsed": "2000000",
+          "gasFee": "44180400000000",
+          "poolPcIn": "1886829389526846363",
+          "attachedPCWei": "10000000000000000000",
+          "fits20PCCeiling": true
+        },
+        {
+          "chain": "eip155:421614",
+          "stage": "route-default-zero-input",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "10000000000000000000",
+          "gasLimitUsed": "500000",
+          "gasFee": "11045100000000",
+          "poolPcIn": "471706048271902683",
+          "attachedPCWei": "10000000000000000000",
+          "fits20PCCeiling": true
+        },
+        {
+          "chain": "eip155:97",
+          "stage": "default-new-account",
+          "inputGasLimit": "2000000",
+          "protocolFee": "0",
+          "nativeValueForGas": "10000000000000000000",
+          "gasLimitUsed": "2000000",
+          "gasFee": "220000000000000",
+          "poolPcIn": "2365226106240649448",
+          "attachedPCWei": "10000000000000000000",
+          "fits20PCCeiling": true
+        },
+        {
+          "chain": "eip155:97",
+          "stage": "route-default-zero-input",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "10000000000000000000",
+          "gasLimitUsed": "500000",
+          "gasFee": "55000000000000",
+          "poolPcIn": "591303700728691582",
+          "attachedPCWei": "10000000000000000000",
+          "fits20PCCeiling": true
+        },
+        {
+          "chain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          "stage": "legacy-million-unit-fallback",
+          "inputGasLimit": "1000000",
+          "protocolFee": "0",
+          "nativeValueForGas": "1086925525682799370979",
+          "gasLimitUsed": "1000000",
+          "gasFee": "1000000000",
+          "poolPcIn": "905771271402332809149",
+          "attachedPCWei": "1086925525682799370979",
+          "fits20PCCeiling": false
+        },
+        {
+          "chain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          "stage": "sdk-default-route-sizing",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "10000000000000000000",
+          "gasLimitUsed": "1052",
+          "gasFee": "1052000",
+          "poolPcIn": "952854694072291801",
+          "attachedPCWei": "10000000000000000000",
+          "fits20PCCeiling": true
+        },
+        {
+          "chain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          "stage": "spl-first-use-route-sizing",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "10000000000000000000",
+          "gasLimitUsed": "2285",
+          "gasFee": "2285000",
+          "poolPcIn": "2069651162555018878",
+          "attachedPCWei": "10000000000000000000",
+          "fits20PCCeiling": true
+        }
+      ],
+      "pushBlockAfter": "24458922"
+    },
+    {
+      "signerOrigin": "eip155:11155111",
+      "pushBlockBefore": "24458922",
+      "cases": [
+        {
+          "chain": "eip155:11155111",
+          "stage": "default-new-account",
+          "inputGasLimit": "2000000",
+          "protocolFee": "0",
+          "nativeValueForGas": "4298634753602255924",
+          "gasLimitUsed": "2000000",
+          "gasFee": "2200036000000",
+          "poolPcIn": "3218360887313289",
+          "attachedPCWei": "4298634753602255924",
+          "fits20PCCeiling": true
+        },
+        {
+          "chain": "eip155:11155111",
+          "stage": "route-default-zero-input",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "4298634753602255924",
+          "gasLimitUsed": "500000",
+          "gasFee": "550009000000",
+          "poolPcIn": "804590193808946",
+          "attachedPCWei": "4298634753602255924",
+          "fits20PCCeiling": true
+        },
+        {
+          "chain": "eip155:84532",
+          "stage": "default-new-account",
+          "inputGasLimit": "2000000",
+          "protocolFee": "0",
+          "nativeValueForGas": "4298634753602255924",
+          "gasLimitUsed": "2000000",
+          "gasFee": "13200000000000",
+          "poolPcIn": "591543988922286942",
+          "attachedPCWei": "4298634753602255924",
+          "fits20PCCeiling": true
+        },
+        {
+          "chain": "eip155:84532",
+          "stage": "route-default-zero-input",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "4298634753602255924",
+          "gasLimitUsed": "500000",
+          "gasFee": "3300000000000",
+          "poolPcIn": "147885927165951477",
+          "attachedPCWei": "4298634753602255924",
+          "fits20PCCeiling": true
+        },
+        {
+          "chain": "eip155:421614",
+          "stage": "default-new-account",
+          "inputGasLimit": "2000000",
+          "protocolFee": "0",
+          "nativeValueForGas": "4298634753602255924",
+          "gasLimitUsed": "2000000",
+          "gasFee": "44030800000000",
+          "poolPcIn": "1880440341223012638",
+          "attachedPCWei": "4298634753602255924",
+          "fits20PCCeiling": true
+        },
+        {
+          "chain": "eip155:421614",
+          "stage": "route-default-zero-input",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "4298634753602255924",
+          "gasLimitUsed": "500000",
+          "gasFee": "11007700000000",
+          "poolPcIn": "470108794978944401",
+          "attachedPCWei": "4298634753602255924",
+          "fits20PCCeiling": true
+        },
+        {
+          "chain": "eip155:97",
+          "stage": "default-new-account",
+          "inputGasLimit": "2000000",
+          "protocolFee": "0",
+          "nativeValueForGas": "4298634753602255924",
+          "gasLimitUsed": "2000000",
+          "gasFee": "110000000000000",
+          "poolPcIn": "1182609285339028323",
+          "attachedPCWei": "4298634753602255924",
+          "fits20PCCeiling": true
+        },
+        {
+          "chain": "eip155:97",
+          "stage": "route-default-zero-input",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "4298634753602255924",
+          "gasLimitUsed": "500000",
+          "gasFee": "27500000000000",
+          "poolPcIn": "295651614879702834",
+          "attachedPCWei": "4298634753602255924",
+          "fits20PCCeiling": true
+        },
+        {
+          "chain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          "stage": "legacy-million-unit-fallback",
+          "inputGasLimit": "1000000",
+          "protocolFee": "0",
+          "nativeValueForGas": "1086925525682799370979",
+          "gasLimitUsed": "1000000",
+          "gasFee": "1000000000",
+          "poolPcIn": "905771271402332809149",
+          "attachedPCWei": "1086925525682799370979",
+          "fits20PCCeiling": false
+        },
+        {
+          "chain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          "stage": "sdk-default-route-sizing",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "4298634753602255924",
+          "gasLimitUsed": "1052",
+          "gasFee": "1052000",
+          "poolPcIn": "952854694072291801",
+          "attachedPCWei": "4298634753602255924",
+          "fits20PCCeiling": true
+        },
+        {
+          "chain": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          "stage": "spl-first-use-route-sizing",
+          "inputGasLimit": "0",
+          "protocolFee": "0",
+          "nativeValueForGas": "4298634753602255924",
+          "gasLimitUsed": "2285",
+          "gasFee": "2285000",
+          "poolPcIn": "2069651162555018878",
+          "attachedPCWei": "4298634753602255924",
+          "fits20PCCeiling": true
+        }
+      ],
+      "pushBlockAfter": "24458952"
+    }
+  ]
+}

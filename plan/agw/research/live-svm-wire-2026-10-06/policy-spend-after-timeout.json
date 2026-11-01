@@ -1,0 +1,14 @@
+{
+  "at": "2026-10-06T07:36:57.491Z",
+  "block": "23950160",
+  "wallet": "0x4612ad240cd66a77b921693bbbb356d1b8219b2c",
+  "rulesId": "0x0ed59a0b2764cf395b53a7a7d1b58e2ae3fb99b818be5392f3fdbc7eb4f645d0",
+  "assets": [
+    {
+      "token": "0x5D525Df2bD99a6e7ec58b76aF2fd95F39874EBed",
+      "maxPerCall": "10000",
+      "maxTotal": "20000",
+      "spent": "20000"
+    }
+  ]
+}

@@ -1,0 +1,224 @@
+{
+  "scope": "Combined local workspace after AGW cleanup; preceding PRE/POST changes are retained. Research evidence is excluded.",
+  "files": {
+    "packages/core/AGW.md": {
+      "sha256": "bd1fdcdc496b0711637d58d7b9920225d0ffe62b348cf0e480f46966e03cf274"
+    },
+    "packages/core/MARKETPLACE.md": {
+      "sha256": "a1c0ae6c3ef6e7f6c6d7010d355ea6dcd8c9264f6ab0dc223671a7e809e00762"
+    },
+    "packages/core/__agw-local__/agw-local-advanced.spec.ts": {
+      "sha256": "1565c1f5146400bd9f1525217ea0c50c01d27194de475ab4610035dce8d8dd6a"
+    },
+    "packages/core/__agw-local__/delayed-index.spec.ts": {
+      "sha256": "1908da842aee4942c16e378aacff6cb47e13654aacd517a3e00ac9173e483417"
+    },
+    "packages/core/__agw-local__/harness.ts": {
+      "sha256": "86806a3ab8973e21e73851fdd74bcce98a23fdc70534fb0061e93fa1f8340510"
+    },
+    "packages/core/__agw-local__/labels.spec.ts": {
+      "sha256": "8ed53af0530d577622b3b760e8deb6591611e559f2cfc22661b165f2775f1c96"
+    },
+    "packages/core/__agw-local__/multiasset.spec.ts": {
+      "sha256": "351370669b1ee135161fd105d2ad4890510bb05f97f0d111ab1397e4f27be2ef"
+    },
+    "packages/core/__agw-local__/v5-multiasset.spec.ts": {
+      "deleted": true
+    },
+    "packages/core/__e2e__/agw/_fixture.ts": {
+      "sha256": "09af2e1c7232ecbe55175919f415e19a54d9db33512e133704c5db2bd8adde2f"
+    },
+    "packages/core/__e2e__/agw/_manifest.ts": {
+      "sha256": "287b0bc3423183b9c86934f4a92eb205183ab52b2f780d904404ee26ac3600e6"
+    },
+    "packages/core/__e2e__/agw/labels.spec.ts": {
+      "sha256": "c6ed14caf4f2311ee49ed30b78748dee20450bb3e6890733f9f87cffe5740d78"
+    },
+    "packages/core/__e2e__/agw/multiasset.spec.ts": {
+      "sha256": "791ea060787be59856a8d7119886d607eea8765470637fe64e4c03e6ce14dc16"
+    },
+    "packages/core/__e2e__/agw/native-multi-action.spec.ts": {
+      "sha256": "199bd61e920777718fcdf273600b6d71e6b9bb1d80bb8459514a45b05c63b109"
+    },
+    "packages/core/__e2e__/agw/svm-spl-transfer.spec.ts": {
+      "sha256": "07e41344e7f0135ec51daa45008d1b4c16af88d99e602818593143299caa18b4"
+    },
+    "packages/core/__e2e__/agw/universal-evm.spec.ts": {
+      "sha256": "1ad01bec8eee5deb95b43051f87fefd1ba07ff3b411f9b7bc7fe0445802f1ced"
+    },
+    "packages/core/__e2e__/agw/v5-multiasset.spec.ts": {
+      "deleted": true
+    },
+    "packages/core/__e2e__/ci/run.ts": {
+      "sha256": "22e8b9573b82d2cdb8075ad261ff5c30bf98eded2f684f45c77eb037b7f37961"
+    },
+    "packages/core/__e2e__/ci/suite.ts": {
+      "sha256": "d4290447c434db1cab992fe36df36a1c0adb6ef53851a90770714ae3bb19db69"
+    },
+    "packages/core/__evaluator-local__/evaluator.spec.ts": {
+      "sha256": "dbec37ac99339f8ef9121044cb3df3fa6d6279d683939680005384338eb2d5bd"
+    },
+    "packages/core/__market-local__/marketplace.spec.ts": {
+      "sha256": "79f85655be9fa035339a921c4e5adebf5f8fea1480014a3ae354057f5a45defa"
+    },
+    "packages/core/jest.agw-local.config.ts": {
+      "sha256": "6ddb47c3dd1b2f856a8525daa72057171929da533036c2fcbffe2d54399d1650"
+    },
+    "packages/core/jest.evaluator-local.config.ts": {
+      "sha256": "1a2d3a5a07559be951e51c2a4596e843b232f5a10fc598c37908e5ceb5fbcc14"
+    },
+    "packages/core/scripts/check-agw-api.js": {
+      "sha256": "585910f46e275ba7111f09521e57beaa690f5a8c9ed4444bf6c2fb2ccbc2470b"
+    },
+    "packages/core/scripts/evaluator-local/prepare.sh": {
+      "sha256": "933b5d086251e82be029883514287f5cf41b8be5818c56fd72e1bac27663f24d"
+    },
+    "packages/core/src/lib/agentic/__tests__/codec.spec.ts": {
+      "sha256": "1d41e023e33f84b805cce2fca29644e18993e9da2f5136ed7195e1a23cfdf98e"
+    },
+    "packages/core/src/lib/agentic/__tests__/labels.spec.ts": {
+      "sha256": "178d26be2e1af78f63646657ad8a429079c2c35f6d9f6b6a2ada4e4df3ca1c27"
+    },
+    "packages/core/src/lib/agentic/__tests__/native-multi-action.spec.ts": {
+      "sha256": "477bf0c9adbfe72f326ecc39adc314cb656a39da63a0e4023087f1c5b6109007"
+    },
+    "packages/core/src/lib/agentic/__tests__/rules-policy.spec.ts": {
+      "sha256": "d39ae67c0eb2fbaebc59f16632a6a5179bac195635ed43cdd1998724d1183655"
+    },
+    "packages/core/src/lib/agentic/__tests__/svm-internals.spec.ts": {
+      "sha256": "8a7646b239bba979bef737d1641fdc698735a87621f54cd8cbd98565e2d4ca60"
+    },
+    "packages/core/src/lib/agentic/agentic.ts": {
+      "sha256": "3ebd71d9c16c15896c0ee6609702e8e32ff03a5b863234e09936527a57c92cee"
+    },
+    "packages/core/src/lib/agentic/capabilities.ts": {
+      "deleted": true
+    },
+    "packages/core/src/lib/agentic/codec/rules.ts": {
+      "sha256": "570209edd69e8ba35bd4efeada26a71d31cc64dd19ff3d4cf192818e63367077"
+    },
+    "packages/core/src/lib/agentic/codec/universal.ts": {
+      "sha256": "87dc222820075117e58d6d30e59ccb412a4b36dbe61178cc5ba22c40631eebe4"
+    },
+    "packages/core/src/lib/agentic/constants.ts": {
+      "sha256": "8df9096eb89adb3fbc77c2ebe863ca04d72818160611ecc008a25ca39d397f60"
+    },
+    "packages/core/src/lib/agentic/context.ts": {
+      "sha256": "16bf2652e61f4e8e6a7378e9b31d20409ed2fcc7f515f81e56424f220b865aa9"
+    },
+    "packages/core/src/lib/agentic/contracts/v6.ts": {
+      "sha256": "3420728561338db6d714621fc083159a7308ba21e5c8008b11df098402a0e44e"
+    },
+    "packages/core/src/lib/agentic/deployments.ts": {
+      "sha256": "af0ac6c1256bac029f7b0d78e4f0fed644f73f3fcf02ac8d38efeadaab2bf9dc"
+    },
+    "packages/core/src/lib/agentic/execution/outbound.ts": {
+      "sha256": "407849c22aa571da101920dc7b905a17b1e714699fb9838dc8ff64c37262a2fe"
+    },
+    "packages/core/src/lib/agentic/execution/send.ts": {
+      "sha256": "8769bfed679a985b539de99e31e6d0b83aa75b3e67f43e8296752872384d64da"
+    },
+    "packages/core/src/lib/agentic/execution/svm-public.ts": {
+      "sha256": "8234a3dc8d1ccefeffe1521fe58f80d6c824ba621ca0524205ca32bba59172ec"
+    },
+    "packages/core/src/lib/agentic/index.ts": {
+      "sha256": "1f92223a910acb2bf9ad698495e649f04b1c278d4b3f4532bd4d167b0df6477c"
+    },
+    "packages/core/src/lib/agentic/management/create.ts": {
+      "sha256": "628a93381c1a31a2e85cf08d1bd8d0c25a517b52dac414763bca430240ecaf46"
+    },
+    "packages/core/src/lib/agentic/management/prepare.ts": {
+      "sha256": "d54987645a4718851ba6dd4ed2c8fda92077b2d5feed384220a537856d90d5ea"
+    },
+    "packages/core/src/lib/agentic/management/rules-write.ts": {
+      "sha256": "23a2f0adeb89bfed552b4712f6388881ef120ab55c34aeb088615b9b12388e5e"
+    },
+    "packages/core/src/lib/agentic/presets/types.ts": {
+      "sha256": "10857b814869b16c90cdb09332ababb6d0e5329177b4d82a6f2f61e5d6067ed7"
+    },
+    "packages/core/src/lib/agentic/reads/checkpoints.ts": {
+      "sha256": "ad7f35a0572011ac5e4c42b92bf2a3438cd949148c8d0ec6ccca66b37c1af57e"
+    },
+    "packages/core/src/lib/agentic/reads/rules.ts": {
+      "sha256": "631293a940fe8bbc0d1f648bda5306b6b464e9fb3a0135e5c7974b443faa9e8e"
+    },
+    "packages/core/src/lib/agentic/utils.ts": {
+      "sha256": "033528a872671cf8f1278f875087f0a60646543794f26e5e83158c1ed36dd7c0"
+    },
+    "packages/core/src/lib/agentic/wallet.ts": {
+      "sha256": "5ae62018624220f26ce4cceafdaccac3aa4ba77117e6dfeb17f0a54123b5756f"
+    },
+    "packages/core/src/lib/index.ts": {
+      "sha256": "5ee91ac04af14feb68ab2ddbbd1001920dfeb0e393a5bd03291eeda1811b3959"
+    },
+    "packages/core/src/lib/job-spec/__tests__/pre-post.spec.ts": {
+      "sha256": "613e8c6dea01663f40c94972eb7fca026f540b480db54e62843a3a2365b835a0"
+    },
+    "packages/core/src/lib/job-spec/index.ts": {
+      "sha256": "68e4375d3f41f7435fcaa9017bd5cf544958dba05dbe0584cfd4f50b697ba82d"
+    },
+    "packages/core/src/lib/job-spec/pre-post/codec.ts": {
+      "sha256": "04d27c3df4677b85ee1d4669b864348421e81107b12695d2a5a5bf5bbefc3dbe"
+    },
+    "packages/core/src/lib/job-spec/pre-post/helpers.ts": {
+      "sha256": "d8c47fba0e004c7466afd596756b33b76a2f188778db8e9c960e311e1adf8543"
+    },
+    "packages/core/src/lib/job-spec/pre-post/index.ts": {
+      "sha256": "b8259b4f7826a35fc80355d1085ce147347ff879d11167a6054558852ea5e000"
+    },
+    "packages/core/src/lib/job-spec/pre-post/preview.ts": {
+      "sha256": "450571a6bd889e480e9a0245ea27fd0a0ee0800aec6ef0f4e1d865b025e1a934"
+    },
+    "packages/core/src/lib/job-spec/pre-post/schema.ts": {
+      "sha256": "5a289f41be8750a272ae150d31bdb6e150fa035a3747526b216a8695c5f2f691"
+    },
+    "packages/core/src/lib/job-spec/pre-post/types.ts": {
+      "sha256": "cd9062aa143b80e8b4789d85877de63fec1ed9ec51a440725a3cefe1361471e5"
+    },
+    "packages/core/src/lib/job-spec/preview.ts": {
+      "sha256": "ce2f53d0a0ad230fc65c10c890030e952767dcc306bd67ae1a908fbd1693ac1e"
+    },
+    "packages/core/src/lib/job/UniversalEvaluator.ts": {
+      "sha256": "47668287714c113e79afd1c44f5619e70f4dee5413953a1f2541d995f73261a0"
+    },
+    "packages/core/src/lib/job/UniversalHook.ts": {
+      "sha256": "2a73cacf236bffd4783ff32e0cbf9d21f8d02d11cb12e2f09293f7e46545a71f"
+    },
+    "packages/core/src/lib/job/evaluation.spec.ts": {
+      "sha256": "93bf2999d974b71446462a3a74e263d61f3c35519b787403e4416fc55b7e1f7b"
+    },
+    "packages/core/src/lib/job/evaluation.ts": {
+      "sha256": "a710360f9c3639d09973ad95dc24815e2c6e129e904161615f9b1ffffcd51c74"
+    },
+    "packages/core/src/lib/job/job.ts": {
+      "sha256": "8ad84f97421c859df9af5a1895eef75afd3e4679be211b13dc9899ddf0d2b0ae"
+    },
+    "packages/core/src/lib/job/types.ts": {
+      "sha256": "3b274d51b9228cc0ba482f6603b48292bb2a19a5765e75f685fff3bef645bff8"
+    },
+    "packages/core/src/lib/job/watch.ts": {
+      "sha256": "1c5b9d90288bc68debfda4665a70f220231e4735ee4815f35c01bfcd7641d766"
+    },
+    "packages/core/src/lib/market/errors.ts": {
+      "sha256": "1cf1bac8ba21fa4be2cb88d415232969942ef940f6f341bd72da14e3923624a4"
+    },
+    "packages/core/tsconfig.evaluator-local.json": {
+      "sha256": "6cc4b7656145f7e966c1c3c4c167c20303e05fda0562ced21f8a7ac969f09431"
+    },
+    "plan/SDK-CHANGELOG.md": {
+      "sha256": "197bf3e0eab0a04b9279393f7e356ea0af2315df24d8b820fdc951332cde4511"
+    },
+    "plan/marketplace/README.md": {
+      "sha256": "d4084723eb8b43a36ad29bb72757ace75f31b26b60e560eb318881e46d8c0988"
+    },
+    "plan/marketplace/implementation-status.md": {
+      "sha256": "be74f67c0765b49dc637157c9c8ac2dd502be0ebfaf1ce726305d1d2fd333ae9"
+    },
+    "plan/marketplace/questions.md": {
+      "sha256": "ef422f08a4bd602b9ce82ca545832aee080275cd23bd23234ac6f3f4c7f3d8fa"
+    },
+    "plan/marketplace/sdk-readiness.md": {
+      "sha256": "0f2274c826eb84041038bb18e3a1ae3d19c7b814614253cd45e8e9e25ccf079e"
+    }
+  }
+}
