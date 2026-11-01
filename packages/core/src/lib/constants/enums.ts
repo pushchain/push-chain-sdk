@@ -34,12 +34,15 @@ export enum CHAIN {
 }
 
 /**
- * Read-only destination exposed with the OG `CHAIN.WEB2` spelling without
- * widening the blockchain enum type accepted by transaction APIs.
+ * Read-only Web2 source kept on `CHAIN` for compatibility without widening the
+ * blockchain enum type accepted by transaction APIs.
+ *
+ * @deprecated Use `PushChain.CONSTANTS.READ.CHAIN.WEB2`. Same value (`'web2'`);
+ * the legacy literal `'web2:https'` is still accepted as read input.
  */
 // eslint-disable-next-line @typescript-eslint/no-namespace -- declaration merging keeps Web2 out of the transaction enum union
 export namespace CHAIN {
-  export const WEB2 = 'web2:https' as const;
+  export const WEB2 = 'web2' as const;
 }
 // Namespace properties are normally enumerable after TypeScript emits them.
 // Keep blockchain enumeration (`Object.values(CHAIN)`) blockchain-only.

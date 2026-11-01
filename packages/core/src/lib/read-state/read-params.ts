@@ -19,11 +19,11 @@ import { detectTokenProgram, resolveAccountName, validateIdl } from './svm-accou
 import { deriveIdlPda, isProgramSubject } from './svm-pda';
 import { CHAIN, PUSH_NETWORK } from '../constants/enums';
 import { computeReadQueryKey, resolveReadCallback } from './registry';
-import { READ_NAMESPACE, WEB2_DESTINATION } from '../constants/read-state';
+import { isWeb2ReadChain, READ_NAMESPACE, WEB2_DESTINATION } from '../constants/read-state';
 import { resolveDestination } from './destination';
 import { deriveAssociatedTokenAddress } from './envelopes/svm';
 import { InvalidReadQueryError } from './errors';
-import type { BuildReadSpecParams, ReadChain, ReadDestination, ReadLifecycleOptions, ReadQuery, ReadResultShape, Web2Extract } from './read-state.types';
+import type { BuildReadSpecParams, ReadChain, ReadDestination, ReadLifecycleOptions, ReadQuery, ReadResultShape, Web2Extract, Web2ReadChain } from './read-state.types';
 import type { ReadCallback } from './read-state.types';
 import type { ProgressEvent } from '../progress-hook/progress-hook.types';
 
@@ -56,6 +56,8 @@ interface ReadOptionsInput {
   idl?: Idl;
   /** Typed contract call — encodes the call and decodes the result. */
   abi?: Abi;
+  /** Encoded EVM view call. The result is returned as raw consensus bytes. */
+  callData?: Hex;
   /**
    * With `abi`: the function to call (required). With `idl`: the account layout
    * (optional — inferred from the discriminator; snake_case or camelCase).
@@ -94,7 +96,7 @@ interface ReadOptionsInput {
   };
 }
 
-type NoQuery = { token?: never; tokenProgram?: never; idl?: never; accountName?: never; abi?: never; functionName?: never; args?: never; storageSlot?: never; web2?: never };
+type NoQuery = { token?: never; tokenProgram?: never; idl?: never; accountName?: never; abi?: never; callData?: never; functionName?: never; args?: never; storageSlot?: never; web2?: never };
 type Query<K extends keyof NoQuery, T> = Omit<NoQuery, K> & T;
 type EvmChain = Extract<CHAIN, `eip155:${string}`>;
 type SvmChain = Extract<CHAIN, `solana:${string}`>;
@@ -105,8 +107,9 @@ export type ReadQueryOptions =
   | ({ chain: SvmChain } & Query<'token', { token: string }>)
   | ({ chain: SvmChain } & Query<'idl' | 'functionName' | 'args', { idl: Idl; functionName?: string; args?: readonly unknown[] }>)
   | ({ chain: EvmChain } & Query<'abi' | 'functionName' | 'args', { abi: Abi; functionName: string; args?: readonly unknown[] }>)
+  | ({ chain: EvmChain } & Query<'callData', { callData: Hex }>)
   | ({ chain: EvmChain } & Query<'storageSlot', { storageSlot: Hex | bigint }>)
-  | ({ chain: typeof CHAIN.WEB2 } & Query<'web2', { web2: ReadWeb2Options }>);
+  | ({ chain: Web2ReadChain } & Query<'web2', { web2: ReadWeb2Options }>);
 
 export type ReadCallbackOptions = {
   callback?:
@@ -122,7 +125,7 @@ type FinalizedDestinationOptions = { blockNumber?: never; minConfirmations?: nev
 /** EVM reads expose pinning; SVM and Web2 choose their finalized/heightless references internally. */
 export type ReadPrepareOptions = SharedPrepareOptions & (
   | (Extract<ReadQueryOptions, { chain: EvmChain }> & EvmPinningOptions)
-  | (Extract<ReadQueryOptions, { chain: SvmChain | typeof CHAIN.WEB2 }> & FinalizedDestinationOptions)
+  | (Extract<ReadQueryOptions, { chain: SvmChain | Web2ReadChain }> & FinalizedDestinationOptions)
 );
 export type ReadExecuteOptions = Pick<ReadOptionsInput, 'advanced' | 'waitForCompletion' | 'progressHook'>;
 type WithExecutionOptions<T> = T extends unknown
@@ -154,7 +157,7 @@ export type ReadValue<O> = O extends { abi: infer A extends Abi; functionName: i
   ? number extends A['length'] ? unknown : ReadCallValue<A, F, ReadFunctionArgs<O, A, F>>
   : O extends { web2: { extract: infer E extends readonly Web2Extract[] } }
     ? { readonly [K in keyof E]: Web2Value<E[K]> }
-    : O extends { storageSlot: unknown } ? Hex
+  : O extends { storageSlot: unknown } | { callData: unknown } ? Hex
     : O extends { idl: infer I extends Idl }
       ? IdlReadValue<I, O extends { functionName: infer N extends string } ? N : undefined>
       : bigint;
@@ -180,7 +183,7 @@ export const ERC20_BALANCE_OF_ABI = [
   },
 ] as const satisfies Abi;
 
-const QUERY_KEYS = ['token', 'abi', 'idl', 'storageSlot', 'web2'] as const;
+const QUERY_KEYS = ['token', 'abi', 'callData', 'idl', 'storageSlot', 'web2'] as const;
 
 function queryKind(o: ReadOptionsInput): (typeof QUERY_KEYS)[number] | 'native' {
   if ('tokenProgram' in o) throw new InvalidReadQueryError('tokenProgram is detected from the mint; remove options.tokenProgram');
@@ -196,7 +199,8 @@ function queryKind(o: ReadOptionsInput): (typeof QUERY_KEYS)[number] | 'native' 
 }
 
 export function toReadDestination(chain: ReadChain): ReadDestination {
-  return chain === CHAIN.WEB2 ? WEB2_DESTINATION : { chain };
+  // Both public spellings normalize to the unchanged wire identity web2:https.
+  return isWeb2ReadChain(chain) ? WEB2_DESTINATION : { chain };
 }
 
 /** Build the internal query from the public grammar. Pure. */
@@ -209,7 +213,7 @@ export function toReadQuery(subject: string, o: ReadOptionsInput, resolvedTokenP
     if (!/^https:\/\//i.test(subject)) throw new InvalidReadQueryError('web2 subject must be an https:// URL');
     return { type: 'http', url: subject, ...o.web2 };
   }
-  if (kind === 'web2') throw new InvalidReadQueryError('`web2` is only valid with chain CHAIN.WEB2');
+  if (kind === 'web2') throw new InvalidReadQueryError('`web2` is only valid with chain READ.CHAIN.WEB2');
 
   if (dest.namespace === READ_NAMESPACE.EVM) {
     if (!isAddress(subject)) throw new InvalidReadQueryError(`EVM subject must be an address, got ${subject}`);
@@ -224,6 +228,10 @@ export function toReadQuery(subject: string, o: ReadOptionsInput, resolvedTokenP
       case 'abi':
         if (!o.functionName) throw new InvalidReadQueryError('abi needs functionName');
         return { type: 'contractCall', target: subject, abi: o.abi as Abi, functionName: o.functionName, args: o.args };
+      case 'callData':
+        if (!/^0x(?:[\da-f]{2}){4,}$/i.test(o.callData ?? ''))
+          throw new InvalidReadQueryError('callData must contain a function selector and complete bytes');
+        return { type: 'contractCall', target: subject, callData: o.callData as Hex };
       case 'storageSlot':
         return { type: 'storageSlot', target: subject, slot: o.storageSlot as Hex | bigint };
       default:

@@ -16,7 +16,8 @@ import { CHAIN_INFO } from '../../constants/chain';
 import { PriceFetch } from '../../price-fetch/price-fetch';
 import type { OrchestratorContext } from './context';
 import { printLog } from './context';
-import { getPcUsdPrice, usdToPc } from './pc-usd-oracle';
+import { getPcUsdPrice, pcToUsd, usdToPc } from './pc-usd-oracle';
+import { quoteGasPoolCost } from './gas-pool-quote';
 
 // ============================================================================
 // Thresholds (USD, 8 decimals)
@@ -24,6 +25,11 @@ import { getPcUsdPrice, usdToPc } from './pc-usd-oracle';
 
 const ONE_USD_8D = parseUnits('1', 8); // 100_000_000
 const TEN_USD_8D = parseUnits('10', 8); // 1_000_000_000
+
+/** EVM destinations whose gas token is not ETH. No USD feed exists for them
+ * (the BSC gateway's feed is ETH/USD), so their gas is valued at the Push pool
+ * rate the gateway's swap actually pays. */
+const POOL_VALUED_GAS_CHAINS: ReadonlySet<CHAIN> = new Set([CHAIN.BNB_TESTNET]);
 
 // ============================================================================
 // Types
@@ -41,6 +47,8 @@ export interface GasSizingInput {
    * Used to price gasFee in USD via PriceFetch (Chainlink ETH/USD, Pyth SOL/USD).
    */
   destinationChain: CHAIN;
+  /** UniversalCore and gas token, for pool-valued destinations. */
+  pool?: { universalCore: `0x${string}`; gasToken: `0x${string}` };
 }
 
 export interface GasSizingDecision {
@@ -63,7 +71,7 @@ export async function sizeOutboundGas(
   ctx: OrchestratorContext,
   input: GasSizingInput
 ): Promise<GasSizingDecision> {
-  const { gasFee, originChain, destinationChain } = input;
+  const { gasFee, originChain, destinationChain, pool } = input;
 
   // 1) Price gasFee in USD (8 decimals). gasFee is denominated in the
   //    destination native (pETH = ETH value, pSOL = SOL value). The price
@@ -75,27 +83,41 @@ export async function sizeOutboundGas(
     destVm === VM.SVM ? CHAIN.SOLANA_DEVNET : CHAIN.ETHEREUM_SEPOLIA;
   const destDecimals = destVm === VM.SVM ? 9 : 18;
 
-  let destUsdPrice: bigint;
-  try {
-    destUsdPrice = await new PriceFetch(ctx.rpcUrls).getPrice(priceSourceChain);
-  } catch (err) {
+  const poolPcIn =
+    pool && POOL_VALUED_GAS_CHAINS.has(destinationChain)
+      ? await quoteGasPoolCost(ctx, pool.universalCore, pool.gasToken, gasFee)
+      : undefined;
+  let gasUsd: bigint;
+  if (poolPcIn !== undefined) {
+    gasUsd = await pcToUsd(ctx, poolPcIn, originChain);
     printLog(
       ctx,
-      `sizeOutboundGas — PriceFetch.getPrice failed (${err instanceof Error ? err.message : String(err)}); treating as Case B passthrough`
+      `sizeOutboundGas — gasFee=${gasFee.toString()} valued at the Push pool: ` +
+        `pcIn=${poolPcIn.toString()}, gasUsd=${gasUsd.toString()} (1e8)`
     );
-    // Degrade gracefully: assume the raw gasFee is already a sane size and
-    // convert 1:1 to native PC. Callers keep their existing fallback logic.
-    return passthroughAsCaseB(ctx, gasFee, originChain);
+  } else {
+    let destUsdPrice: bigint;
+    try {
+      destUsdPrice = await new PriceFetch(ctx.rpcUrls).getPrice(priceSourceChain);
+    } catch (err) {
+      printLog(
+        ctx,
+        `sizeOutboundGas — PriceFetch.getPrice failed (${err instanceof Error ? err.message : String(err)}); treating as Case B passthrough`
+      );
+      // Degrade gracefully: assume the raw gasFee is already a sane size and
+      // convert 1:1 to native PC. Callers keep their existing fallback logic.
+      return passthroughAsCaseB(ctx, gasFee, originChain);
+    }
+
+    const oneDestNativeUnit = parseUnits('1', destDecimals);
+    gasUsd = (gasFee * destUsdPrice) / oneDestNativeUnit;
+
+    printLog(
+      ctx,
+      `sizeOutboundGas — gasFee=${gasFee.toString()} ${destVm === VM.SVM ? 'pSOL' : 'gas token'} (${destDecimals}d), ` +
+        `destUsdPrice=${destUsdPrice.toString()} (1e8), gasUsd=${gasUsd.toString()} (1e8)`
+    );
   }
-
-  const oneDestNativeUnit = parseUnits('1', destDecimals);
-  const gasUsd = (gasFee * destUsdPrice) / oneDestNativeUnit;
-
-  printLog(
-    ctx,
-    `sizeOutboundGas — gasFee=${gasFee.toString()} ${destVm === VM.SVM ? 'pSOL' : 'pETH'} (${destDecimals}d), ` +
-      `destUsdPrice=${destUsdPrice.toString()} (1e8), gasUsd=${gasUsd.toString()} (1e8)`
-  );
 
   // 2) Categorize and compute target USD for each leg.
   let category: GasSizingCategory;

@@ -11,7 +11,9 @@ import type { ReadNamespace } from '../constants/read-state';
  * Where a read goes. `CHAIN` enum values are CAIP-2 and split cleanly; the
  * explicit form is the low-level escape hatch; the public API uses `CHAIN.WEB2`.
  */
-export type ReadChain = CHAIN | typeof CHAIN.WEB2;
+/** Web2 read source: `READ.CHAIN.WEB2` (`'web2'`) or the legacy `'web2:https'` literal. */
+export type Web2ReadChain = 'web2' | 'web2:https';
+export type ReadChain = CHAIN | Web2ReadChain;
 export type ReadDestination = { chain: ReadChain } | { chainNamespace: string; chainId: string };
 
 export type ResolvedDestination = {

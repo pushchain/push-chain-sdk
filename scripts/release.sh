@@ -36,6 +36,10 @@ echo "🚀 Releasing @$SCOPE with a $BUMP bump..."
 # Step 1: Bump version and generate changelog markdown
 ts-node scripts/bumpAndGenerateChangelog.ts "$SCOPE" "$BUMP"
 
+# Version bumps can change workspace semver matching (especially stable -> alpha).
+# Refresh the lockfile deliberately; the workflow's initial install stays immutable.
+YARN_ENABLE_IMMUTABLE_INSTALLS=false yarn install --mode=update-lockfile
+
 # Step 2: Build the package
 nx run "$SCOPE:build"
 
@@ -46,8 +50,8 @@ VERSION=$(node -p "require('./packages/$SCOPE/package.json').version")
 
 npm publish "$PACKAGE_DIR" --access public --otp="$OTP"
 
-# Step 4: Commit version + changelog
-git add "packages/$SCOPE/package.json" "packages/$SCOPE/CHANGELOG.md"
+# Step 4: Commit version + changelog + lockfile
+git add "packages/$SCOPE/package.json" "packages/$SCOPE/CHANGELOG.md" yarn.lock
 git commit -m "release($SCOPE): bump to $VERSION"
 
 # Step 5: Git tag + push

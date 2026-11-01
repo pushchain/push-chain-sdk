@@ -29,6 +29,10 @@ import type { OrchestratorContext } from './context';
 import { printLog, fireProgressHook } from './context';
 import { getUniversalGatewayPCAddress, getPushChainForNetwork } from './helpers';
 import {
+  UNISWAP_V3_QUOTER_EXACT_OUTPUT_ABI,
+  UNIVERSAL_CORE_SWAP_HELPERS_ABI,
+} from './gas-pool-quote';
+import {
   sizeOutboundGas,
   type GasSizingDecision,
 } from './gas-usd-sizer';
@@ -72,38 +76,6 @@ const UNISWAP_V3_FACTORY_ABI = [
     outputs: [{ name: 'pool', type: 'address', internalType: 'address' }],
     stateMutability: 'view',
   },
-];
-
-const UNISWAP_V3_QUOTER_EXACT_OUTPUT_ABI = [
-  {
-    type: 'function' as const,
-    name: 'quoteExactOutputSingle',
-    inputs: [
-      {
-        type: 'tuple',
-        components: [
-          { name: 'tokenIn', type: 'address' },
-          { name: 'tokenOut', type: 'address' },
-          { name: 'amount', type: 'uint256' },
-          { name: 'fee', type: 'uint24' },
-          { name: 'sqrtPriceLimitX96', type: 'uint160' },
-        ],
-      },
-    ],
-    outputs: [
-      { name: 'amountIn', type: 'uint256' },
-      { name: 'sqrtPriceX96After', type: 'uint160' },
-      { name: 'initializedTicksCrossed', type: 'uint32' },
-      { name: 'gasEstimate', type: 'uint256' },
-    ],
-    stateMutability: 'view',
-  },
-];
-
-const UNIVERSAL_CORE_SWAP_HELPERS_ABI = [
-  { type: 'function' as const, name: 'WPC', inputs: [], outputs: [{ name: '', type: 'address', internalType: 'address' }], stateMutability: 'view' },
-  { type: 'function' as const, name: 'uniswapV3Factory', inputs: [], outputs: [{ name: '', type: 'address', internalType: 'address' }], stateMutability: 'view' },
-  { type: 'function' as const, name: 'defaultFeeTier', inputs: [{ name: '', type: 'address', internalType: 'address' }], outputs: [{ name: '', type: 'uint24', internalType: 'uint24' }], stateMutability: 'view' },
 ];
 
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
@@ -246,6 +218,7 @@ export async function queryOutboundGasFee(
         gasFee,
         originChain: ctx.universalSigner.account.chain,
         destinationChain,
+        pool: { universalCore: universalCoreAddress, gasToken },
       });
       // All categories — A, B, and C — return the sizer's calibrated gas leg.
       // R3 consumers additionally bump `nativeValueForGas` by `overflowNativePc`
@@ -529,6 +502,7 @@ export async function queryRescueGasFee(
         gasFee,
         originChain: ctx.universalSigner.account.chain,
         destinationChain,
+        pool: { universalCore: universalCoreAddress, gasToken },
       });
       nativeValueForGas = sizing.gasLegNativePc;
       printLog(

@@ -199,6 +199,7 @@ export async function ensureSvmFinalizeGasBudgetQuote({
   pathTag,
   pc20,
   requoteFn,
+  onMinimum,
 }: {
   ctx: OrchestratorContext;
   ueaAddress: `0x${string}`;
@@ -216,6 +217,8 @@ export async function ensureSvmFinalizeGasBudgetQuote({
    * PC20 token, which has no PRC20 config.
    */
   requoteFn?: (gasLimit: bigint) => Promise<OutboundGasQuote>;
+  /** Receives the finalize minimum, so strict callers can refuse a short quote. */
+  onMinimum?: (minGasFee: bigint) => void;
 }): Promise<OutboundGasQuote> {
   const minGasFee = await getSvmFinalizeGasBudget({
     ctx,
@@ -225,6 +228,7 @@ export async function ensureSvmFinalizeGasBudgetQuote({
     burnAmount,
     pc20,
   });
+  onMinimum?.(minGasFee);
 
   if (quote.gasFee >= minGasFee) {
     const resolvedQuote = resolveSvmGasLimitUsed(quote);

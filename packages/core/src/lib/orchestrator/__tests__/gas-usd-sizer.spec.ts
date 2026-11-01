@@ -398,3 +398,62 @@ describe('sizeR1PushGas — R1 Push-chain gas sizing', () => {
     expect(decision.paddedDepositUsd).toBe(__THRESHOLDS.TEN_USD_8D);
   });
 });
+
+describe('sizeOutboundGas — BNB testnet gas is valued at the Push pool rate', () => {
+  const pool = {
+    universalCore: '0x0000000000000000000000000000000000001111',
+    gasToken: '0x0000000000000000000000000000000000005555',
+  } as const;
+  const PC = BigInt(10) ** BigInt(18);
+  // The BSC gateway feed reports ETH/USD; it must not price BNB gas.
+  const ethFeed = BigInt(2450_0000_0000);
+  function poolCtx(pcIn: bigint | Error) {
+    const ctx = makeCtx();
+    const readContract = ctx.pushClient.readContract as unknown as jest.Mock;
+    const base = readContract.getMockImplementation()!;
+    readContract.mockImplementation(async (args: { functionName: string }) => {
+      if (args.functionName !== 'quoteExactOutputSingle') return base(args);
+      if (pcIn instanceof Error) throw pcIn;
+      return [pcIn, BigInt(0), 0, BigInt(0)];
+    });
+    return ctx;
+  }
+
+  it('uses the exact-output pool cost instead of the ETH feed', async () => {
+    mockGetPrice.mockResolvedValue(ethFeed);
+    // 23.65 PC at $0.10/PC = $2.365 → Case B.
+    const pcIn = (PC * BigInt(2365)) / BigInt(100);
+    const r = await sizeOutboundGas(poolCtx(pcIn), {
+      gasFee: BigInt('2200000000000000'),
+      originChain: CHAIN.ETHEREUM_SEPOLIA,
+      destinationChain: CHAIN.BNB_TESTNET,
+      pool,
+    });
+    expect(mockGetPrice).not.toHaveBeenCalled();
+    expect(r.category).toBe('B');
+    expect(r.gasUsd).toBe(BigInt(236_500_000));
+    expect(r.gasLegNativePc).toBe(pcIn);
+  });
+
+  it('falls back to the feed when the pool cannot be quoted', async () => {
+    mockGetPrice.mockResolvedValue(ethFeed);
+    await sizeOutboundGas(poolCtx(new Error('no pool')), {
+      gasFee: BigInt('2200000000000000'),
+      originChain: CHAIN.ETHEREUM_SEPOLIA,
+      destinationChain: CHAIN.BNB_TESTNET,
+      pool,
+    });
+    expect(mockGetPrice).toHaveBeenCalledWith(CHAIN.ETHEREUM_SEPOLIA);
+  });
+
+  it('keeps ETH destinations on the ETH feed', async () => {
+    mockGetPrice.mockResolvedValue(ethFeed);
+    await sizeOutboundGas(poolCtx(PC), {
+      gasFee: BigInt('2200000000000000'),
+      originChain: CHAIN.ETHEREUM_SEPOLIA,
+      destinationChain: CHAIN.BASE_SEPOLIA,
+      pool,
+    });
+    expect(mockGetPrice).toHaveBeenCalledWith(CHAIN.ETHEREUM_SEPOLIA);
+  });
+});

@@ -1,3 +1,143 @@
+@pushchain/core@6.0.27-alpha.9 (2026-11-01)
+
+Changes since `6.0.27-alpha.8`: UniversalMarketplace 2.1 integration on Push Donut,
+with the deployed UniversalEvaluator and live PRE/POST evaluation acceptance.
+
+### Breaking
+
+- The default marketplace is now `0x940744d96b14Bc030163C6084d602d57CE42ba48`.
+  Its kernel uses **eUSD** for escrow, replacing the retired marketplace's pUSDC
+  stack. Existing 2.0 cards, job identifiers and signed plans are not migrated;
+  no backward-compatibility adapter is included.
+- `AgentCardRules` is an ordered array of per-chain `AgentCardRule` objects.
+  Each rule has its own `chain`; card summaries expose `chains`. Exactly one
+  asset across the card has a `PRINCIPAL` total. The `principalAsset` index is
+  removed.
+- Cards use `minDuration` and `maxDuration`. Removed card-level `chain`,
+  `principalMin`, `principalMax`, `minExecuteWindow` and `settleWindow`.
+  Job inputs are `principal`, `expiredAt` and `params`; `executeBy` is removed.
+- `JobPlan.session` becomes `sessions`. Opening results and marketplace job
+  mappings return `rulesIds` arrays instead of a single `rulesId`. Opening signs
+  a batch of permission grants followed by kernel job creation.
+- `PushChain.utils.job` and the public `JobSpec`/`JobSpecTemplate` types now use
+  the timing-free PRE/POST format by default. Reads have `at`; checks use
+  `left`/`right` read-index arrays; logic uses `COMPARE` leaves. Removed criteria
+  fields `executeBy` and `failFinalAt`. The former `CHECK` leaf is named
+  `COMPARE`, with its wire value still zero. Marketplace templates resolve to
+  immutable (`NONE`) criteria.
+- Job lists return snapshot state and evaluator facts without loading each
+  job's historical deliverable. Use `job.status` or `job.watch` for deliverables.
+
+### Added
+
+- Marketplace 2.1 card authoring, registration, updates and previews for up to
+  four distinct external EVM chains, subject to the live rule cap. Discovery
+  includes `chains`, `maxRulesPerCard`, verification and disabled state.
+- Default Donut integration with the deployed UniversalHook and UniversalEvaluator:
+  reviewed criteria-hash acceptance, capped PC read prepayment, atomic escrow
+  funding, PRE snapshots, POST evaluation, retries, settlement and unused
+  read-fee recovery. The explicit `job.withEvaluator(...)` configuration remains
+  available for compatible custom deployments.
+- All recorded marketplace permission IDs are exposed in job status and handled
+  during owner-authorized cancellation.
+- A live E2E covering marketplace opening, funding, real PRE/POST consensus,
+  automatic completion/payout, unused read-fee recovery and permission cleanup.
+
+### Improved
+
+- Independently checks the signed opening batch, per-chain CEA derivations,
+  resolved criteria, card version and resulting permission IDs.
+- Receipt recovery and deposits use the opened card version and the 2.1 event
+  format. Principal, provider escrow and PC gas/read budgets stay distinct.
+- Job listing avoids a separate historical submission-log scan for every row.
+
+### Fixed
+
+- A job containing unsupported criteria no longer aborts the whole job list.
+  It returns kernel facts with `evaluation.available = false`, reason
+  `UNSUPPORTED_JOB_SPEC`, and `jobSpecDecodeError`. No older-format decoder is
+  used; writes still reject unsupported criteria and RPC failures remain errors.
+- Refuses multi-rule job opening, funding and deposits while the deployed hook
+  binds only one permission, including funding jobs opened outside this SDK.
+
+### Validation and current limits
+
+- 2,312 unit tests passed, with 12 existing skips. Nine distinct live Donut
+  scenarios passed across reruns, including external-owner recovery, paid
+  previews, origin bridging, escrow payouts and automatic PRE/POST evaluation.
+- Multi-rule cards can be authored, registered and previewed, but **multi-rule
+  job execution remains gated** until the hook validates and binds every rule.
+  A marketplace cap of four does not establish hook support.
+- eUSD is the Donut demo payment token; PC pays gas and evaluator reads. Principal
+  assets require their actual source-chain routes. This release does not add
+  PUSD redemption, arbitrary cross-chain principal routing or mutable-criteria
+  negotiation.
+
+See [Marketplace and jobs](./MARKETPLACE.md) for the current integration flow.
+
+---
+
+@pushchain/core@6.0.27-alpha.8 (2026-10-26)
+
+- feat: integrate PRE/POST jobs and simplify AGW v6
+
+---
+
+@pushchain/core@6.0.27-alpha.7 (2026-10-24)
+
+- feat: ship working AGW presets, tokens-only rules and MOVEABLE ALL
+
+---
+
+@pushchain/core@6.0.27-alpha.6 (2026-10-21)
+
+- fix: route exact AGW tokens and size agent gas from the pool
+
+---
+
+@pushchain/core@6.0.27-alpha.5 (2026-10-20)
+
+- fix: clarify agentic creation permissions and route guidance
+
+---
+
+@pushchain/core@6.0.27-alpha.4 (2026-10-20)
+
+- fix: remove preset funding mode and preserve asset limits
+- feat: sync v4 SDK changes without plan files
+
+---
+
+@pushchain/core@6.0.27-alpha.3 (2026-10-18)
+
+- feat: ship bounded preset defaults with funding checks
+
+---
+
+@pushchain/core@6.0.27-alpha.2 (2026-10-16)
+
+- feat: add bounded preset operations and configuration readiness
+
+---
+
+@pushchain/core@6.0.27-alpha.1 (2026-10-15)
+
+- fix: resolve AGW tokens by destination and expand live coverage
+- feat: add mainnet AGW presets and live protocol coverage
+- fix: return safe AGW preset review templates
+- feat: add verified testnet AGW preset templates
+- feat: migrate AGW SDK to deployed v6 contracts
+
+---
+
+@pushchain/core@6.0.27-alpha.0 (2026-10-12)
+
+- feat: align AGW rules and presets with October SDK feedback
+- feat: add AGW v5 wallet and rules SDK
+- test: mirror the restructured Universal Read docs playgrounds
+
+---
+
 @pushchain/core@6.0.26 (2026-09-23)
 
 - docs: changelog for read-state docs parity
