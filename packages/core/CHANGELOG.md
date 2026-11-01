@@ -1,3 +1,9 @@
+@pushchain/core@6.0.27-alpha.9 (2026-11-01)
+
+- feat: migrate marketplace to 2.1 with live evaluator acceptance
+
+---
+
 @pushchain/core@6.0.27-alpha.8 (2026-10-26)
 
 - feat: integrate PRE/POST jobs and simplify AGW v6
