@@ -4,6 +4,10 @@ Running history for work continued on `feat/agw-sdk-v4`, covering AGW, marketpla
 
 For each meaningful checkpoint, add a dated entry with the change, decisions, validation, remaining work and relevant commit/evidence links. Keep earlier entries as history and mark superseded decisions explicitly. Distinguish implemented code, planning, local/fork checks, funded execution, Git delivery and package publication. Git history for this file records the exact commit introducing each checkpoint.
 
+## 2026-11-01 — alpha.9 publication and team handoff documents
+
+Verified npm publication of `@pushchain/core@6.0.27-alpha.9` at `2026-11-01T10:44:55.470Z`, with package `gitHead` `ccc5d3dd2ba46532369b28d9df6fe03a7a91d2db`. Fast-forwarded the v5 worktree to the existing release commit `19dbd3dd`; no new version bump or publication. Expanded the alpha.9 package changelog on v4 and v5 using the existing release format. Expanded `plan/marketplace/questions.md` on v4 into a team handoff covering the multi-rule hook ABI, complete-set validation, revocation/settlement policy, terminal cleanup and rollout evidence. Release notes are maintained on both branches; the team handoff and development history remain on v4 only.
+
 ## 2026-11-01 — Git delivery to v4 and v5
 
 Implementation/tests/consumer guide committed as `8bc8f9be` on `feat/agw-sdk-v4` and `ccc5d3dd` on `feat/agw-sdk-v5`. Both contain the same33-file change. V5 first fast-forwarded to the existing remote release commit `c81a532c`; its6.0.27-alpha.8 metadata is preserved. No new version bump or package publication was performed. Plan/history/evidence is committed separately onv4 only. Validation remains9 distinct live scenarios across reruns,2312 units and the documented local/fork/package checks. Remote delivery targets are the two existing origin branches; no force push.
