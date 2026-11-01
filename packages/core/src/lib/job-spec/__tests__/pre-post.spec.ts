@@ -51,7 +51,7 @@ it('roundtrips the pinned ABI layout and enforces return-shape validation', () =
   const bytes = encodeAbiParameters([PRE_POST_SPEC_PARAM], [wire]);
   const decoded = utils.decodeJobSpec(bytes, { format: 'spec' });
   expect(decoded.allowedMutability).toBe('NONE');
-  expect(decoded.logic[0].kind).toBe('CHECK');
+  expect(decoded.logic[0].kind).toBe('COMPARE');
   expect(utils.encodeJobSpec(decoded)).toBe(bytes);
   expect(() => decodeJobSpec(vector.bytes, { format: 'spec' })).toThrow();
 });
@@ -166,7 +166,7 @@ it('preserves valid topological DAG bytes rather than flattening and changing si
   x.logic = [
     { kind: 'ALL', check: 8, children: [1, 2], k: 4 },
     { kind: 'ANY', check: 0, children: [2], k: 0 },
-    { kind: 'CHECK', check: 0, children: [], k: 7 },
+    { kind: 'COMPARE', check: 0, children: [], k: 7 },
   ];
   const bytes = utils.encodeJobSpec(x);
   expect(

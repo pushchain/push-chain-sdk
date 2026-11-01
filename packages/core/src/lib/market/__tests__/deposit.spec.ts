@@ -8,7 +8,7 @@ import {
   type Hex,
 } from 'viem';
 import { depositJob, type DepositCheckpoint } from '../deposit';
-import { DONUT_MARKETPLACE as D } from '../deployment';
+import { DONUT_MARKETPLACE as DEFAULT_DEPLOYMENT } from '../deployment';
 import { MARKETPLACE_ABI } from '../contracts/UniversalMarketplace';
 import { encodeAgentCardRules } from '../rules';
 import {
@@ -16,7 +16,10 @@ import {
   mockRuntime,
 } from '../../agentic/__tests__/mock-runtime';
 import { FakeChain } from '../../agentic/__tests__/fake-chain';
-import { buildJobSpec, encodeJobSpec } from '../../job-spec/codec';
+import {
+  buildPrePostJobSpec as buildJobSpec,
+  encodePrePostJobSpec as encodeJobSpec,
+} from '../../job-spec/pre-post/codec';
 import { prepareJobRead } from '../../job-spec/read';
 import { specOrigin } from '../../job-spec/helpers';
 import { PRINCIPAL } from '../../job-spec/constants';
@@ -27,8 +30,13 @@ import type { MarketSnapshot, StackRuntime } from '../runtime';
 const sender = '0x1111111111111111111111111111111111111111' as Address;
 const wallet = '0x2222222222222222222222222222222222222222' as Address;
 const provider = '0x3333333333333333333333333333333333333333' as Address;
+const D = DEFAULT_DEPLOYMENT;
 const principalToken = '0x4444444444444444444444444444444444444444' as Address;
-function setup(sameToken = false) {
+function setup(
+  sameToken = false,
+  paymentToken: Address = DEFAULT_DEPLOYMENT.paymentToken
+) {
+  const D = { ...DEFAULT_DEPLOYMENT, paymentToken };
   const base = mockRuntime(new FakeChain(), { signer: sender });
   const balances = new Map<string, bigint>();
   const key = (token: string | undefined, a: string) =>
@@ -55,15 +63,14 @@ function setup(sameToken = false) {
       ],
       checks: [
         {
-          read: 0,
+          left: [0],
+          right: [],
           evaluation: 'COMPARE',
           operation: 'GREATER_OR_EQUAL',
           target: BigInt(1),
         },
       ],
       logic: 'ALL',
-      executeBy: 1700000010,
-      failFinalAt: 1700000020,
       origin: specOrigin(D.marketplace, BigInt(1), BigInt(1), BigInt(10)),
     })
   );
@@ -73,21 +80,24 @@ function setup(sameToken = false) {
     provider,
     paymentToken: D.paymentToken,
     providerFee: BigInt(5),
-    rules: { maxGasPerCall: BigInt(7) },
+    rules: [{ maxGasPerCall: BigInt(7) }],
     rulesBytes: encodeAgentCardRules(
-      {
-        principalAsset: 0,
-        maxGasPerCall: BigInt(7),
-        assets: [
-          {
-            token: { prc20: token },
-            maxPerCall: PRINCIPAL,
-            maxTotal: PRINCIPAL,
-          },
-        ],
-        allowedCalls: [{ target: token, selector: 'balanceOf(address)' }],
-      },
-      { chain: 'eip155:97' }
+      [
+        {
+          chain: 'eip155:97',
+
+          maxGasPerCall: BigInt(7),
+          assets: [
+            {
+              token: { prc20: token },
+              maxPerCall: PRINCIPAL,
+              maxTotal: PRINCIPAL,
+            },
+          ],
+          allowedCalls: [{ target: token, selector: 'balanceOf(address)' }],
+        },
+      ],
+      {}
     ),
   } as unknown as AgentCard;
   const load = jest.fn(async (_id: bigint, _at: MarketSnapshot) => card);
@@ -104,7 +114,7 @@ function setup(sameToken = false) {
         case 'agwOfJob':
           return wallet;
         case 'rulesOfJob':
-          return zeroHash;
+          return [zeroHash];
         case 'getJob':
           return {
             client: wallet,
@@ -129,6 +139,7 @@ function setup(sameToken = false) {
     }
   );
   const rt: StackRuntime = {
+    deployment: D,
     agw: {
       ...base,
       reader: {
@@ -145,11 +156,11 @@ function setup(sameToken = false) {
               data: encodeAbiParameters(
                 [
                   { type: 'uint256' },
-                  { type: 'bytes32' },
+                  { type: 'bytes32[]' },
                   { type: 'uint256' },
                   { type: 'uint256' },
                 ],
-                [BigInt(1), zeroHash, BigInt(10), BigInt(1)]
+                [BigInt(1), [zeroHash], BigInt(10), BigInt(1)]
               ),
               topics: encodeEventTopics({
                 abi: MARKETPLACE_ABI,
@@ -310,7 +321,11 @@ it('retains a receipt when a token returns success without delivering the requir
   expect(f.execute).toHaveBeenCalledTimes(1);
 });
 it('uses an explicit registered origin route and keeps its recipient outside AGW execution', async () => {
-  const f = setup(true);
+  const D = {
+    ...DEFAULT_DEPLOYMENT,
+    paymentToken: '0x7A58048036206bB898008b5bBDA85697DB1e5d66' as Address,
+  };
+  const f = setup(true, D.paymentToken);
   f.rt.agw.signerIsPushNative = () => false;
   f.rt.agw.signerOrigin = () => ({
     chain: CHAIN.ETHEREUM_SEPOLIA,

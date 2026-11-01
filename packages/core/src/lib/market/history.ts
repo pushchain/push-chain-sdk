@@ -85,7 +85,7 @@ export async function historicalCard(
   if (!log.transactionHash || log.blockNumber === null) return fail();
   const tx = await rt.agw.reader.getTransaction({ hash: log.transactionHash });
   if (tx.blockNumber !== log.blockNumber) return fail();
-  // The chain and provider cannot change on update. Do not decode today's potentially malformed template.
+  // The provider cannot change on update; chains may change. Do not decode today's potentially malformed template.
   const current = await (
     await snapshot(rt)
   ).read<{
@@ -101,7 +101,6 @@ export async function historicalCard(
     };
     return (
       (i === 0 || args[0] === cardId) &&
-      c.chainNamespace === current.card.chainNamespace &&
       getAddress(c.paymentToken) === getAddress(current.card.paymentToken) &&
       c.providerFee === event.providerFee &&
       keccak256(args[i + 1] as Hex) === event.rulesHash &&

@@ -556,7 +556,7 @@ it('matches the pinned Solidity marketplace builder for the new card template wi
   });
   expect(PushChain.utils.job.prePost.encodeJobSpec(resolved)).toBe(expected);
 });
-it('keeps legacy binary JobSpecs and manual jobs usable on the same scoped kernel', async () => {
+it('supports canonical PRE/POST criteria on manual jobs in a scoped kernel', async () => {
   const read = PushChain.utils.job.prepareRead({
     chain: 'eip155:8453',
     target: token,
@@ -569,15 +569,14 @@ it('keeps legacy binary JobSpecs and manual jobs usable on the same scoped kerne
       reads: [read],
       checks: [
         {
-          read: 0,
+          left: [0],
+          right: [],
           evaluation: 'COMPARE',
           operation: 'GREATER_OR_EQUAL',
           target: BigInt(1),
         },
       ],
       logic: 'ALL',
-      executeBy: now + 100,
-      failFinalAt: now + 200,
     });
   const { jobId } = await job.create({
     provider: h.wallets[1].account!.address,
@@ -593,7 +592,7 @@ it('keeps legacy binary JobSpecs and manual jobs usable on the same scoped kerne
   await expect(job.verify(jobId)).rejects.toMatchObject({
     code: 'CAPABILITY_UNAVAILABLE',
   });
-  await (await agentJob.submit(jobId, { deliverable: 'legacy manual' })).wait();
+  await (await agentJob.submit(jobId, { deliverable: 'manual job' })).wait();
   await h.write(2, kernel, JOB_KERNEL_ABI, 'complete', [jobId, zeroHash, '0x']);
   expect((await job.status(jobId)).status).toBe('Completed');
 });

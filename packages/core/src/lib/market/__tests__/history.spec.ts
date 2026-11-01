@@ -22,19 +22,22 @@ const hash = ('0x' + 'ab'.repeat(32)) as Hex;
 function fixture() {
   const base = mockRuntime(new FakeChain());
   const rules = encodeAgentCardRules(
-    {
-      assets: [
-        {
-          token: { prc20: D.paymentToken },
-          maxPerCall: PRINCIPAL,
-          maxTotal: PRINCIPAL,
-        },
-      ],
-      principalAsset: 0,
-      maxGasPerCall: BigInt(17),
-      allowedCalls: [{ target: provider, selector: 'balanceOf(address)' }],
-    },
-    { chain: 'eip155:97' }
+    [
+      {
+        chain: 'eip155:97',
+        assets: [
+          {
+            token: { prc20: D.paymentToken },
+            maxPerCall: PRINCIPAL,
+            maxTotal: PRINCIPAL,
+          },
+        ],
+
+        maxGasPerCall: BigInt(17),
+        allowedCalls: [{ target: provider, selector: 'balanceOf(address)' }],
+      },
+    ],
+    {}
   );
   const c = {
     provider,
@@ -59,7 +62,7 @@ function fixture() {
   });
   const log = {
     address: D.marketplace,
-    blockNumber: BigInt(24443653),
+    blockNumber: BigInt(24803669),
     transactionHash: hash,
     logIndex: 0,
     blockHash: zeroHash,
@@ -72,19 +75,12 @@ function fixture() {
     }),
     data: encodeAbiParameters(
       [
-        { type: 'string' },
         { type: 'bytes32' },
         { type: 'bytes32' },
         { type: 'bytes32' },
         { type: 'uint256' },
       ],
-      [
-        c.chainNamespace,
-        keccak256(rules),
-        keccak256('0x1234'),
-        zeroHash,
-        BigInt(7),
-      ]
+      [keccak256(rules), keccak256('0x1234'), zeroHash, BigInt(7)]
     ),
   } as Log;
   const state = {
@@ -98,7 +94,7 @@ function fixture() {
       ...base,
       reader: {
         ...base.reader,
-        getBlockNumber: async () => BigInt(24443654),
+        getBlockNumber: async () => BigInt(24803670),
         readContract: async () => ({ card: c }),
         getLogs: logs,
         getTransaction: async () => state,
@@ -113,7 +109,7 @@ function fixture() {
     throw new Error('Archive unavailable');
   });
   const run = () =>
-    historicalCard(rt, BigInt(1), BigInt(1), BigInt(24443654), load);
+    historicalCard(rt, BigInt(1), BigInt(1), BigInt(24803670), load);
   return { run, load, rt, state, rules, data, log, logs };
 }
 it('recovers an exact version from event hashes and wrapped transaction input without archive state', async () => {
@@ -122,7 +118,7 @@ it('recovers an exact version from event hashes and wrapped transaction input wi
     version: BigInt(1),
     providerFee: BigInt(7),
     rulesBytes: f.rules,
-    rules: { maxGasPerCall: BigInt(17) },
+    rules: [{ maxGasPerCall: BigInt(17) }],
   });
 });
 it('uses matching historical state without scanning transaction history', async () => {
@@ -138,6 +134,6 @@ it('rejects a selector-shaped decoy whose content hashes do not match the emitte
 });
 it('rejects history whose transaction is no longer mined in the event block', async () => {
   const f = fixture();
-  f.state.blockNumber = BigInt(24443654);
+  f.state.blockNumber = BigInt(24803670);
   await expect(f.run()).rejects.toMatchObject({ code: 'HISTORY_UNAVAILABLE' });
 });

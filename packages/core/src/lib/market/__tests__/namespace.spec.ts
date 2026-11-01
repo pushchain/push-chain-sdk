@@ -10,48 +10,52 @@ const owner = '0x1111111111111111111111111111111111111111';
 const provider = '0x2222222222222222222222222222222222222222';
 function runtime(signer: Address = owner) {
   const base = mockRuntime(new FakeChain(), { signer });
-  const read = jest.fn(async (args: { functionName: string }) => {
-    switch (args.functionName) {
-      case 'getJob':
-        return {
-          client: owner,
-          provider,
-          hook: zeroAddress,
-          evaluator: provider,
-          status: 0,
-          expiredAt: 2000000000,
-          budget: BigInt(5),
-          description: '0x',
-        };
-      case 'agentCardCount':
-        return BigInt(1);
-      case 'getAgentCard':
-        return {
-          card: {
+  const read = jest.fn(
+    async (args: { functionName: string }): Promise<unknown> => {
+      switch (args.functionName) {
+        case 'getJob':
+          return {
+            client: owner,
             provider,
-            chainNamespace: 'eip155:11155111',
-            jobType: zeroHash,
-            metadataURI: 'invalid template example',
-            metadataHash: zeroHash,
-            active: true,
-            providerFee: BigInt(5),
-          },
-          version: BigInt(1),
-          verified: false,
-          disabled: false,
-          rules: '0xdead',
-          jobSpecTemplate: '0xdead',
-        };
-      case 'getAgentRating':
-        return BigInt(0);
-      case 'cardOfJob':
-        return BigInt(0);
-      case 'isWallet':
-        return false;
-      default:
-        throw new Error(`unexpected read ${args.functionName}`);
+            hook: zeroAddress,
+            evaluator: provider,
+            status: 0,
+            expiredAt: 2000000000,
+            budget: BigInt(5),
+            description: '0x',
+          };
+        case 'agentCardCount':
+          return BigInt(1);
+        case 'getAgentCard':
+          return {
+            card: {
+              provider,
+              chainNamespace: 'eip155:11155111',
+              jobType: zeroHash,
+              metadataURI: 'invalid template example',
+              metadataHash: zeroHash,
+              active: true,
+              providerFee: BigInt(5),
+            },
+            version: BigInt(1),
+            verified: false,
+            disabled: false,
+            rules: '0xdead',
+            jobSpecTemplate: '0xdead',
+          };
+        case 'maxRulesPerCard':
+          return 4;
+        case 'getAgentRating':
+          return BigInt(0);
+        case 'cardOfJob':
+          return BigInt(0);
+        case 'isWallet':
+          return false;
+        default:
+          throw new Error(`unexpected read ${args.functionName}`);
+      }
     }
-  });
+  );
   const rt: StackRuntime = {
     agw: {
       ...base,
@@ -120,14 +124,13 @@ it('placeholder methods and replacement proposals fail before any reads or signa
   await expect(
     market.openJob({} as never, { relay: true })
   ).rejects.toMatchObject({ code: 'CAPABILITY_UNAVAILABLE' });
-  expect(read).not.toHaveBeenCalled();
   expect(rt.signTypedData).not.toHaveBeenCalled();
 });
 it('checks typed-data capability and external owner deployment before asking for a signature', async () => {
   const { rt, read } = runtime();
   rt.canSignTypedData = () => false;
   await expect(
-    new MarketNamespaceImpl(rt).openJob({} as JobPlan)
+    new MarketNamespaceImpl(rt).openJob({ sessions: [{}] } as JobPlan)
   ).rejects.toMatchObject({ code: 'CAPABILITY_UNAVAILABLE' });
   expect(read).not.toHaveBeenCalled();
   rt.canSignTypedData = () => true;
@@ -135,7 +138,7 @@ it('checks typed-data capability and external owner deployment before asking for
   rt.agw.reader.getCode = async () => '0x';
   rt.agw.signerIsPushNative = () => false;
   await expect(
-    new MarketNamespaceImpl(rt).openJob({} as JobPlan)
+    new MarketNamespaceImpl(rt).openJob({ sessions: [{}] } as JobPlan)
   ).rejects.toMatchObject({ code: 'OWNER_NOT_DEPLOYED' });
   expect(rt.signTypedData).not.toHaveBeenCalled();
 });
@@ -153,6 +156,7 @@ it('compares the factory signing domain before prompting the owner', async () =>
       signerChainId: BigInt(42101),
       deadline: 1800000000,
     },
+    sessions: [{}],
     label: 'test',
     job: {},
   } as unknown as JobPlan;
@@ -171,7 +175,9 @@ it('retains the submitted opening hash when receipt recovery fails, without anot
     },
   });
   await expect(
-    new MarketNamespaceImpl(rt).openJob({} as JobPlan, { resume: tx })
+    new MarketNamespaceImpl(rt).openJob({ sessions: [{}] } as JobPlan, {
+      resume: tx,
+    })
   ).rejects.toMatchObject({
     code: 'OPEN_JOB_RECOVERY_REQUIRED',
     details: { txHash: tx.hash },
@@ -179,4 +185,37 @@ it('retains the submitted opening hash when receipt recovery fails, without anot
   expect(rt.signTypedData).not.toHaveBeenCalled();
   expect(execute).not.toHaveBeenCalled();
   expect(read).not.toHaveBeenCalled();
+});
+it('gates multi-rule openings before reads, signatures or writes', async () => {
+  const { rt, read, execute } = runtime();
+  await expect(
+    new MarketNamespaceImpl(rt).openJob({ sessions: [{}, {}] } as JobPlan)
+  ).rejects.toMatchObject({ code: 'MULTI_RULE_HOOK_UNSUPPORTED' });
+  expect(read).not.toHaveBeenCalled();
+  expect(rt.signTypedData).not.toHaveBeenCalled();
+  expect(execute).not.toHaveBeenCalled();
+});
+it('refuses funding an externally opened multi-rule job before moving funds', async () => {
+  const { rt, read, execute } = runtime();
+  const { DONUT_MARKETPLACE: d } = await import('../deployment');
+  const original = read.getMockImplementation()!;
+  read.mockImplementation(async (args) => {
+    if (args.functionName === 'getJob')
+      return { ...((await original(args)) as object), hook: d.hook };
+    if (args.functionName === 'isWallet') return true;
+    if (args.functionName === 'owner') return owner;
+    if (
+      args.functionName === 'cardOfJob' ||
+      args.functionName === 'cardVersionOfJob'
+    )
+      return BigInt(1);
+    if (args.functionName === 'rulesOfJob')
+      return [zeroHash, '0x' + '01'.repeat(32)];
+    return original(args);
+  });
+  await expect(
+    new JobNamespaceImpl(rt).fund(BigInt(1), { expectedBudget: BigInt(5) })
+  ).rejects.toMatchObject({ code: 'MULTI_RULE_HOOK_UNSUPPORTED' });
+  expect(execute).not.toHaveBeenCalled();
+  expect(rt.send).not.toHaveBeenCalled();
 });

@@ -1,4 +1,4 @@
-// Generated from sdk-iteration-v1@443b4e2; Donut marketplace v2.
+// Generated from sdk_iteration_v2@5aad039; marketplace 2.1.0.
 export const MARKET_ERRORS_ABI = [
   {
     type: 'error',
@@ -19,12 +19,24 @@ export const MARKET_ERRORS_ABI = [
   {
     type: 'error',
     name: 'ActionCount',
-    inputs: [],
+    inputs: [
+      {
+        name: 'rule',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
   },
   {
     type: 'error',
     name: 'ActionsMismatch',
-    inputs: [],
+    inputs: [
+      {
+        name: 'rule',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
   },
   {
     type: 'error',
@@ -50,11 +62,6 @@ export const MARKET_ERRORS_ABI = [
   },
   {
     type: 'error',
-    name: 'AgentCardIdentityImmutable',
-    inputs: [],
-  },
-  {
-    type: 'error',
     name: 'AgentCardInactive',
     inputs: [],
   },
@@ -77,12 +84,23 @@ export const MARKET_ERRORS_ABI = [
   {
     type: 'error',
     name: 'AgentMismatch',
-    inputs: [],
+    inputs: [
+      {
+        name: 'rule',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
   },
   {
     type: 'error',
     name: 'AssetCountMismatch',
     inputs: [
+      {
+        name: 'rule',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
       {
         name: 'expected',
         type: 'uint256',
@@ -100,6 +118,11 @@ export const MARKET_ERRORS_ABI = [
     name: 'AssetMismatch',
     inputs: [
       {
+        name: 'rule',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+      {
         name: 'index',
         type: 'uint256',
         internalType: 'uint256',
@@ -116,7 +139,7 @@ export const MARKET_ERRORS_ABI = [
     name: 'ChainMismatch',
     inputs: [
       {
-        name: 'i',
+        name: 'rule',
         type: 'uint256',
         internalType: 'uint256',
       },
@@ -135,10 +158,10 @@ export const MARKET_ERRORS_ABI = [
   },
   {
     type: 'error',
-    name: 'EnvelopeVersionMismatch',
+    name: 'DuplicateChain',
     inputs: [
       {
-        name: 'actual',
+        name: 'rule',
         type: 'uint256',
         internalType: 'uint256',
       },
@@ -146,8 +169,19 @@ export const MARKET_ERRORS_ABI = [
   },
   {
     type: 'error',
-    name: 'ExecuteByOutOfRange',
-    inputs: [],
+    name: 'EnvelopeVersionMismatch',
+    inputs: [
+      {
+        name: 'rule',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+      {
+        name: 'actual',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
   },
   {
     type: 'error',
@@ -170,6 +204,11 @@ export const MARKET_ERRORS_ABI = [
     name: 'ExpectedCEAMismatch',
     inputs: [
       {
+        name: 'rule',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+      {
         name: 'expected',
         type: 'address',
         internalType: 'address',
@@ -184,7 +223,13 @@ export const MARKET_ERRORS_ABI = [
   {
     type: 'error',
     name: 'ExpiryMismatch',
-    inputs: [],
+    inputs: [
+      {
+        name: 'rule',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
   },
   {
     type: 'error',
@@ -210,7 +255,13 @@ export const MARKET_ERRORS_ABI = [
   {
     type: 'error',
     name: 'GasCapMismatch',
-    inputs: [],
+    inputs: [
+      {
+        name: 'rule',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
   },
   {
     type: 'error',
@@ -268,7 +319,28 @@ export const MARKET_ERRORS_ABI = [
   },
   {
     type: 'error',
+    name: 'InvalidMaxRules',
+    inputs: [
+      {
+        name: 'n',
+        type: 'uint8',
+        internalType: 'uint8',
+      },
+    ],
+  },
+  {
+    type: 'error',
     name: 'JobMismatch',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'ManyPrincipals',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'NoPrincipal',
     inputs: [],
   },
   {
@@ -308,6 +380,11 @@ export const MARKET_ERRORS_ABI = [
     name: 'PinMismatch',
     inputs: [
       {
+        name: 'rule',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+      {
         name: 'call',
         type: 'uint256',
         internalType: 'uint256',
@@ -324,21 +401,11 @@ export const MARKET_ERRORS_ABI = [
     name: 'PolicyShape',
     inputs: [
       {
-        name: 'i',
+        name: 'rule',
         type: 'uint256',
         internalType: 'uint256',
       },
     ],
-  },
-  {
-    type: 'error',
-    name: 'PrincipalCapMismatch',
-    inputs: [],
-  },
-  {
-    type: 'error',
-    name: 'PrincipalOutOfRange',
-    inputs: [],
   },
   {
     type: 'error',
@@ -347,10 +414,69 @@ export const MARKET_ERRORS_ABI = [
   },
   {
     type: 'error',
+    name: 'RuleHasAgent',
+    inputs: [
+      {
+        name: 'rule',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
+  },
+  {
+    type: 'error',
+    name: 'RulesEmpty',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'RulesNotGranted',
+    inputs: [
+      {
+        name: 'rule',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
+  },
+  {
+    type: 'error',
+    name: 'SessionCountMismatch',
+    inputs: [
+      {
+        name: 'expected',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+      {
+        name: 'actual',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
+  },
+  {
+    type: 'error',
     name: 'TargetOverflow',
     inputs: [
       {
         name: 'check',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
+  },
+  {
+    type: 'error',
+    name: 'TooManyRules',
+    inputs: [
+      {
+        name: 'n',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+      {
+        name: 'max',
         type: 'uint256',
         internalType: 'uint256',
       },
@@ -367,6 +493,38 @@ export const MARKET_ERRORS_ABI = [
       },
       {
         name: 'afterCount',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
+  },
+  {
+    type: 'error',
+    name: 'UnpinnedApprove',
+    inputs: [
+      {
+        name: 'rule',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+      {
+        name: 'call',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
+  },
+  {
+    type: 'error',
+    name: 'UnpinnedTransfer',
+    inputs: [
+      {
+        name: 'rule',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+      {
+        name: 'call',
         type: 'uint256',
         internalType: 'uint256',
       },
@@ -407,6 +565,11 @@ export const MARKET_ERRORS_ABI = [
   {
     type: 'error',
     name: 'ZeroAddress',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'ZeroPrincipal',
     inputs: [],
   },
 ] as const;

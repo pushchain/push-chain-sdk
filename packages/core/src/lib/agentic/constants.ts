@@ -7,6 +7,7 @@ export const AGENTIC = Object.freeze({
   PRINCIPAL,
   JOB: Object.freeze({
     ...JOB_VOCABULARY,
+    LOGIC: PRE_POST_CONSTANTS.LOGIC,
     PRE_POST: PRE_POST_CONSTANTS,
     ADDRESS: Object.freeze({
       'eip155:42101': Object.freeze({

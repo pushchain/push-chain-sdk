@@ -115,7 +115,7 @@ export function describePrePostJobSpec(
       .map(
         (n, i) =>
           `${i}: ${
-            n.kind === 'CHECK'
+            n.kind === 'COMPARE'
               ? `check ${n.check + 1}`
               : `${n.kind}${
                   n.kind === 'AT_LEAST' ? ` ${n.k}` : ''

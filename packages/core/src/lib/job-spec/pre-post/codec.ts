@@ -29,13 +29,13 @@ import {
 } from './types';
 export const PRE_POST_CONSTANTS = Object.freeze({
   PROFILE: PRE_POST_PROFILE,
-  SOURCE_COMMIT: '8666c2ac2304ffd97a7ada121170c397d0f6125d',
+  SOURCE_COMMIT: 'a7a8547822904b62c9b9dc031822b14c972abbc8',
   READ_AT: Object.freeze({
     POST_EXECUTION: 'POST_EXECUTION',
     PRE_EXECUTION: 'PRE_EXECUTION',
   } as const),
   LOGIC: Object.freeze({
-    CHECK: 'CHECK',
+    COMPARE: 'COMPARE',
     ALL: 'ALL',
     ANY: 'ANY',
     AT_LEAST: 'AT_LEAST',
@@ -46,7 +46,7 @@ export const PRE_POST_CONSTANTS = Object.freeze({
   MAX_DESCRIPTION_BYTES: 32768,
 });
 const mutabilities = ['BOTH', 'NONE', 'CLIENT', 'PROVIDER'] as const;
-const kinds = ['CHECK', 'ALL', 'ANY', 'AT_LEAST'] as const;
+const kinds = ['COMPARE', 'ALL', 'ANY', 'AT_LEAST'] as const;
 const phases = ['POST_EXECUTION', 'PRE_EXECUTION'] as const;
 function fail(message: string): never {
   throw new JobSpecError('INVALID_JOB_SPEC', message);
@@ -75,7 +75,7 @@ function logic(
         ...Array.from(
           { length: checks },
           (_, check): PrePostLogic => ({
-            kind: 'CHECK',
+            kind: 'COMPARE',
             check,
             children: [],
             k: 0,
@@ -272,9 +272,9 @@ export function validatePrePost(
     )
       fail('Invalid or unreachable logic entry.');
     count(n.children, 32, 0);
-    if (n.kind === 'CHECK') {
+    if (n.kind === 'COMPARE') {
       if (n.check >= spec.checks.length || n.children.length)
-        fail('Invalid CHECK leaf.');
+        fail('Invalid COMPARE leaf.');
       usedChecks.add(n.check);
     } else {
       if (

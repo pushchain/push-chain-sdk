@@ -5,7 +5,7 @@ import { createPublicClient, http } from 'viem';
 import { DONUT_MARKETPLACE as D } from '../../src/lib/market/deployment';
 import { MARKETPLACE_ABI } from '../../src/lib/market/contracts/UniversalMarketplace';
 import { JOB_KERNEL_ABI } from '../../src/lib/market/contracts/AgenticCommerce';
-describe('marketplace deployed v2 read-only', () => {
+describe('marketplace deployed 2.1 read-only', () => {
   let sdk: PushChain;
   beforeAll(async () => {
     sdk = await PushChain.initialize(
@@ -39,14 +39,16 @@ describe('marketplace deployed v2 read-only', () => {
         functionName: 'paymentToken',
       }),
     ]);
-    expect(version).toBe('2.0.0');
+    expect(version).toBe('2.1.0');
     expect(token.toLowerCase()).toBe(D.paymentToken.toLowerCase());
     expect(BigInt(cards.cards.length)).toBe(count);
     expect(Array.isArray(jobs.jobs)).toBe(true);
   });
-  it('keeps automatic verification unavailable on the default manual evaluator', async () => {
-    await expect(sdk.job.verify(BigInt(1))).rejects.toMatchObject({
-      code: 'CAPABILITY_UNAVAILABLE',
+  it('has deployed evaluator and hook code without invoking a write', async () => {
+    const rpc = createPublicClient({
+      transport: http('https://evm.donut.rpc.push.org/'),
     });
+    for (const address of [D.evaluator, D.hook])
+      expect((await rpc.getCode({ address }))?.length).toBeGreaterThan(2);
   });
 });

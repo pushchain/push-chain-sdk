@@ -27,7 +27,7 @@ export interface PrePostCheckTemplate extends Omit<PrePostCheck, 'target'> {
 }
 /** Exact topological graph; entry 0 is the root and children follow their parent. */
 export interface PrePostLogic {
-  kind: 'CHECK' | 'ALL' | 'ANY' | 'AT_LEAST';
+  kind: 'COMPARE' | 'ALL' | 'ANY' | 'AT_LEAST';
   check: number;
   children: number[];
   k: number;

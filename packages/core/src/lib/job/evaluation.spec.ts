@@ -1,3 +1,4 @@
+import { DONUT_MARKETPLACE } from '../market/deployment';
 import {
   decodeFunctionData,
   keccak256,
@@ -137,11 +138,14 @@ function fixture() {
     send: jest.fn(),
     signTypedData: jest.fn(),
   };
-  const original = new JobNamespaceImpl(rt),
+  const original = new JobNamespaceImpl({
+      ...rt,
+      deployment: DONUT_MARKETPLACE,
+    }),
     job = original.withEvaluator({ profile: 'pre-post-v1', evaluator, hook });
   return { rt, original, job, state, read, execute: base.executeMock };
 }
-it('keeps existing clients manual and scopes the new deployment without mutating the original', async () => {
+it('keeps explicitly overridden fixtures manual and scopes the new deployment without mutating the original', async () => {
   const f = fixture();
   await expect(f.original.verify(BigInt(1))).rejects.toMatchObject({
     code: 'CAPABILITY_UNAVAILABLE',
@@ -296,4 +300,49 @@ it('rejects empty, invalid and unsupported execution-block requests before readi
   ).rejects.toMatchObject({ code: 'CAPABILITY_UNAVAILABLE' });
   expect(f.read).not.toHaveBeenCalled();
   expect(f.execute).not.toHaveBeenCalled();
+});
+
+it('returns kernel facts for unsupported criteria without decoding an older format', async () => {
+  const f = fixture();
+  f.state.j.description = '0x00';
+  expect(await f.job.status(BigInt(1))).toMatchObject({
+    status: 'Submitted',
+    evaluation: { available: false, reason: 'UNSUPPORTED_JOB_SPEC' },
+    jobSpecDecodeError: expect.any(String),
+  });
+  await expect(f.job.quoteEvaluation(BigInt(1))).rejects.toMatchObject({
+    code: 'UNSUPPORTED_JOB_SPEC',
+  });
+  expect(f.execute).not.toHaveBeenCalled();
+});
+it('does not hide evaluator read failures as unsupported criteria', async () => {
+  const f = fixture();
+  const original = f.read.getMockImplementation()!;
+  f.read.mockImplementation(async (args) => {
+    if (args.functionName === 'currentSpec') throw new Error('RPC unavailable');
+    return original(args);
+  });
+  await expect(f.job.status(BigInt(1))).rejects.toMatchObject({
+    code: 'READ_FAILED',
+  });
+});
+
+it('lists snapshot state without a historical submission-log scan per row', async () => {
+  const f = fixture();
+  const original = f.read.getMockImplementation()!;
+  f.read.mockImplementation(async (args) =>
+    args.functionName === 'jobCounter' ? BigInt(2) : original(args)
+  );
+  const getLogs = jest.fn(async () => []);
+  f.rt.agw.reader.getLogs = getLogs;
+  const job = f.original.withEvaluator({
+    profile: 'pre-post-v1',
+    evaluator,
+    hook,
+    startBlock: BigInt(0),
+  });
+  expect((await job.list()).jobs).toHaveLength(2);
+  expect(getLogs).not.toHaveBeenCalled();
+  await job.status(BigInt(1));
+  expect(getLogs).toHaveBeenCalledTimes(1);
 });

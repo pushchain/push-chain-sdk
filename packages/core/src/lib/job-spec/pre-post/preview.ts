@@ -75,7 +75,7 @@ export function judgePrePost(
   const nodes: (boolean | null)[] = [];
   for (let i = spec.logic.length - 1; i >= 0; i--) {
     const n = spec.logic[i];
-    if (n.kind === 'CHECK') {
+    if (n.kind === 'COMPARE') {
       nodes[i] = checks[n.check].pass;
       continue;
     }

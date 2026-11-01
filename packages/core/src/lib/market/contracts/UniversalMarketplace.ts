@@ -1,4 +1,4 @@
-// Generated from sdk-iteration-v1@443b4e2; Donut marketplace v2.
+// Generated from sdk_iteration_v2@5aad039; marketplace 2.1.0.
 export const MARKETPLACE_ABI = [
   {
     type: 'constructor',
@@ -53,6 +53,19 @@ export const MARKETPLACE_ABI = [
         name: '',
         type: 'address',
         internalType: 'contract IAgenticCommerce',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'MODE_BATCH',
+    inputs: [],
+    outputs: [
+      {
+        name: '',
+        type: 'bytes32',
+        internalType: 'bytes32',
       },
     ],
     stateMutability: 'view',
@@ -233,14 +246,128 @@ export const MARKETPLACE_ABI = [
             internalType: 'uint48',
           },
           {
-            name: 'executeBy',
-            type: 'uint48',
-            internalType: 'uint48',
-          },
-          {
             name: 'params',
             type: 'int256[]',
             internalType: 'int256[]',
+          },
+        ],
+      },
+      {
+        name: 'sessions',
+        type: 'tuple[]',
+        internalType: 'struct Session[]',
+        components: [
+          {
+            name: 'sessionValidator',
+            type: 'address',
+            internalType: 'address',
+          },
+          {
+            name: 'sessionValidatorInitData',
+            type: 'bytes',
+            internalType: 'bytes',
+          },
+          {
+            name: 'salt',
+            type: 'bytes32',
+            internalType: 'bytes32',
+          },
+          {
+            name: 'userOpPolicies',
+            type: 'tuple[]',
+            internalType: 'struct PolicyData[]',
+            components: [
+              {
+                name: 'policy',
+                type: 'address',
+                internalType: 'address',
+              },
+              {
+                name: 'initData',
+                type: 'bytes',
+                internalType: 'bytes',
+              },
+            ],
+          },
+          {
+            name: 'erc7739Policies',
+            type: 'tuple',
+            internalType: 'struct ERC7739Data',
+            components: [
+              {
+                name: 'allowedERC7739Content',
+                type: 'tuple[]',
+                internalType: 'struct ERC7739Context[]',
+                components: [
+                  {
+                    name: 'appDomainSeparator',
+                    type: 'bytes32',
+                    internalType: 'bytes32',
+                  },
+                  {
+                    name: 'contentNames',
+                    type: 'string[]',
+                    internalType: 'string[]',
+                  },
+                ],
+              },
+              {
+                name: 'erc1271Policies',
+                type: 'tuple[]',
+                internalType: 'struct PolicyData[]',
+                components: [
+                  {
+                    name: 'policy',
+                    type: 'address',
+                    internalType: 'address',
+                  },
+                  {
+                    name: 'initData',
+                    type: 'bytes',
+                    internalType: 'bytes',
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            name: 'actions',
+            type: 'tuple[]',
+            internalType: 'struct ActionData[]',
+            components: [
+              {
+                name: 'actionTargetSelector',
+                type: 'bytes4',
+                internalType: 'bytes4',
+              },
+              {
+                name: 'actionTarget',
+                type: 'address',
+                internalType: 'address',
+              },
+              {
+                name: 'actionPolicies',
+                type: 'tuple[]',
+                internalType: 'struct PolicyData[]',
+                components: [
+                  {
+                    name: 'policy',
+                    type: 'address',
+                    internalType: 'address',
+                  },
+                  {
+                    name: 'initData',
+                    type: 'bytes',
+                    internalType: 'bytes',
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            name: 'permitERC4337Paymaster',
+            type: 'bool',
+            internalType: 'bool',
           },
         ],
       },
@@ -413,11 +540,6 @@ export const MARKETPLACE_ABI = [
                 internalType: 'bytes32',
               },
               {
-                name: 'chainNamespace',
-                type: 'string',
-                internalType: 'string',
-              },
-              {
                 name: 'providerFee',
                 type: 'uint256',
                 internalType: 'uint256',
@@ -428,32 +550,12 @@ export const MARKETPLACE_ABI = [
                 internalType: 'address',
               },
               {
-                name: 'principalMin',
-                type: 'uint256',
-                internalType: 'uint256',
-              },
-              {
-                name: 'principalMax',
-                type: 'uint256',
-                internalType: 'uint256',
-              },
-              {
                 name: 'minDuration',
                 type: 'uint32',
                 internalType: 'uint32',
               },
               {
                 name: 'maxDuration',
-                type: 'uint32',
-                internalType: 'uint32',
-              },
-              {
-                name: 'minExecuteWindow',
-                type: 'uint32',
-                internalType: 'uint32',
-              },
-              {
-                name: 'settleWindow',
                 type: 'uint32',
                 internalType: 'uint32',
               },
@@ -672,6 +774,19 @@ export const MARKETPLACE_ABI = [
   },
   {
     type: 'function',
+    name: 'maxRulesPerCard',
+    inputs: [],
+    outputs: [
+      {
+        name: '',
+        type: 'uint8',
+        internalType: 'uint8',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
     name: 'openJob',
     inputs: [
       {
@@ -705,11 +820,6 @@ export const MARKETPLACE_ABI = [
                 internalType: 'uint48',
               },
               {
-                name: 'executeBy',
-                type: 'uint48',
-                internalType: 'uint48',
-              },
-              {
                 name: 'params',
                 type: 'int256[]',
                 internalType: 'int256[]',
@@ -717,9 +827,9 @@ export const MARKETPLACE_ABI = [
             ],
           },
           {
-            name: 'session',
-            type: 'tuple',
-            internalType: 'struct Session',
+            name: 'sessions',
+            type: 'tuple[]',
+            internalType: 'struct Session[]',
             components: [
               {
                 name: 'sessionValidator',
@@ -927,9 +1037,9 @@ export const MARKETPLACE_ABI = [
         internalType: 'address',
       },
       {
-        name: 'rulesId',
-        type: 'bytes32',
-        internalType: 'bytes32',
+        name: 'rulesIds',
+        type: 'bytes32[]',
+        internalType: 'bytes32[]',
       },
     ],
     stateMutability: 'nonpayable',
@@ -994,11 +1104,6 @@ export const MARKETPLACE_ABI = [
                 internalType: 'uint48',
               },
               {
-                name: 'executeBy',
-                type: 'uint48',
-                internalType: 'uint48',
-              },
-              {
                 name: 'params',
                 type: 'int256[]',
                 internalType: 'int256[]',
@@ -1018,9 +1123,9 @@ export const MARKETPLACE_ABI = [
         ],
       },
       {
-        name: 's',
-        type: 'tuple',
-        internalType: 'struct Session',
+        name: 'sessions',
+        type: 'tuple[]',
+        internalType: 'struct Session[]',
         components: [
           {
             name: 'sessionValidator',
@@ -1238,11 +1343,6 @@ export const MARKETPLACE_ABI = [
             internalType: 'bytes32',
           },
           {
-            name: 'chainNamespace',
-            type: 'string',
-            internalType: 'string',
-          },
-          {
             name: 'providerFee',
             type: 'uint256',
             internalType: 'uint256',
@@ -1253,32 +1353,12 @@ export const MARKETPLACE_ABI = [
             internalType: 'address',
           },
           {
-            name: 'principalMin',
-            type: 'uint256',
-            internalType: 'uint256',
-          },
-          {
-            name: 'principalMax',
-            type: 'uint256',
-            internalType: 'uint256',
-          },
-          {
             name: 'minDuration',
             type: 'uint32',
             internalType: 'uint32',
           },
           {
             name: 'maxDuration',
-            type: 'uint32',
-            internalType: 'uint32',
-          },
-          {
-            name: 'minExecuteWindow',
-            type: 'uint32',
-            internalType: 'uint32',
-          },
-          {
-            name: 'settleWindow',
             type: 'uint32',
             internalType: 'uint32',
           },
@@ -1363,7 +1443,7 @@ export const MARKETPLACE_ABI = [
     name: 'rulesOfJob',
     inputs: [
       {
-        name: '',
+        name: 'jobId',
         type: 'uint256',
         internalType: 'uint256',
       },
@@ -1371,8 +1451,8 @@ export const MARKETPLACE_ABI = [
     outputs: [
       {
         name: '',
-        type: 'bytes32',
-        internalType: 'bytes32',
+        type: 'bytes32[]',
+        internalType: 'bytes32[]',
       },
     ],
     stateMutability: 'view',
@@ -1464,6 +1544,19 @@ export const MARKETPLACE_ABI = [
   },
   {
     type: 'function',
+    name: 'setMaxRulesPerCard',
+    inputs: [
+      {
+        name: 'n',
+        type: 'uint8',
+        internalType: 'uint8',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
     name: 'supportsInterface',
     inputs: [
       {
@@ -1523,11 +1616,6 @@ export const MARKETPLACE_ABI = [
             internalType: 'bytes32',
           },
           {
-            name: 'chainNamespace',
-            type: 'string',
-            internalType: 'string',
-          },
-          {
             name: 'providerFee',
             type: 'uint256',
             internalType: 'uint256',
@@ -1538,32 +1626,12 @@ export const MARKETPLACE_ABI = [
             internalType: 'address',
           },
           {
-            name: 'principalMin',
-            type: 'uint256',
-            internalType: 'uint256',
-          },
-          {
-            name: 'principalMax',
-            type: 'uint256',
-            internalType: 'uint256',
-          },
-          {
             name: 'minDuration',
             type: 'uint32',
             internalType: 'uint32',
           },
           {
             name: 'maxDuration',
-            type: 'uint32',
-            internalType: 'uint32',
-          },
-          {
-            name: 'minExecuteWindow',
-            type: 'uint32',
-            internalType: 'uint32',
-          },
-          {
-            name: 'settleWindow',
             type: 'uint32',
             internalType: 'uint32',
           },
@@ -1653,12 +1721,6 @@ export const MARKETPLACE_ABI = [
         type: 'bytes32',
         indexed: true,
         internalType: 'bytes32',
-      },
-      {
-        name: 'chainNamespace',
-        type: 'string',
-        indexed: false,
-        internalType: 'string',
       },
       {
         name: 'rulesHash',
@@ -1893,10 +1955,10 @@ export const MARKETPLACE_ABI = [
         internalType: 'uint256',
       },
       {
-        name: 'rulesId',
-        type: 'bytes32',
+        name: 'rulesIds',
+        type: 'bytes32[]',
         indexed: false,
-        internalType: 'bytes32',
+        internalType: 'bytes32[]',
       },
       {
         name: 'principal',
@@ -1909,6 +1971,19 @@ export const MARKETPLACE_ABI = [
         type: 'uint256',
         indexed: false,
         internalType: 'uint256',
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: 'event',
+    name: 'MaxRulesPerCardUpdated',
+    inputs: [
+      {
+        name: 'n',
+        type: 'uint8',
+        indexed: false,
+        internalType: 'uint8',
       },
     ],
     anonymous: false,
@@ -2075,11 +2150,6 @@ export const MARKETPLACE_ABI = [
   },
   {
     type: 'error',
-    name: 'AgentCardIdentityImmutable',
-    inputs: [],
-  },
-  {
-    type: 'error',
     name: 'AgentCardInactive',
     inputs: [],
   },
@@ -2118,11 +2188,6 @@ export const MARKETPLACE_ABI = [
   {
     type: 'error',
     name: 'EnforcedPause',
-    inputs: [],
-  },
-  {
-    type: 'error',
-    name: 'ExecuteByOutOfRange',
     inputs: [],
   },
   {
@@ -2212,17 +2277,23 @@ export const MARKETPLACE_ABI = [
   },
   {
     type: 'error',
+    name: 'InvalidMaxRules',
+    inputs: [
+      {
+        name: 'n',
+        type: 'uint8',
+        internalType: 'uint8',
+      },
+    ],
+  },
+  {
+    type: 'error',
     name: 'JobMismatch',
     inputs: [],
   },
   {
     type: 'error',
     name: 'NotInitializing',
-    inputs: [],
-  },
-  {
-    type: 'error',
-    name: 'PrincipalOutOfRange',
     inputs: [],
   },
   {
@@ -2234,6 +2305,17 @@ export const MARKETPLACE_ABI = [
     type: 'error',
     name: 'ReentrancyGuardReentrantCall',
     inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'RulesNotGranted',
+    inputs: [
+      {
+        name: 'rule',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
   },
   {
     type: 'error',
@@ -2286,6 +2368,11 @@ export const MARKETPLACE_ABI = [
   {
     type: 'error',
     name: 'ZeroAddress',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'ZeroPrincipal',
     inputs: [],
   },
 ] as const;
