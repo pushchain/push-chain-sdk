@@ -1,4 +1,15 @@
-import { zeroAddress, zeroHash, type Address } from 'viem';
+import {
+  decodeAbiParameters,
+  decodeFunctionData,
+  parseAbi,
+  toHex,
+  zeroAddress,
+  zeroHash,
+  type Address,
+  type Hex,
+} from 'viem';
+import { DONUT_MARKETPLACE } from '../deployment';
+import { JOB_KERNEL_ABI } from '../contracts/AgenticCommerce';
 import { MarketNamespaceImpl } from '../market';
 import { JobNamespaceImpl } from '../../job/job';
 import { mockRuntime } from '../../agentic/__tests__/mock-runtime';
@@ -11,7 +22,10 @@ const provider = '0x2222222222222222222222222222222222222222';
 function runtime(signer: Address = owner) {
   const base = mockRuntime(new FakeChain(), { signer });
   const read = jest.fn(
-    async (args: { functionName: string }): Promise<unknown> => {
+    async (args: {
+      functionName: string;
+      args?: readonly unknown[];
+    }): Promise<unknown> => {
       switch (args.functionName) {
         case 'getJob':
           return {
@@ -219,3 +233,80 @@ it('refuses funding an externally opened multi-rule job before moving funds', as
   expect(execute).not.toHaveBeenCalled();
   expect(rt.send).not.toHaveBeenCalled();
 });
+
+it.each([2, 4])(
+  'cancels an externally opened %s-rule job atomically without revoking unrelated or disabled grants',
+  async (count) => {
+    const { rt, read, execute } = runtime();
+    const wallet = '0x3333333333333333333333333333333333333333' as Address;
+    const ids = Array.from({ length: count }, (_, i) =>
+      toHex(BigInt(i + 1), { size: 32 })
+    );
+    const disabled = count === 4 ? ids[1] : undefined;
+    const unrelated = toHex(BigInt(99), { size: 32 });
+    const original = read.getMockImplementation()!;
+    read.mockImplementation(async (req) => {
+      switch (req.functionName) {
+        case 'getJob':
+          return { ...((await original(req)) as object), client: wallet };
+        case 'isWallet':
+          return true;
+        case 'owner':
+          return owner;
+        case 'agwOfJob':
+          return wallet;
+        case 'rulesOfJob':
+          return ids;
+        case 'isPermissionEnabled':
+          return req.args?.[0] !== disabled;
+        default:
+          return original(req);
+      }
+    });
+    await new JobNamespaceImpl(rt).cancel(BigInt(1));
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(rt.send).not.toHaveBeenCalled();
+    const submitted = execute.mock.calls[0][0] as { to: Address; data: Hex };
+    expect(submitted.to.toLowerCase()).toBe(wallet.toLowerCase());
+    const outer = decodeFunctionData({
+      abi: parseAbi([
+        'function execute(bytes32 mode, bytes executionCalldata)',
+      ]),
+      data: submitted.data,
+    });
+    expect(outer.args[0]).toBe('0x01' + '00'.repeat(31));
+    const calls = decodeAbiParameters(
+      [
+        {
+          type: 'tuple[]',
+          components: [
+            { name: 'target', type: 'address' },
+            { name: 'value', type: 'uint256' },
+            { name: 'callData', type: 'bytes' },
+          ],
+        },
+      ],
+      outer.args[1]
+    )[0];
+    expect(calls[0].target.toLowerCase()).toBe(
+      DONUT_MARKETPLACE.kernel.toLowerCase()
+    );
+    expect(
+      decodeFunctionData({ abi: JOB_KERNEL_ABI, data: calls[0].callData })
+    ).toMatchObject({
+      functionName: 'reject',
+      args: [BigInt(1), zeroHash, '0x'],
+    });
+    const revocations = calls.slice(1).map((call) => {
+      expect(call.target.toLowerCase()).toBe(wallet.toLowerCase());
+      expect(call.value).toBe(BigInt(0));
+      return decodeFunctionData({
+        abi: parseAbi(['function revokeRules(bytes32 rulesId)']),
+        data: call.callData,
+      }).args[0];
+    });
+    expect(revocations).toEqual(ids.filter((id) => id !== disabled));
+    expect(revocations).not.toContain(unrelated);
+    if (disabled) expect(revocations).not.toContain(disabled);
+  }
+);

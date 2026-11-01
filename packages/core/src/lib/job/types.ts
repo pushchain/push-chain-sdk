@@ -114,6 +114,7 @@ export interface JobEvaluation {
   done: boolean;
   verdict: 'NONE' | 'PASS' | 'FAIL' | 'INCONCLUSIVE';
   applied: boolean;
+  /** Informational wallet-wide checkpoint comparison. Legitimate client retries can be TOUCHED; this does not override verdict or settlement. */
   ownerCheck: 'UNKNOWN' | 'CLEAN' | 'TOUCHED';
   reads: {
     at: 'PRE_EXECUTION' | 'POST_EXECUTION';

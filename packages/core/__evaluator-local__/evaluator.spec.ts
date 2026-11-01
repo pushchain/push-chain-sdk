@@ -348,6 +348,28 @@ async function submit(jobId: bigint) {
   if (!status.evaluation.available) throw new Error('Expected evaluator facts');
   return status;
 }
+async function assertExplicitPermissionCleanup() {
+  const enabled = () =>
+    h.publicClient.readContract({
+      address: h.addresses.engine,
+      abi: parseAbi([
+        'function isPermissionEnabled(bytes32,address) view returns(bool)',
+      ]),
+      functionName: 'isPermissionEnabled',
+      args: [rulesId, wallet],
+    });
+  expect(await enabled()).toBe(true);
+  expect(
+    await h.publicClient.readContract({
+      address: hook,
+      abi: EVALUATION_HOOK_ABI,
+      functionName: 'activeJobOf',
+      args: [wallet],
+    })
+  ).toBe(BigInt(0));
+  await (await owner.agentic.wallet(wallet).rules.delete([rulesId])).wait();
+  expect(await enabled()).toBe(false);
+}
 it('executes atomic PC prepayment and escrow, freezes canonical criteria, then pays on a PRE/POST verdict', async () => {
   const jobId = await createFunded();
   const funded = await job.status(jobId);
@@ -372,6 +394,7 @@ it('executes atomic PC prepayment and escrow, freezes canonical criteria, then p
   expect((await job.status(jobId)).evaluation).toMatchObject({
     prepaid: BigInt(0),
   });
+  await assertExplicitPermissionCleanup();
 });
 it('refuses stale criteria hashes and fee caps without moving escrow or prepaying reads', async () => {
   const spec = criteria(),
@@ -430,7 +453,10 @@ it('retries an unreadable evaluation from the client wallet at the original fixe
   expect(retried.evaluation.reads[0].requestId).not.toBe(first.requestId);
   expect(retried.evaluation.reads[0].endHeight).toBe(first.endHeight);
   await deliver(retried.evaluation.reads[0].requestId, BigInt(110));
-  expect((await job.status(jobId)).status).toBe('Completed');
+  expect(await job.status(jobId)).toMatchObject({
+    status: 'Completed',
+    evaluation: { verdict: 'PASS', applied: true, ownerCheck: 'TOUCHED' },
+  });
   await (await job.claimReadFees(jobId)).wait();
 });
 it('recovers a PRE request past expiry and refuses a stranger retry', async () => {
@@ -619,6 +645,31 @@ it('rejects a failing fixed-block criterion and refunds escrow to the client', a
   });
   expect(after - before).toBe(BigInt(1000000));
   await (await job.claimReadFees(jobId)).wait();
+  await assertExplicitPermissionCleanup();
+});
+it('refunds an expired funded job while leaving its permission for explicit owner cleanup', async () => {
+  const jobId = await createFunded();
+  const funded = await job.status(jobId);
+  const balance = () =>
+    h.publicClient.readContract({
+      address: token,
+      abi: parseAbi(['function balanceOf(address) view returns(uint256)']),
+      functionName: 'balanceOf',
+      args: [wallet],
+    });
+  const before = await balance();
+  await h.publicClient.request({
+    method: 'evm_setNextBlockTimestamp' as never,
+    params: [funded.expiredAt] as never,
+  });
+  await h.publicClient.request({
+    method: 'evm_mine' as never,
+    params: [] as never,
+  });
+  await (await job.claimRefund(jobId)).wait();
+  expect((await job.status(jobId)).status).toBe('Expired');
+  expect((await balance()) - before).toBe(funded.budget);
+  await assertExplicitPermissionCleanup();
 });
 it('waits for both destination work blocks and evaluates summed cross-chain criteria', async () => {
   const chains = ['eip155:84532', 'eip155:11155111'];

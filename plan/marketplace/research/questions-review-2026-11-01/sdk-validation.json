@@ -1,0 +1,22 @@
+{
+  "runtimeBehaviorChanged": false,
+  "focusedUnitTests": {
+    "passed": 29,
+    "failed": 0
+  },
+  "localContractScenarios": {
+    "passed": 10,
+    "failed": 0
+  },
+  "specTypes": "pass",
+  "localTypes": "pass",
+  "guideBlocksTypechecked": 3,
+  "publicChainTransactions": false,
+  "mirroredToV5": [
+    "packages/core/MARKETPLACE.md",
+    "packages/core/src/lib/job/types.ts",
+    "packages/core/src/lib/job/evaluation.spec.ts",
+    "packages/core/src/lib/market/__tests__/namespace.spec.ts",
+    "packages/core/__evaluator-local__/evaluator.spec.ts"
+  ]
+}

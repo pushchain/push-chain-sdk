@@ -107,6 +107,10 @@ The provider executes only the granted rules, then calls `job.submit`. Optional 
 
 `job.cancel` uses client authority and revokes recorded marketplace permissions in the owner batch. It does not withdraw deposited wallet assets. Expiry/grace refunds use `job.claimRefund`. Provider completion or evaluator rejection does not automatically acquire permission-revocation authority. Permission binding itself does not prevent later owner revocation.
 
+`evaluation.ownerCheck` is informational: `CLEAN` means the observed wallet checkpoint is unchanged, `TOUCHED` means it changed, and `UNKNOWN` means the checkpoint could not be read. This is wallet-wide, not tied to one rule or chain. Legitimate client retries can produce `TOUCHED`; it is not proof of misconduct and does not override PASS/FAIL or block settlement.
+
+Completion, rejection and expiry refunds leave permission cleanup to the owner. `job.claimRefund` does not revoke grants. After a job ends, the owner can revoke its still-enabled recorded IDs through `client.agentic.wallet(wallet).rules.delete(ids)`. An expired validity window prevents execution but does not itself remove the permission. `activeJob(wallet) = 0` indicates job availability, not that old permissions have been removed; preserve unrelated and later-job grants when cleaning up.
+
 Use structured errors and retain pending transaction hashes. A submitted atomic transaction never falls back to sequential transfers. Coordinate concurrent funding clients rather than automatically repeating a partially observed transaction.
 
 ## Custom evaluator integrations

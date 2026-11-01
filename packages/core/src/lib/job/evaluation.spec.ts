@@ -196,15 +196,36 @@ it('routes verification through public retryEvaluation rather than the hook-only
     decodeFunctionData({ abi: EVALUATOR_ABI, data: params.data }).functionName
   ).toBe('retryEvaluation');
 });
-it('recovers a decided but unapplied verdict with public settlement', async () => {
-  const f = fixture();
-  f.state.e = { ...f.state.e, done: true, verdict: 1 };
-  await f.job.verify(BigInt(1));
-  const params = f.execute.mock.calls[0][0] as { data: Hex };
-  expect(
-    decodeFunctionData({ abi: EVALUATOR_ABI, data: params.data }).functionName
-  ).toBe('settle');
-});
+it.each([
+  [2, 'TOUCHED', 1, 'PASS'],
+  [0, 'UNKNOWN', 1, 'PASS'],
+  [2, 'TOUCHED', 2, 'FAIL'],
+  [0, 'UNKNOWN', 2, 'FAIL'],
+] as const)(
+  'keeps ownerCheck %s (%s) informational when settling verdict %s (%s)',
+  async (ownerCheck, ownerLabel, verdict, verdictLabel) => {
+    const f = fixture();
+    f.state.e = { ...f.state.e, done: true, pending: 0, verdict, ownerCheck };
+    expect((await f.job.status(BigInt(1))).evaluation).toMatchObject({
+      available: true,
+      ownerCheck: ownerLabel,
+      verdict: verdictLabel,
+      applied: false,
+    });
+    await f.job.verify(BigInt(1));
+    expect(f.execute).toHaveBeenCalledTimes(1);
+    const params = f.execute.mock.calls[0][0] as {
+      to: string;
+      data: Hex;
+      value: bigint;
+    };
+    expect(params.to.toLowerCase()).toBe(evaluator.toLowerCase());
+    expect(params.value).toBe(BigInt(0));
+    expect(
+      decodeFunctionData({ abi: EVALUATOR_ABI, data: params.data })
+    ).toMatchObject({ functionName: 'settle', args: [BigInt(1)] });
+  }
+);
 it('never silently attaches retry fees and enforces explicit fee caps before signing', async () => {
   const f = fixture();
   await expect(

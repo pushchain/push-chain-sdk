@@ -4,6 +4,14 @@ Running history for work continued on `feat/agw-sdk-v4`, covering AGW, marketpla
 
 For each meaningful checkpoint, add a dated entry with the change, decisions, validation, remaining work and relevant commit/evidence links. Keep earlier entries as history and mark superseded decisions explicitly. Distinguish implemented code, planning, local/fork checks, funded execution, Git delivery and package publication. Git history for this file records the exact commit introducing each checkpoint.
 
+## 2026-11-01 — lock existing owner-check and cleanup behavior in SDK tests
+
+Added regression coverage for TOUCHED/UNKNOWN with PASS/FAIL settlement, two-/four-rule cancellation (including an already-disabled grant and unrelated permission), and expired-job refunds retaining permissions until owner cleanup. Extended real-contract completion/rejection cases with explicit permission cleanup, and the client-retry case with TOUCHED plus successful settlement. Clarified the guide and ownerCheck type documentation; no runtime behavior or compatibility changes. Validation:29 focused unit tests and10 local real-contract scenarios pass, with spec/local types and all3 guide code blocks checked. Mirrored the five non-plan files to v5; no public-chain transactions, commit or push. [Evidence](marketplace/research/questions-review-2026-11-01/sdk-validation.json).
+
+## 2026-11-01 — resolve pending questions from existing resources
+
+Rechecked remote contract heads and live deployment at block24873403; no all-rule hook implementation found in the reviewed branches. Reran32 binding tests and the owner-check test successfully. Source establishes wallet-wide occupancy, permitted owner revocation, informational-only ownerCheck and owner-driven cleanup. Reduced the team document to the new ABI/delivery and authenticated complete-rule-set questions; existing behavior and deployment facts no longer appear as unanswered questions. [Audit and evidence](marketplace/research/questions-review-2026-11-01/README.md). No SDK implementation changes or public-chain writes.
+
 ## 2026-11-01 — alpha.9 publication and team handoff documents
 
 Verified npm publication of `@pushchain/core@6.0.27-alpha.9` at `2026-11-01T10:44:55.470Z`, with package `gitHead` `ccc5d3dd2ba46532369b28d9df6fe03a7a91d2db`. Fast-forwarded the v5 worktree to the existing release commit `19dbd3dd`; no new version bump or publication. Expanded the alpha.9 package changelog on v4 and v5 using the existing release format. Expanded `plan/marketplace/questions.md` on v4 into a team handoff covering the multi-rule hook ABI, complete-set validation, revocation/settlement policy, terminal cleanup and rollout evidence. Release notes are maintained on both branches; the team handoff and development history remain on v4 only.
