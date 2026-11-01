@@ -1,21 +1,11 @@
-# Agentic marketplace — questions for the contracts team
+# Marketplace — remaining contract question
 
-## 1. Which approved marketplace/evaluator stack should the SDK target?
+## Bind every rule before enabling multi-chain job execution
 
-The SDK implements PR #132's timing-free PRE/POST format locally. The live marketplace writes v2 criteria; both demo stacks write timing-first criteria. Neither matches the new format.
+Marketplace 2.1 allows four rules per card. The current UniversalHook still accepts `(bytes32 rulesId, bytes32 expectedSpecHash, bytes newSpec)` and binds only one permission.
 
-**Is PR #132’s timing-free PRE/POST format approved for v2? Please share the matching marketplace integration commit and rollout addresses, including kernel, hook, evaluator and payment token.**
+**Please share the upgraded hook ABI, source commit and deployment that checks and binds every job rule. Confirm how rule revocation and terminal-job cleanup are intended to work.**
 
-## 2. Do the marketplace timing fields stay?
+The SDK allows multi-rule card authoring, registration and previews, but gates multi-rule job opening and funding until this is supported. Raising `maxRulesPerCard` does not satisfy this requirement.
 
-The new JobSpec removes `executeBy` and `failFinalAt`. Cards still have `minExecuteWindow` / `settleWindow`, and `JobInputs` still has `executeBy`.
-
-**Should these remain as openJob checks, or be removed from the card and signed job inputs?**
-
-## 3. Are multi-chain cards in scope for this rollout?
-
-Current cards bind one execution chain and one rule; several chains require a new signed format.
-
-**Should v2 include multi-chain cards? If yes, confirm the leg limit, fee model and final card/openJob/fund structs, including per-leg principal and binding every rulesId.**
-
-[Verified demo/CEA findings](research/demo-alignment-2026-10-26/README.md).
+Resolved by the October 30 deployment: timing-free PRE/POST format, COMPARE leaf naming, duration-based cards, eUSD kernel payment token and compatible marketplace/evaluator addresses. No PUSD redemption exception is implemented.

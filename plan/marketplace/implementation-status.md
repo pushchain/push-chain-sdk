@@ -1,5 +1,8 @@
 # Marketplace SDK implementation status
 
+November 1: the local SDK now targets marketplace2.1/eUSD/PRE-POST. See [the migration checkpoint](marketplace-2.1-migration.md) for current changes and validation limits. The October20 checklist below records the retired2.0 checkpoint and is historical.
+
+
 October 20, 2026 — SDK-only completion checkpoint on `feat/agw-sdk-v4`. [Completed SDK checklist and external boundary](sdk-readiness.md). No package was published.
 
 ## Coverage against SDK pages 6 and 7

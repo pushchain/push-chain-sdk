@@ -1,0 +1,77 @@
+{
+  "block": "24871325",
+  "cards": [
+    {
+      "id": "3",
+      "active": false
+    },
+    {
+      "id": "4",
+      "active": false
+    },
+    {
+      "id": "5",
+      "active": false
+    }
+  ],
+  "jobs": [
+    {
+      "id": "17",
+      "status": "Rejected",
+      "wallet": "0xF6DfFf006A0A0E199Bf2569438E6D2F7c50A0409",
+      "permissionsEnabled": [
+        false
+      ]
+    },
+    {
+      "id": "18",
+      "status": "Rejected",
+      "wallet": "0x100598A9F4687dCE88629a637A1746429c439287",
+      "permissionsEnabled": [
+        false
+      ]
+    },
+    {
+      "id": "19",
+      "status": "Rejected",
+      "wallet": "0x6DbB1Fe833CfB08e6c51CBA30490baf32A70a64e",
+      "permissionsEnabled": [
+        false
+      ]
+    },
+    {
+      "id": "20",
+      "status": "Completed",
+      "wallet": "0x6DbB1Fe833CfB08e6c51CBA30490baf32A70a64e",
+      "permissionsEnabled": []
+    },
+    {
+      "id": "21",
+      "status": "Completed",
+      "wallet": "0xC880963086450eB48135a52de99386FF15e28Acc",
+      "permissionsEnabled": []
+    },
+    {
+      "id": "22",
+      "status": "Rejected",
+      "wallet": "0xC0E796467EBEBB0265507c5960c63de0E5e8fCc1",
+      "permissionsEnabled": [
+        false
+      ]
+    },
+    {
+      "id": "23",
+      "status": "Completed",
+      "wallet": "0x220FDF1BCb322396170754457cf58f8535A0E9Fe",
+      "permissionsEnabled": [
+        false
+      ]
+    }
+  ],
+  "masterBalances": {
+    "eUSD": "40000",
+    "pUSDT.bnb": "60000",
+    "PC": "966497.489260407648591992"
+  },
+  "prepaid23": "0"
+}

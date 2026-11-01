@@ -4,6 +4,19 @@ Running history for work continued on `feat/agw-sdk-v4`, covering AGW, marketpla
 
 For each meaningful checkpoint, add a dated entry with the change, decisions, validation, remaining work and relevant commit/evidence links. Keep earlier entries as history and mark superseded decisions explicitly. Distinguish implemented code, planning, local/fork checks, funded execution, Git delivery and package publication. Git history for this file records the exact commit introducing each checkpoint.
 
+## 2026-11-01 — Git delivery to v4 and v5
+
+Implementation/tests/consumer guide committed as `8bc8f9be` on `feat/agw-sdk-v4` and `ccc5d3dd` on `feat/agw-sdk-v5`. Both contain the same33-file change. V5 first fast-forwarded to the existing remote release commit `c81a532c`; its6.0.27-alpha.8 metadata is preserved. No new version bump or package publication was performed. Plan/history/evidence is committed separately onv4 only. Validation remains9 distinct live scenarios across reruns,2312 units and the documented local/fork/package checks. Remote delivery targets are the two existing origin branches; no force push.
+
+## 2026-11-01 — live Donut acceptance and read-path fixes
+
+Nine distinct live scenarios passed across runs, including real PRE/POST consensus, marketplace escrow/payout, prepaid refund, principal bridging and permission cleanup. Minted0.04 demo eUSD; no additional user funds needed. Fixed unsupported criteria aborting job lists and removed repeated historical submission scans from list reads. Full units:2312 passed,12 existing skips. The automatic test uses a fresh owner after another scenario's native atomic call installs a7702 delegate. [Evidence, first-run failures and cleanup audit](marketplace/research/sdk-2.1-2026-11-01/live/README.md). Source/tests/guide mirrored locally to v5; plan stays onv4. No commit or push.
+
+## 2026-11-01 — marketplace 2.1 migration (local work)
+
+Migrated ABIs, deployment, ordered card rules, duration inputs, batch signing, rule-array recovery and canonical PRE/POST helpers. Default evaluator uses the new eUSD stack. Multi-rule registration/preview remains available; opening/funding is gated pending all-rule hook support. User chose removal of retired marketplace compatibility. Validation:2309 units,9 local evaluator scenarios,2 real-deployment fork smoke cases, build/types/API/package/guides and production lint pass. V5 has matching non-plan changes and66 focused tests pass; release metadata remains unchanged. No commit/push/publication. [Migration record and acceptance boundaries](marketplace/marketplace-2.1-migration.md).
+
+
 ## 2026-10-26 — commit v4 and implementation-only v5
 
 Committed the evaluator/marketplace work and AGW cleanup as `ad75da0e` on `feat/agw-sdk-v4` and cherry-picked the same implementation as `1076106b` on `feat/agw-sdk-v5`. Planning/research stays on v4. V5's existing `6.0.27-alpha.7` package metadata, release changelog, lockfile and inherited plan tree are unchanged; only the new implementation/test/consumer-doc paths were applied.
