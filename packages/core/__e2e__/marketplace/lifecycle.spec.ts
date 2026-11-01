@@ -15,7 +15,7 @@ d('marketplace live', () => {
   let externalOpened: { jobId: bigint; wallet: Address } | undefined;
   let cardId: bigint | undefined;
   let opened:
-    | { jobId: bigint; wallet: Address; rulesId: `0x${string}` }
+    | { jobId: bigint; wallet: Address; rulesIds: `0x${string}`[] }
     | undefined;
   beforeAll(async () => {
     f = await setupAgw();
@@ -51,16 +51,18 @@ d('marketplace live', () => {
       .address as Address;
     const read = PushChain.utils.job.prepareRead({
       chain: CHAIN.BNB_TESTNET,
+
       target,
       abi: parseAbi(['function balanceOf(address) view returns (uint256)']),
       functionName: 'balanceOf',
       args: [PushChain.CONSTANTS.AGENTIC.WALLET],
     });
-    const template = PushChain.utils.job.buildJobSpecTemplate({
+    const template = PushChain.utils.job.prePost.buildJobSpecTemplate({
       reads: [read],
       checks: [
         {
-          read: 0,
+          left: [0],
+          right: [],
           evaluation: 'COMPARE',
           operation: 'GREATER_OR_EQUAL',
           target: BigInt(0),
@@ -73,35 +75,37 @@ d('marketplace live', () => {
         jobType: 'SDK_MARKETPLACE_SMOKE',
         metadataURI: 'https://example.invalid/push-sdk-test',
         metadataHash: ('0x' + '34'.repeat(32)) as `0x${string}`,
-        chain: CHAIN.BNB_TESTNET,
+
         providerFee: BigInt(0),
         paymentToken: D.paymentToken,
-        principalMin: BigInt(1),
-        principalMax: BigInt(1),
+
         minDuration: 3600,
         maxDuration: 86400,
-        minExecuteWindow: 0,
-        settleWindow: 60,
       },
       {
-        rules: {
-          assets: [
-            {
-              token: { prc20: '0x731aF1Da5365259d27528557EE4aFBA4baC90ef2' },
-              maxPerCall: PushChain.CONSTANTS.AGENTIC.PRINCIPAL,
-              maxTotal: PushChain.CONSTANTS.AGENTIC.PRINCIPAL,
-            },
-          ],
-          principalAsset: 0,
-          maxGasPerCall: BigInt(0),
-          allowedCalls: [
-            {
-              target,
-              selector: 'balanceOf(address)',
-              pins: [{ arg: 0, expected: PushChain.CONSTANTS.AGENTIC.WALLET }],
-            },
-          ],
-        },
+        rules: [
+          {
+            chain: CHAIN.BNB_TESTNET,
+            assets: [
+              {
+                token: { prc20: '0x731aF1Da5365259d27528557EE4aFBA4baC90ef2' },
+                maxPerCall: PushChain.CONSTANTS.AGENTIC.PRINCIPAL,
+                maxTotal: PushChain.CONSTANTS.AGENTIC.PRINCIPAL,
+              },
+            ],
+
+            maxGasPerCall: BigInt(0),
+            allowedCalls: [
+              {
+                target,
+                selector: 'balanceOf(address)',
+                pins: [
+                  { arg: 0, expected: PushChain.CONSTANTS.AGENTIC.WALLET },
+                ],
+              },
+            ],
+          },
+        ],
         jobSpecTemplate: template,
       }
     );
@@ -110,7 +114,7 @@ d('marketplace live', () => {
     const now = Number((await f.push.getBlock()).timestamp);
     const plan = await owner.market.preview(cardId, {
       principal: BigInt(1),
-      executeBy: now + 600,
+
       expiredAt: now + 7200,
       label: 'marketplace-e2e',
     });
@@ -119,7 +123,7 @@ d('marketplace live', () => {
     f.evidence('marketplace-open', {
       jobId: result.jobId,
       wallet: result.wallet,
-      rulesId: result.rulesId,
+      rulesId: result.rulesIds,
       txHash: result.tx.hash,
     });
     const status = await owner.job.status(opened.jobId);
@@ -129,7 +133,7 @@ d('marketplace live', () => {
     await cancelled.wait();
     expect((await owner.job.status(opened.jobId)).status).toBe('Rejected');
     await expect(
-      owner.agentic.wallet(opened.wallet).rules.get(opened.rulesId)
+      owner.agentic.wallet(opened.wallet).rules.get(opened.rulesIds[0])
     ).rejects.toMatchObject({ code: 'RULE_NOT_FOUND' });
     await (await provider.market.agent.setActive(cardId, false)).wait();
     expect((await provider.market.card(cardId)).active).toBe(false);
@@ -145,6 +149,7 @@ d('marketplace live', () => {
       reads: [
         PushChain.utils.job.prepareRead({
           chain: CHAIN.BNB_TESTNET,
+
           target: PushChain.CONSTANTS.MOVEABLE.TOKEN.BNB_TESTNET.USDT
             .address as Address,
           abi: parseAbi(['function balanceOf(address) view returns (uint256)']),
@@ -154,15 +159,14 @@ d('marketplace live', () => {
       ],
       checks: [
         {
-          read: 0,
+          left: [0],
+          right: [],
           evaluation: 'COMPARE',
           operation: 'GREATER_OR_EQUAL',
           target: BigInt(0),
         },
       ],
       logic: 'ALL',
-      executeBy: Math.floor(Date.now() / 1000) + 600,
-      failFinalAt: Math.floor(Date.now() / 1000) + 660,
     });
     const result = await PushChain.utils.job.previewJobSpec(spec, {
       client: owner,
@@ -192,6 +196,7 @@ d('marketplace live', () => {
     expect(resumed.fees.newlyPaid).toBe(BigInt(0));
     const authored = PushChain.utils.job.prepareRead({
       chain: CHAIN.BNB_TESTNET,
+
       target: spec.reads[0].target,
       abi: parseAbi(['function balanceOf(address) view returns (uint256)']),
       functionName: 'balanceOf',
@@ -245,7 +250,7 @@ d('marketplace live', () => {
     const now = Number((await f.push.getBlock()).timestamp);
     const plan = await externalOwner.market.preview(cardId, {
       principal: BigInt(1),
-      executeBy: now + 600,
+
       expiredAt: now + 7200,
     });
     const openedResult = await externalOwner.market.openJob(plan);

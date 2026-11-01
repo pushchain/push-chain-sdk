@@ -39,12 +39,12 @@ import {
   type MarketSnapshot,
   type StackRuntime,
 } from '../market/runtime';
-import { JobError, unavailable } from '../market/errors';
+import { JobError, JobSpecError, unavailable } from '../market/errors';
 import { currentGeneration } from '../agentic/deployments';
 import { getRule } from '../agentic/reads/rules';
 import { Snapshot, scanLogs } from '../agentic/reads/snapshot';
-import { decodeJobSpec } from '../job-spec/codec';
-import type { JobSpec } from '../job-spec/types';
+import { decodePrePostJobSpec as decodeJobSpec } from '../job-spec/pre-post/codec';
+import type { PrePostJobSpec as JobSpec } from '../job-spec/pre-post/types';
 import type { Call } from '../agentic/contracts/v6';
 import { watchJob } from './watch';
 import type {
@@ -93,7 +93,15 @@ export class JobNamespaceImpl<S extends JobSpec | PrePostJobSpec = JobSpec>
 {
   constructor(
     private readonly rt: StackRuntime,
-    private readonly evaluator?: Readonly<JobEvaluatorConfig>
+    private readonly evaluator:
+      | Readonly<JobEvaluatorConfig>
+      | undefined = rt.deployment
+      ? undefined
+      : {
+          profile: 'pre-post-v1',
+          evaluator: DONUT_MARKETPLACE.evaluator,
+          hook: DONUT_MARKETPLACE.hook,
+        }
   ) {}
   withEvaluator(
     config: JobEvaluatorConfig
@@ -198,7 +206,11 @@ export class JobNamespaceImpl<S extends JobSpec | PrePostJobSpec = JobSpec>
       throw new JobError('JOB_NOT_FOUND', 'This job does not exist.');
     return j;
   }
-  private async jobAt(jobId: bigint, s: MarketSnapshot): Promise<Job<S>> {
+  private async jobAt(
+    jobId: bigint,
+    s: MarketSnapshot,
+    includeDeliverable = true
+  ): Promise<Job<S>> {
     const d = deployment(this.rt);
     const j = await this.raw(jobId, s);
     const paymentToken = await s.read<Address>(d.kernel, ABI, 'paymentToken');
@@ -206,12 +218,21 @@ export class JobNamespaceImpl<S extends JobSpec | PrePostJobSpec = JobSpec>
     let evaluatedFacts:
       | Awaited<ReturnType<typeof evaluationStatus>>
       | undefined;
-    if (evaluated) {
-      const c = await this.requireEvaluator(j, s);
-      evaluatedFacts = await evaluationStatus(s, c, jobId, j);
-    }
     let spec: JobSpec | undefined;
     let decodeError: string | undefined;
+    if (evaluated) {
+      const c = await this.requireEvaluator(j, s);
+      try {
+        evaluatedFacts = await evaluationStatus(s, c, jobId, j);
+      } catch (error) {
+        if (
+          !(error instanceof JobSpecError) ||
+          error.code !== 'UNSUPPORTED_JOB_SPEC'
+        )
+          throw error;
+        decodeError = error.message;
+      }
+    }
     if (!evaluated && j.description !== '0x') {
       try {
         spec = decodeJobSpec(j.description, { format: 'spec' }) as JobSpec;
@@ -224,8 +245,14 @@ export class JobNamespaceImpl<S extends JobSpec | PrePostJobSpec = JobSpec>
       : d.hook !== zeroAddress && getAddress(j.hook) === getAddress(d.hook)
       ? await s.read<Hex>(d.hook, RULES_HOOK_ABI, 'rulesOfJob', [jobId])
       : undefined;
+    const rulesIds =
+      d.marketplace !== zeroAddress && getAddress(j.hook) === getAddress(d.hook)
+        ? await s.read<Hex[]>(d.marketplace, MARKETPLACE_ABI, 'rulesOfJob', [
+            jobId,
+          ])
+        : undefined;
     let deliverable: Hex | undefined;
-    if (j.status >= 2) {
+    if (includeDeliverable && j.status >= 2) {
       const logs = await scanLogs(
         this.rt.agw.reader,
         {
@@ -258,12 +285,15 @@ export class JobNamespaceImpl<S extends JobSpec | PrePostJobSpec = JobSpec>
       paymentToken,
       ...(deliverable ? { deliverable } : {}),
       ...(rulesId && rulesId !== zeroHash ? { rulesId } : {}),
+      ...(rulesIds?.length ? { rulesIds } : {}),
       ...(spec ? { jobSpec: { spec, bytes: j.description } } : {}),
       ...(decodeError ? { jobSpecDecodeError: decodeError } : {}),
       evaluation: evaluatedFacts?.evaluation ?? {
         available: false,
         reason:
-          getAddress(j.evaluator) === getAddress(d.evaluator)
+          evaluated && decodeError
+            ? 'UNSUPPORTED_JOB_SPEC'
+            : getAddress(j.evaluator) === getAddress(d.evaluator)
             ? 'MANUAL_EVALUATOR'
             : 'UNVERIFIED_EVALUATOR',
       },
@@ -300,7 +330,7 @@ export class JobNamespaceImpl<S extends JobSpec | PrePostJobSpec = JobSpec>
                 : count - i + BigInt(1)
             ),
           },
-          (_, n) => this.jobAt(i + BigInt(n), s)
+          (_, n) => this.jobAt(i + BigInt(n), s, false)
         )
       );
       jobs.push(
@@ -361,11 +391,6 @@ export class JobNamespaceImpl<S extends JobSpec | PrePostJobSpec = JobSpec>
         throw new JobError(
           'INVALID_JOB_SPEC',
           'A plain job must have a zero marketplace origin.'
-        );
-      if ('failFinalAt' in spec && spec.failFinalAt >= options.expiredAt)
-        throw new JobError(
-          'INVALID_JOB_SPEC',
-          'The failure deadline must precede expiry.'
         );
     }
     const min = await s.read<bigint>(d.kernel, ABI, 'MIN_EXPIRY_WINDOW');
@@ -475,9 +500,7 @@ export class JobNamespaceImpl<S extends JobSpec | PrePostJobSpec = JobSpec>
       throw new JobError('NOT_CLIENT', 'Connect this job’s client.');
     let expected = options.expectedBudget;
     const cardId =
-      !evaluated &&
-      d.marketplace !== zeroAddress &&
-      getAddress(j.hook) === getAddress(d.hook)
+      d.marketplace !== zeroAddress && getAddress(j.hook) === getAddress(d.hook)
         ? await s.read<bigint>(d.marketplace, MARKETPLACE_ABI, 'cardOfJob', [
             jobId,
           ])
@@ -494,14 +517,19 @@ export class JobNamespaceImpl<S extends JobSpec | PrePostJobSpec = JobSpec>
           'getAgentCard',
           [cardId]
         ),
-        s.read<Hex>(d.marketplace, MARKETPLACE_ABI, 'rulesOfJob', [jobId]),
+        s.read<Hex[]>(d.marketplace, MARKETPLACE_ABI, 'rulesOfJob', [jobId]),
       ]);
-      if (rulesId && rulesId !== recordedRules)
+      if (recordedRules.length !== 1)
+        throw new JobError(
+          'MULTI_RULE_HOOK_UNSUPPORTED',
+          'The deployed hook binds only one rule; multi-rule funding is unavailable.'
+        );
+      if (rulesId && rulesId !== recordedRules[0])
         throw new JobError(
           'RULES_MISMATCH',
           'Use the permission recorded when this job was opened.'
         );
-      rulesId = recordedRules;
+      rulesId = recordedRules[0];
       if (expected === undefined && version === view.version)
         expected = view.card.providerFee;
     }
@@ -840,27 +868,28 @@ export class JobNamespaceImpl<S extends JobSpec | PrePostJobSpec = JobSpec>
           : await s.read<Address>(d.marketplace, MARKETPLACE_ABI, 'agwOfJob', [
               jobId,
             ]);
-      const rulesId =
+      const rulesIds =
         d.marketplace === zeroAddress
-          ? zeroHash
-          : await s.read<Hex>(d.marketplace, MARKETPLACE_ABI, 'rulesOfJob', [
+          ? []
+          : await s.read<Hex[]>(d.marketplace, MARKETPLACE_ABI, 'rulesOfJob', [
               jobId,
             ]);
-      if (
-        getAddress(wallet) === getAddress(j.client) &&
-        rulesId !== zeroHash &&
-        (await s.read<boolean>(
-          gen.addresses.sessionEngine,
-          gen.contracts.abis.engine,
-          'isPermissionEnabled',
-          [rulesId, j.client]
-        ))
-      )
-        calls.push({
-          target: j.client,
-          value: BigInt(0),
-          data: gen.contracts.encodeRevokeRules(rulesId),
-        });
+      for (const rulesId of rulesIds)
+        if (
+          getAddress(wallet) === getAddress(j.client) &&
+          rulesId !== zeroHash &&
+          (await s.read<boolean>(
+            gen.addresses.sessionEngine,
+            gen.contracts.abis.engine,
+            'isPermissionEnabled',
+            [rulesId, j.client]
+          ))
+        )
+          calls.push({
+            target: j.client,
+            value: BigInt(0),
+            data: gen.contracts.encodeRevokeRules(rulesId),
+          });
       return ownerBatch(rt, j.client, calls, options.progressHook);
     }
     if (getAddress(j.client) !== getAddress(rt.agw.signerPushAccount()))

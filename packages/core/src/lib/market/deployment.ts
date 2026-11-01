@@ -1,15 +1,15 @@
 import { PUSH_NETWORK } from '../constants/enums';
 import { unavailable } from './errors';
 export const DONUT_MARKETPLACE = Object.freeze({
-  sourceCommit: '443b4e2dd9ca5dd9ffc8efebdfcecd619dd66c47',
-  version: '2.0.0',
-  startBlock: BigInt(24443653),
-  marketplace: '0x9071ebE01B75123A91e88eB6ec4BF163F3fE9BF4',
-  kernel: '0x977cf1AC973E9eC4332791d531507575006157Ed',
-  hook: '0xDe7A94e510b6C571DE7880d441349689F73A32b3',
-  rules: '0x5b98A8E0df5b918DF76cD2BE84bA7995B39dfd44',
-  evaluator: '0x1afC81396f1bb36F91f74506284952b81e4bd47c',
-  paymentToken: '0x7A58048036206bB898008b5bBDA85697DB1e5d66',
+  sourceCommit: '5aad0392510b7b4dce807f7edba39054c8f95fc4',
+  version: '2.1.0',
+  startBlock: BigInt(24803669),
+  marketplace: '0x940744d96b14Bc030163C6084d602d57CE42ba48',
+  kernel: '0x449C11cAFe57d8d9079058FeEef8e9E7E1DCBcE0',
+  hook: '0xbee0B01773Dc742887f04bED58BD1B5Aa457ED96',
+  rules: '0x323FDBF1EC07e56a19225d836566155C93463CcD',
+  evaluator: '0x2a73944D79E052bAF553F59fA1c7C23f3491845c',
+  paymentToken: '0x8E1eD40770cd197c80048cB3a86D3c8173cd560D',
 } as const);
 export type MarketDeployment = Omit<
   typeof DONUT_MARKETPLACE,

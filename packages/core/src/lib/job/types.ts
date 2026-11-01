@@ -1,7 +1,7 @@
 import type { Address, Hex } from 'viem';
 import type { UniversalTxResponse } from '../orchestrator/orchestrator.types';
 import type { PrePostJobSpec } from '../job-spec/pre-post/types';
-import type { JobSpec } from '../job-spec/types';
+import type { PrePostJobSpec as JobSpec } from '../job-spec/pre-post/types';
 import type { StackProgressHook } from '../market/runtime';
 export type JobStatus =
   | 'Open'
@@ -34,6 +34,8 @@ export interface Job<S extends JobSpec | PrePostJobSpec = JobSpec> {
   description: Hex;
   deliverable?: Hex;
   rulesId?: Hex;
+  /** All permissions recorded by a marketplace job; the hook may bind only one. */
+  rulesIds?: Hex[];
   jobSpec?: {
     spec: S;
     bytes: Hex;
@@ -41,7 +43,13 @@ export interface Job<S extends JobSpec | PrePostJobSpec = JobSpec> {
   };
   jobSpecDecodeError?: string;
   evaluation:
-    | { available: false; reason: 'MANUAL_EVALUATOR' | 'UNVERIFIED_EVALUATOR' }
+    | {
+        available: false;
+        reason:
+          | 'MANUAL_EVALUATOR'
+          | 'UNVERIFIED_EVALUATOR'
+          | 'UNSUPPORTED_JOB_SPEC';
+      }
     | JobEvaluation;
 }
 export interface JobWriteOptions {

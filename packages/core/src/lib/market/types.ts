@@ -1,6 +1,9 @@
 import type { Address, Hex } from 'viem';
 import type { AgentCardRules } from './rules';
-import type { JobSpec, JobSpecTemplate } from '../job-spec/types';
+import type {
+  PrePostJobSpec as JobSpec,
+  PrePostJobSpecTemplate as JobSpecTemplate,
+} from '../job-spec/pre-post/types';
 import type { SessionWire } from '../agentic/codec/session';
 import type { StackProgressHook } from './runtime';
 import type { UniversalTxResponse } from '../orchestrator/orchestrator.types';
@@ -10,17 +13,14 @@ export interface AgentCardInput {
   jobType: string;
   metadataURI: string;
   metadataHash: Hex;
-  chain: string;
   providerFee: bigint;
   paymentToken: Address;
-  principalMin: bigint;
-  principalMax: bigint;
   minDuration: number;
   maxDuration: number;
-  minExecuteWindow: number;
-  settleWindow: number;
 }
 export interface AgentCard extends AgentCardInput {
+  chains: string[];
+  maxRulesPerCard: number;
   cardId: bigint;
   provider: Address;
   active: boolean;
@@ -41,7 +41,6 @@ export type AgentCardSummary = Omit<
 export interface MarketJobInputs {
   principal: bigint;
   expiredAt: number;
-  executeBy: number;
   params: bigint[];
 }
 export interface OwnerIntent {
@@ -63,7 +62,7 @@ export interface JobPlan {
   cardVersion: bigint;
   wallet: Address;
   walletDeployed: boolean;
-  session: SessionWire;
+  sessions: SessionWire[];
   intent: OwnerIntent;
   calldata: Hex;
   jobSpec: { spec: JobSpec; bytes: Hex };
@@ -137,7 +136,7 @@ export interface MarketNamespace {
   ): Promise<{
     jobId: bigint;
     wallet: Address;
-    rulesId: Hex;
+    rulesIds: Hex[];
     tx: UniversalTxResponse;
   }>;
   deposit(
@@ -148,7 +147,7 @@ export interface MarketNamespace {
     cardId: bigint;
     cardVersion: bigint;
     wallet: Address;
-    rulesId: Hex;
+    rulesIds: Hex[];
   }>;
   activeJob(wallet: Address): Promise<{ jobId: bigint }>;
   agent: {

@@ -44,13 +44,13 @@ export type MarketPin =
       max?: never;
     }
   | { arg: ArgumentPath; max: bigint | PrincipalMarker; expected?: never };
-export interface AgentCardRules {
+export interface AgentCardRule {
+  chain: string;
   assets: {
     token: MarketAssetToken;
     maxPerCall: bigint | PrincipalMarker;
     maxTotal?: bigint | PrincipalMarker;
   }[];
-  principalAsset: number;
   maxGasPerCall: bigint;
   allowedCalls: {
     target: Address;
@@ -59,7 +59,13 @@ export interface AgentCardRules {
     maxValue?: bigint;
   }[];
 }
-export interface CardRulesWire {
+export type AgentCardRules = AgentCardRule[];
+export interface CardRuleWire {
+  chainNamespace: string;
+  terms: UniversalTermsWire;
+}
+export type CardRulesWire = CardRuleWire[];
+interface LegWire {
   assets: readonly AssetCapWire[];
   principalAsset: number;
   maxGasPerCall: bigint;
@@ -73,19 +79,17 @@ export const MARKER_PRINCIPAL = keccak256(
 );
 const PRINCIPAL_WORD = BigInt(MARKER_PRINCIPAL);
 const decodedRules = new WeakMap<
-  AgentCardRules,
-  { fingerprint: string; wire: CardRulesWire }
+  AgentCardRule,
+  { fingerprint: string; wire: LegWire }
 >();
-const fingerprint = (r: AgentCardRules) =>
+const fingerprint = (r: AgentCardRule) =>
   JSON.stringify(r, (_, v) => (typeof v === 'bigint' ? v.toString() : v));
 const fields = UNIVERSAL_TERMS_PARAM.components;
 export const CARD_RULES_PARAM = {
-  type: 'tuple',
+  type: 'tuple[]',
   components: [
-    fields[2],
-    { name: 'principalAsset', type: 'uint8' },
-    fields[3],
-    fields[4],
+    { name: 'chainNamespace', type: 'string' },
+    { ...UNIVERSAL_TERMS_PARAM, name: 'terms' },
   ],
 } as const;
 const bad = (message: string): never => {
@@ -98,9 +102,9 @@ function cap(n: bigint | PrincipalMarker | undefined): bigint {
   return v;
 }
 function toWire(
-  input: AgentCardRules,
+  input: AgentCardRule,
   options?: { chain?: string; network?: PUSH_NETWORK; structural?: boolean }
-): CardRulesWire {
+): LegWire {
   if (
     !input ||
     !Array.isArray(input.assets) ||
@@ -204,19 +208,19 @@ function toWire(
   });
   const wire = {
     assets,
-    principalAsset: input.principalAsset,
+    principalAsset: assets.findIndex((a) => a.maxTotal === PRINCIPAL_WORD),
     maxGasPerCall: cap(input.maxGasPerCall),
     allowedCalls,
   };
   validateWire(wire, !!options?.structural);
   return wire;
 }
-function validateWire(r: CardRulesWire, structural = false): void {
+function validateWire(r: LegWire, structural = false): void {
   if (!Array.isArray(r.assets) || r.assets.length < 1 || r.assets.length > 8)
     bad('Cards need 1..8 assets.');
   if (
     !Number.isInteger(r.principalAsset) ||
-    r.principalAsset < 0 ||
+    r.principalAsset < -1 ||
     r.principalAsset >= r.assets.length
   )
     bad('principalAsset is outside the asset list.');
@@ -306,14 +310,47 @@ function validateWire(r: CardRulesWire, structural = false): void {
       bad('transferFrom must pin its recipient to WALLET.');
   }
 }
+function validateChains(rules: AgentCardRules): void {
+  if (!Array.isArray(rules) || rules.length < 1 || rules.length > 4)
+    bad('Cards need 1..4 ordered rules.');
+  const chains = new Set<string>();
+  let principals = 0;
+  for (const r of rules) {
+    if (
+      !/^eip155:[1-9]\d*$/.test(r.chain) ||
+      r.chain === 'eip155:42101' ||
+      chains.has(r.chain)
+    )
+      bad('Card chains must be distinct supported external EVM chains.');
+    chains.add(r.chain);
+    principals += r.assets.filter((a) => a.maxTotal === PRINCIPAL).length;
+  }
+  if (principals !== 1)
+    bad('Exactly one asset across the card must have a PRINCIPAL total.');
+}
 export function validateAgentCardRules(rules: AgentCardRules): void {
-  toWire(rules, { structural: true });
+  validateChains(rules);
+  rules.forEach((r) => toWire(r, { structural: true }));
 }
 export function encodeAgentCardRules(
   rules: AgentCardRules,
-  options: { chain: string; network?: PUSH_NETWORK }
+  options: { network?: PUSH_NETWORK } = {}
 ): Hex {
-  return encodeAbiParameters([CARD_RULES_PARAM], [toWire(rules, options)]);
+  validateChains(rules);
+  const wire = rules.map((r) => {
+    const leg = toWire(r, { ...options, chain: r.chain });
+    return {
+      chainNamespace: r.chain,
+      terms: {
+        validUntil: 0,
+        expectedCEA: '0x0000000000000000000000000000000000000000' as Address,
+        assets: leg.assets,
+        maxGasPerCall: leg.maxGasPerCall,
+        allowedCalls: leg.allowedCalls,
+      },
+    };
+  });
+  return encodeAbiParameters([CARD_RULES_PARAM], [wire]);
 }
 export function decodeCardRulesWire(bytes: Hex): CardRulesWire {
   try {
@@ -321,32 +358,50 @@ export function decodeCardRulesWire(bytes: Hex): CardRulesWire {
       [CARD_RULES_PARAM],
       bytes
     )[0] as unknown as CardRulesWire;
-    validateWire(wire);
-    if (
-      encodeAbiParameters([CARD_RULES_PARAM], [wire]).toLowerCase() !==
-      bytes.toLowerCase()
-    )
+    if (encodeAbiParameters([CARD_RULES_PARAM], [wire]) !== bytes)
       bad('Noncanonical card rules.');
+    const authored = wire.map((r) => {
+      if (r.terms.validUntil !== 0 || BigInt(r.terms.expectedCEA) !== BigInt(0))
+        bad('Card per-job terms must be blank.');
+      const leg = {
+        ...r.terms,
+        principalAsset: r.terms.assets.findIndex(
+          (a) => a.maxTotal === PRINCIPAL_WORD
+        ),
+      };
+      validateWire(leg);
+      return decodeLeg(leg, r.chainNamespace);
+    });
+    validateChains(authored);
     return wire;
   } catch (cause) {
     if (cause instanceof MarketError) throw cause;
     throw new MarketError(
       'INVALID_AGENT_CARD_RULES',
-      'Unsupported or malformed v2 card-rule encoding.',
+      'Malformed marketplace 2.1 card rules.',
       undefined,
       cause
     );
   }
 }
-export function decodeAgentCardRules(
-  bytes: Hex,
-  _options?: { chain?: string }
-): AgentCardRules {
-  void _options;
-  const r = decodeCardRulesWire(bytes);
+export function decodeAgentCardRules(bytes: Hex): AgentCardRules {
+  return decodeCardRulesWire(bytes).map((r) =>
+    decodeLeg(
+      {
+        ...r.terms,
+        principalAsset: r.terms.assets.findIndex(
+          (a) => a.maxTotal === PRINCIPAL_WORD
+        ),
+      },
+      r.chainNamespace
+    )
+  );
+}
+function decodeLeg(r: LegWire, chain: string): AgentCardRule {
   // Explicit PRC20 references make unknown/custom registry tokens lossless and unambiguous.
-  const result: AgentCardRules = {
-    ...r,
+  const result: AgentCardRule = {
+    chain,
+    maxGasPerCall: r.maxGasPerCall,
     assets: r.assets.map((a) => ({
       token: { prc20: a.token },
       maxPerCall: a.maxPerCall === PRINCIPAL_WORD ? PRINCIPAL : a.maxPerCall,
@@ -386,7 +441,7 @@ export function decodeAgentCardRules(
   return result;
 }
 export function fillCardRules(
-  r: CardRulesWire,
+  r: CardRuleWire,
   principal: bigint,
   wallet: Address,
   expiredAt: number
@@ -395,13 +450,13 @@ export function fillCardRules(
   return {
     validUntil: expiredAt,
     expectedCEA: wallet,
-    assets: r.assets.map((a, i) => ({
+    assets: r.terms.assets.map((a) => ({
       ...a,
       maxPerCall: a.maxPerCall === PRINCIPAL_WORD ? principal : a.maxPerCall,
-      maxTotal: i === r.principalAsset ? principal : a.maxTotal,
+      maxTotal: a.maxTotal === PRINCIPAL_WORD ? principal : a.maxTotal,
     })),
-    maxGasPerCall: r.maxGasPerCall,
-    allowedCalls: r.allowedCalls.map((c) => ({
+    maxGasPerCall: r.terms.maxGasPerCall,
+    allowedCalls: r.terms.allowedCalls.map((c) => ({
       ...c,
       pins: c.pins.map((p) => ({
         ...p,
@@ -414,4 +469,12 @@ export function fillCardRules(
       })),
     })),
   };
+}
+
+export function principalAssetOf(rules: CardRulesWire): AssetCapWire {
+  const asset = rules
+    .flatMap((r) => r.terms.assets)
+    .find((a) => a.maxTotal === PRINCIPAL_WORD);
+  if (!asset) return bad('The card has no principal asset.');
+  return asset;
 }

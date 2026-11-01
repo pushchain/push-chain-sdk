@@ -12,6 +12,8 @@ import {
   type Address,
   type Hex,
 } from 'viem';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { PushChain } from '../../src';
 import { CHAIN } from '../../src/lib/constants/enums';
@@ -22,7 +24,7 @@ import { setupAgw, evmClient, type AgwFixture } from '../agw/_fixture';
 const d =
   process.env['MARKETPLACE_FUNDING_E2E'] === '1' ? describe : describe.skip;
 const principalToken = '0x731aF1Da5365259d27528557EE4aFBA4baC90ef2' as Address;
-const budget = BigInt(10000); // 0.01 pUSDC per paid job, returned to the master after payout.
+const budget = BigInt(10000); // 0.01 eUSD per paid job, returned to the master after payout.
 d('marketplace funding', () => {
   let f: AgwFixture;
   let owner: PushChain;
@@ -30,6 +32,18 @@ d('marketplace funding', () => {
   let evaluator: PushChain;
   let ownerKey: Hex;
   let cardId: bigint;
+  const additionalOwners: PushChain[] = [];
+  const recoveryPath = join(
+    process.cwd(),
+    'node_modules/.cache',
+    `marketplace-recovery-${Date.now()}.json`
+  );
+  const recovery: Record<string, string> = {};
+  const saveKey = (name: string, key: Hex) => {
+    recovery[name] = key;
+    mkdirSync(join(process.cwd(), 'node_modules/.cache'), { recursive: true });
+    writeFileSync(recoveryPath, JSON.stringify(recovery), { mode: 0o600 });
+  };
   const wallets: { key: Hex; origin: CHAIN; wallet: Address }[] = [];
   const jobs: { jobId: bigint; market: boolean; client: PushChain }[] = [];
   const sendToken = async (
@@ -69,15 +83,18 @@ d('marketplace funding', () => {
     return tx;
   };
   beforeAll(async () => {
-    f = await setupAgw();
+    f = await setupAgw({ deferAgentFunding: true });
     if (
       (await balance(principalToken, f.ownerAddress)) < BigInt(1) ||
-      (await balance(D.paymentToken, f.ownerAddress)) < budget * BigInt(3)
+      (await balance(D.paymentToken, f.ownerAddress)) < budget * BigInt(4)
     )
       throw new Error(
-        'Configured Push master needs 1 pUSDT.bnb unit and 0.03 pUSDC for this bounded acceptance'
+        'Configured Push master needs 1 pUSDT.bnb unit and 0.04 eUSD for this bounded acceptance'
       );
+    await f.fundAgent();
     ownerKey = generatePrivateKey();
+    saveKey('owner', ownerKey);
+    saveKey('provider', f.agentKey);
     owner = await evmClient(
       ownerKey,
       CHAIN.PUSH_TESTNET_DONUT,
@@ -88,8 +105,10 @@ d('marketplace funding', () => {
       CHAIN.PUSH_TESTNET_DONUT,
       f.manifest.network
     );
+    const evaluatorKey = generatePrivateKey();
+    saveKey('evaluator', evaluatorKey);
     evaluator = await evmClient(
-      generatePrivateKey(),
+      evaluatorKey,
       CHAIN.PUSH_TESTNET_DONUT,
       f.manifest.network
     );
@@ -97,10 +116,11 @@ d('marketplace funding', () => {
     await f.fundPC(evaluator.universal.account as Address, parseEther('0.1'));
     const token = PushChain.CONSTANTS.MOVEABLE.TOKEN.BNB_TESTNET.USDT
       .address as Address;
-    const template = PushChain.utils.job.buildJobSpecTemplate({
+    const template = PushChain.utils.job.prePost.buildJobSpecTemplate({
       reads: [
         PushChain.utils.job.prepareRead({
           chain: CHAIN.BNB_TESTNET,
+
           target: token,
           abi: erc20Abi,
           functionName: 'balanceOf',
@@ -109,7 +129,8 @@ d('marketplace funding', () => {
       ],
       checks: [
         {
-          read: 0,
+          left: [0],
+          right: [],
           evaluation: 'COMPARE',
           operation: 'GREATER_OR_EQUAL',
           target: BigInt(0),
@@ -117,40 +138,55 @@ d('marketplace funding', () => {
       ],
       logic: 'ALL',
     });
+    // Measure a real pre/post delta; this case validates evaluator plumbing,
+    // rather than claiming an agent strategy executed on the destination.
+    template.reads = [
+      { ...template.reads[0], at: 'PRE_EXECUTION' },
+      { ...template.reads[0], at: 'POST_EXECUTION' },
+    ];
+    template.checks = [
+      {
+        left: [1],
+        right: [0],
+        evaluation: 'NUMBER',
+        operation: 'GREATER_OR_EQUAL',
+        target: BigInt(0),
+      },
+    ];
     const registered = await provider.market.agent.register(
       {
         jobType: 'SDK_FUNDING_ACCEPTANCE',
         metadataURI: 'https://example.invalid/sdk-funding-acceptance',
         metadataHash: ('0x' + '56'.repeat(32)) as Hex,
-        chain: CHAIN.BNB_TESTNET,
+
         providerFee: budget,
         paymentToken: D.paymentToken,
-        principalMin: BigInt(1),
-        principalMax: BigInt(10000),
+
         minDuration: 3600,
         maxDuration: 86400,
-        minExecuteWindow: 0,
-        settleWindow: 60,
       },
       {
-        rules: {
-          assets: [
-            {
-              token: { prc20: principalToken },
-              maxPerCall: 'agentic:principal',
-              maxTotal: 'agentic:principal',
-            },
-          ],
-          principalAsset: 0,
-          maxGasPerCall: BigInt(0),
-          allowedCalls: [
-            {
-              target: token,
-              selector: 'balanceOf(address)',
-              pins: [{ arg: 0, expected: 'agentic:wallet' }],
-            },
-          ],
-        },
+        rules: [
+          {
+            chain: CHAIN.BNB_TESTNET,
+            assets: [
+              {
+                token: { prc20: principalToken },
+                maxPerCall: 'agentic:principal',
+                maxTotal: 'agentic:principal',
+              },
+            ],
+
+            maxGasPerCall: BigInt(0),
+            allowedCalls: [
+              {
+                target: token,
+                selector: 'balanceOf(address)',
+                pins: [{ arg: 0, expected: 'agentic:wallet' }],
+              },
+            ],
+          },
+        ],
         jobSpecTemplate: template,
       }
     );
@@ -188,7 +224,7 @@ d('marketplace funding', () => {
           if (held) await sendToken(client, token, f.ownerAddress, held);
         }
       }
-      for (const client of [provider, evaluator, owner]) {
+      for (const client of [provider, evaluator, owner, ...additionalOwners]) {
         if (!client) continue;
         const held = await balance(
           D.paymentToken,
@@ -227,7 +263,7 @@ d('marketplace funding', () => {
     const now = Number((await f.push.getBlock()).timestamp);
     const plan = await owner.market.preview(cardId, {
       principal: BigInt(1),
-      executeBy: now + 600,
+
       expiredAt: now + 7200,
     });
     const opened = await owner.market.openJob(plan);
@@ -355,6 +391,7 @@ d('marketplace funding', () => {
       });
     }
     const key = generatePrivateKey();
+    saveKey('externalOwner', key);
     const address = privateKeyToAccount(key).address;
     const gasHash = await master.sendTransaction({
       to: address,
@@ -392,7 +429,7 @@ d('marketplace funding', () => {
     const now = Number((await f.push.getBlock()).timestamp);
     const plan = await external.market.preview(cardId, {
       principal: BigInt(10000),
-      executeBy: now + 600,
+
       expiredAt: now + 7200,
     });
     const opened = await external.market.openJob(plan);
@@ -416,4 +453,132 @@ d('marketplace funding', () => {
       origin: CHAIN.BNB_TESTNET,
     });
   }, 900000);
+  it('4. funds a marketplace job and receives a live UniversalEvaluator verdict and payout', async () => {
+    // Native atomic funding above delegates its EOA with EIP-7702. Keep this
+    // OwnerIntent case independent of that account's contract signature policy.
+    const ownerKey = generatePrivateKey();
+    saveKey('automaticOwner', ownerKey);
+    const owner = await evmClient(
+      ownerKey,
+      CHAIN.PUSH_TESTNET_DONUT,
+      f.manifest.network
+    );
+    additionalOwners.push(owner);
+    await f.fundPC(owner.universal.account as Address, parseEther('0.1'));
+
+    await sendToken(
+      f.owner,
+      principalToken,
+      owner.universal.account as Address,
+      BigInt(1)
+    );
+    await sendToken(
+      f.owner,
+      D.paymentToken,
+      owner.universal.account as Address,
+      budget
+    );
+    const now = Number((await f.push.getBlock()).timestamp);
+    const plan = await owner.market.preview(cardId, {
+      principal: BigInt(1),
+      expiredAt: now + 7200,
+    });
+    const opened = await owner.market.openJob(plan);
+    jobs.push({ jobId: opened.jobId, market: true, client: owner });
+    wallets.push({
+      key: ownerKey,
+      origin: CHAIN.PUSH_TESTNET_DONUT,
+      wallet: opened.wallet,
+    });
+    f.evidence('marketplace-automatic-open', {
+      jobId: opened.jobId,
+      wallet: opened.wallet,
+      txHash: opened.tx.hash,
+      recoveryPath,
+    });
+    await owner.market.deposit(opened.jobId, { pcAmount: parseEther('0.03') });
+    await (await provider.job.setBudget(opened.jobId, budget)).wait();
+    const quote = await owner.job.quoteEvaluation(opened.jobId);
+    const before = await balance(
+      D.paymentToken,
+      provider.universal.account as Address
+    );
+    const funded = await owner.job.fund(opened.jobId, {
+      expectedBudget: budget,
+      evaluation: {
+        expectedSpecHash: quote.specHash,
+        maxReadFee: parseEther('0.02'),
+        prefundAmount: quote.topUp + parseEther('0.001'),
+      },
+    });
+    await funded.wait();
+    f.evidence('marketplace-automatic-funded', {
+      jobId: opened.jobId,
+      txHash: funded.hash,
+      quote,
+    });
+    let snapshotStatus = await owner.job.status(opened.jobId);
+    const snapshotDeadline = Date.now() + 150000;
+    while (
+      snapshotStatus.evaluation.available &&
+      !snapshotStatus.evaluation.ready &&
+      Date.now() < snapshotDeadline
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+      snapshotStatus = await owner.job.status(opened.jobId);
+    }
+    expect(snapshotStatus.evaluation).toMatchObject({
+      available: true,
+      ready: true,
+    });
+    f.evidence('marketplace-automatic-snapshot', {
+      jobId: opened.jobId,
+      evaluation: snapshotStatus.evaluation,
+    });
+    const submitted = await provider.job.submit(opened.jobId, {
+      deliverable:
+        'SDK live evaluator plumbing: observed POST minus PRE balance >= 0',
+    });
+    await submitted.wait();
+    let status = await owner.job.status(opened.jobId);
+    if (
+      status.evaluation.available &&
+      !status.evaluation.started &&
+      status.status === 'Submitted'
+    )
+      await (await provider.job.verify(opened.jobId)).wait();
+    const deadline = Date.now() + 150000;
+    while (Date.now() < deadline) {
+      status = await owner.job.status(opened.jobId);
+      if (status.status === 'Completed' || status.status === 'Rejected') break;
+      if (
+        status.evaluation.available &&
+        status.evaluation.done &&
+        !status.evaluation.applied
+      )
+        await (
+          await owner.job.verify(opened.jobId, { action: 'settle' })
+        ).wait();
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+    }
+    f.evidence('marketplace-automatic-verdict', {
+      jobId: opened.jobId,
+      status: status.status,
+      evaluation: status.evaluation,
+      submittedHash: submitted.hash,
+    });
+    expect(status.status).toBe('Completed');
+    expect(status.evaluation).toMatchObject({
+      available: true,
+      verdict: 'PASS',
+      applied: true,
+    });
+    expect(
+      await balance(D.paymentToken, provider.universal.account as Address)
+    ).toBeGreaterThan(before);
+    await (await owner.job.claimReadFees(opened.jobId)).wait();
+    await (
+      await owner.agentic.wallet(opened.wallet).rules.delete(opened.rulesIds)
+    ).wait();
+  }, 600000);
 });

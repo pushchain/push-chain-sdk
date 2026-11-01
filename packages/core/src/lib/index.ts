@@ -2,6 +2,7 @@ import { PushChain } from './push-chain/push-chain';
 export { MarketError, JobError, JobSpecError } from './market';
 export type {
   AgentCardRules,
+  AgentCardRule,
   MarketAssetToken,
   MarketPin,
   AgentCard,
@@ -33,25 +34,16 @@ export type {
   VerifyJobOptions,
 } from './job/types';
 export type {
-  JobSpec,
-  JobSpecTemplate,
   JobRead,
   PreparedJobRead,
   JobReadInput,
-  JobCheck,
-  JobCheckTemplate,
-  LogicTree,
   Evaluation,
   Operation,
-  LogicKind,
   AllowedMutability,
   PrincipalMarker,
   PrepareJobReadOptions,
   ExecuteJobReadOptions,
-  BuildJobSpecOptions,
-  BuildJobSpecTemplateOptions,
   JobSpecPreview,
-  PreviewJobSpecOptions,
 } from './job-spec';
 export { CHAIN } from './constants/enums';
 export type { ConversionQuote } from './constants/tokens';
@@ -302,3 +294,16 @@ export type {
 } from './agentic';
 
 export type * from './job-spec/pre-post/types';
+
+export type {
+  PrePostJobSpec as JobSpec,
+  PrePostJobSpecTemplate as JobSpecTemplate,
+  PrePostCheck as JobCheck,
+  PrePostCheckTemplate as JobCheckTemplate,
+  BuildPrePostJobSpecOptions as BuildJobSpecOptions,
+  BuildPrePostJobSpecTemplateOptions as BuildJobSpecTemplateOptions,
+  PreviewPrePostJobSpecOptions as PreviewJobSpecOptions,
+} from './job-spec/pre-post/types';
+
+export type LogicKind =
+  import('./job-spec/pre-post/types').PrePostLogic['kind'];

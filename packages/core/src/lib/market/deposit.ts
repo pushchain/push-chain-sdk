@@ -11,13 +11,13 @@ import {
 import { MARKETPLACE_ABI as ABI } from './contracts/UniversalMarketplace';
 import { JOB_KERNEL_ABI } from './contracts/AgenticCommerce';
 import { KERNEL_READ_ABI } from './kernel-wire';
-import { decodeJobSpec } from '../job-spec/codec';
+import { decodePrePostJobSpec as decodeJobSpec } from '../job-spec/pre-post/codec';
 import { specOrigin } from '../job-spec/helpers';
 import { currentGeneration } from '../agentic/deployments';
 import { configId } from '../agentic/codec/ids';
 import { scanLogs } from '../agentic/reads/snapshot';
 import { confirmedLogs } from '../agentic/management/common';
-import { decodeCardRulesWire } from './rules';
+import { decodeCardRulesWire, principalAssetOf } from './rules';
 import { historicalCard } from './history';
 import { MOVEABLE_TOKENS, type MoveableToken } from '../constants/tokens';
 import { getPRC20Address } from '../universal/prc20-address';
@@ -90,11 +90,11 @@ export async function openedDeposit(
     );
   const s = await snapshot(rt);
   const d = deployment(rt);
-  const [cardId, version, wallet, rulesId, kernel] = await Promise.all([
+  const [cardId, version, wallet, rulesIds, kernel] = await Promise.all([
     s.read<bigint>(d.marketplace, ABI, 'cardOfJob', [jobId]),
     s.read<bigint>(d.marketplace, ABI, 'cardVersionOfJob', [jobId]),
     s.read<Address>(d.marketplace, ABI, 'agwOfJob', [jobId]),
-    s.read<Hex>(d.marketplace, ABI, 'rulesOfJob', [jobId]),
+    s.read<Hex[]>(d.marketplace, ABI, 'rulesOfJob', [jobId]),
     s.read<{
       client: Address;
       status: number;
@@ -165,6 +165,12 @@ export async function openedDeposit(
       'HISTORY_UNAVAILABLE',
       'Could not recover one marketplace opening for this job.'
     );
+  if (rulesIds.length !== 1)
+    throw new MarketError(
+      'MULTI_RULE_HOOK_UNSUPPORTED',
+      'Multi-rule job execution awaits an all-rule hook.'
+    );
+  const rulesId = rulesIds[0];
   const opened = events[0];
   const card = await historicalCard(rt, cardId, version, block, loadCard);
   if (opened.cardVersion !== version)
@@ -177,7 +183,8 @@ export async function openedDeposit(
     !('origin' in spec) ||
     spec.origin !==
       specOrigin(d.marketplace, cardId, version, opened.principal) ||
-    opened.rulesId !== rulesId ||
+    opened.rulesIds.length !== 1 ||
+    opened.rulesIds[0] !== rulesId ||
     getAddress(opened.agw) !== getAddress(wallet) ||
     getAddress(card.provider) !== getAddress(kernel.provider)
   )
@@ -204,7 +211,7 @@ export async function openedDeposit(
     assets: [
       {
         step: 'PRINCIPAL',
-        token: getAddress(rules.assets[rules.principalAsset].token),
+        token: getAddress(principalAssetOf(rules).token),
         required: opened.principal,
       },
       {
@@ -212,7 +219,10 @@ export async function openedDeposit(
         token: getAddress(token),
         required: card.providerFee,
       },
-      { step: 'PC', required: card.rules.maxGasPerCall },
+      {
+        step: 'PC',
+        required: card.rules.reduce((n, r) => n + r.maxGasPerCall, BigInt(0)),
+      },
     ],
     rulesId,
   };

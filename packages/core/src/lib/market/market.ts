@@ -1,5 +1,7 @@
 import {
   encodeFunctionData,
+  encodeAbiParameters,
+  zeroHash,
   decodeAbiParameters,
   getAddress,
   domainSeparator,
@@ -15,27 +17,32 @@ import { JOB_KERNEL_ABI } from './contracts/AgenticCommerce';
 import { MARKET_RULES_ABI } from './contracts/UniversalMarketplaceRules';
 import { currentGeneration } from '../agentic/deployments';
 import { rulesId as permissionId } from '../agentic/codec/ids';
-import {
-  buildSession,
-  encodeEnvelope,
-  encodeSession,
-} from '../agentic/codec/session';
+import { buildSession, encodeEnvelope } from '../agentic/codec/session';
 import { encodeUniversalTerms } from '../agentic/codec/universal-terms';
 import { assertLabel } from '../agentic/management/label';
-import { decodeJobSpec, encodeJobSpec } from '../job-spec/codec';
 import {
-  resolveJobSpec,
-  describeJobSpec,
-  specOrigin,
-} from '../job-spec/helpers';
-import type { JobSpecTemplate } from '../job-spec/types';
+  decodePrePostJobSpec as decodeJobSpec,
+  encodePrePostJobSpec as encodeJobSpec,
+} from '../job-spec/pre-post/codec';
+import {
+  resolvePrePostJobSpec as resolveJobSpec,
+  describePrePostJobSpec as describeJobSpec,
+} from '../job-spec/pre-post/helpers';
+import { MODE_BATCH } from '../agentic/contracts/v6';
+import { specOrigin } from '../job-spec/helpers';
+import type { PrePostJobSpecTemplate as JobSpecTemplate } from '../job-spec/pre-post/types';
 import {
   decodeAgentCardRules,
   decodeCardRulesWire,
   encodeAgentCardRules,
   fillCardRules,
+  principalAssetOf,
 } from './rules';
-import { decodeCreateJob, KERNEL_READ_ABI } from './kernel-wire';
+import {
+  decodeCreateJob,
+  encodeCreateJob,
+  KERNEL_READ_ABI,
+} from './kernel-wire';
 import { copyData, embeddedCalls, fingerprint as fp } from './data';
 import { depositJob, type DepositCheckpoint } from './deposit';
 import {
@@ -63,9 +70,8 @@ import type {
 } from './types';
 import type { CHAIN } from '../constants/enums';
 
-interface WireCard extends Omit<AgentCardInput, 'chain'> {
+interface WireCard extends AgentCardInput {
   provider: Address;
-  chainNamespace: string;
   active: boolean;
 }
 interface WireView {
@@ -122,11 +128,22 @@ export class MarketNamespaceImpl implements MarketNamespace {
   ): Promise<AgentCardSummary> {
     const v = view ?? (await this.viewAt(cardId, s));
     const d = deployment(this.rt);
-    const { chainNamespace, ...card } = v.card;
+    const card = v.card;
     return {
       ...card,
       cardId,
-      chain: chainNamespace,
+      chains: (() => {
+        try {
+          return decodeCardRulesWire(v.rules).map((r) => r.chainNamespace);
+        } catch {
+          return [];
+        }
+      })(),
+      maxRulesPerCard: await s.read<number>(
+        d.marketplace,
+        ABI,
+        'maxRulesPerCard'
+      ),
       version: v.version,
       verified: v.verified,
       disabled: v.disabled,
@@ -182,7 +199,7 @@ export class MarketNamespaceImpl implements MarketNamespace {
       const rows = await Promise.all(batch.map((n) => this.summaryAt(n, s)));
       for (const card of rows)
         if (
-          (!options.chain || card.chain === options.chain) &&
+          (!options.chain || card.chains.includes(options.chain)) &&
           (options.active === undefined || card.active === options.active)
         ) {
           cards.push(card);
@@ -196,17 +213,17 @@ export class MarketNamespaceImpl implements MarketNamespace {
     cardId: bigint;
     cardVersion: bigint;
     wallet: Address;
-    rulesId: Hex;
+    rulesIds: Hex[];
   }> {
     const s = await snapshot(this.rt);
     const d = deployment(this.rt);
-    const [cardId, cardVersion, wallet, rulesId] = await Promise.all([
+    const [cardId, cardVersion, wallet, rulesIds] = await Promise.all([
       s.read<bigint>(d.marketplace, ABI, 'cardOfJob', [jobId]),
       s.read<bigint>(d.marketplace, ABI, 'cardVersionOfJob', [jobId]),
       s.read<Address>(d.marketplace, ABI, 'agwOfJob', [jobId]),
-      s.read<Hex>(d.marketplace, ABI, 'rulesOfJob', [jobId]),
+      s.read<Hex[]>(d.marketplace, ABI, 'rulesOfJob', [jobId]),
     ]);
-    return { cardId, cardVersion, wallet, rulesId };
+    return { cardId, cardVersion, wallet, rulesIds };
   }
   async activeJob(wallet: Address): Promise<{ jobId: bigint }> {
     const d = deployment(this.rt);
@@ -233,8 +250,6 @@ export class MarketNamespaceImpl implements MarketNamespace {
         'AGENT_CARD_INACTIVE',
         'This agent card is inactive or disabled.'
       );
-    if (card.jobSpecTemplate.allowedMutability !== 'NONE')
-      unavailable('Mutable marketplace criteria');
     const [
       factory,
       kernel,
@@ -273,13 +288,12 @@ export class MarketNamespaceImpl implements MarketNamespace {
     const job: MarketJobInputs = {
       principal: options.principal,
       expiredAt: options.expiredAt,
-      executeBy: options.executeBy,
       params: options.params ?? [],
     };
     if (
       typeof job.principal !== 'bigint' ||
-      job.principal < card.principalMin ||
-      job.principal > card.principalMax
+      job.principal <= BigInt(0) ||
+      job.principal >= BigInt(1) << BigInt(256)
     )
       throw new MarketError(
         'PRINCIPAL_OUT_OF_RANGE',
@@ -294,15 +308,6 @@ export class MarketNamespaceImpl implements MarketNamespace {
       throw new MarketError(
         'EXPIRY_OUT_OF_RANGE',
         'Choose an expiry inside the card’s duration window.'
-      );
-    if (
-      !Number.isSafeInteger(job.executeBy) ||
-      job.executeBy < now + card.minExecuteWindow ||
-      job.executeBy + card.settleWindow > job.expiredAt
-    )
-      throw new MarketError(
-        'EXECUTE_BY_OUT_OF_RANGE',
-        'Choose an execution deadline that leaves the settlement window.'
       );
     const owner = getAddress(rt.agw.signerPushAccount());
     if (owner === getAddress(card.provider))
@@ -355,13 +360,13 @@ export class MarketNamespaceImpl implements MarketNamespace {
       );
     const accounts: Record<string, Address> = {};
     const chains = new Set([
-      card.chain,
+      ...card.chains,
       ...card.jobSpecTemplate.reads
         .filter(
           (r, i) =>
             r.fills?.some((f) => f.source === 'WALLET') ||
             card.jobSpecTemplate.checks.some(
-              (c) => c.read === i && c.target === 'agentic:wallet'
+              (c) => c.left[0] === i && c.target === 'agentic:wallet'
             )
         )
         .map((r) => `${r.chainNamespace}:${r.chainId}`),
@@ -383,24 +388,26 @@ export class MarketNamespaceImpl implements MarketNamespace {
       accounts[chain] = getAddress(onchain);
     }
     const rules = decodeCardRulesWire(card.rulesBytes);
-    const terms = fillCardRules(
-      rules,
-      job.principal,
-      accounts[card.chain],
-      job.expiredAt
+    const terms = rules.map((r) =>
+      fillCardRules(r, job.principal, accounts[r.chainNamespace], job.expiredAt)
     );
-    const session = buildSession({
-      validator: gen.addresses.sessionValidator,
-      agent: card.provider,
-      rulesPolicy: gen.addresses.rulesPolicy,
-      actions: [
-        {
-          target: gen.addresses.gateway,
-          selector: '0x77b86bec',
-          initData: encodeEnvelope(card.chain, encodeUniversalTerms(terms)),
-        },
-      ],
-    });
+    const sessions = rules.map((r, i) =>
+      buildSession({
+        validator: gen.addresses.sessionValidator,
+        agent: card.provider,
+        rulesPolicy: gen.addresses.rulesPolicy,
+        actions: [
+          {
+            target: gen.addresses.gateway,
+            selector: '0x77b86bec',
+            initData: encodeEnvelope(
+              r.chainNamespace,
+              encodeUniversalTerms(terms[i])
+            ),
+          },
+        ],
+      })
+    );
     const rawChain = rt.agw.signerOrigin().chain;
     if (!/^eip155:[1-9]\d*$/.test(rawChain))
       unavailable('Non-EVM OwnerIntent signing');
@@ -422,16 +429,17 @@ export class MarketNamespaceImpl implements MarketNamespace {
       deadline,
       signerChainId: BigInt(rawChain.split(':')[1]),
     };
-    const [intent, [mode, calldata]] = await Promise.all([
+    const [intent, [remoteMode, remoteCalldata]] = await Promise.all([
       s.read<OwnerIntent>(d.marketplace, ABI, 'previewIntent', [
         request,
-        session,
+        sessions,
       ]),
       s.read<[Hex, Hex]>(d.marketplace, ABI, 'buildCreateJobCalldata', [
         cardId,
         owner,
         index,
         job,
+        sessions,
       ]),
     ]);
     const spec = resolveJobSpec(card.jobSpecTemplate, {
@@ -439,8 +447,6 @@ export class MarketNamespaceImpl implements MarketNamespace {
       params: job.params,
       accounts,
       origin: specOrigin(d.marketplace, cardId, card.version, job.principal),
-      executeBy: job.executeBy,
-      settleWindow: card.settleWindow,
     });
     if (
       getAddress(intent.owner) !== owner ||
@@ -452,20 +458,45 @@ export class MarketNamespaceImpl implements MarketNamespace {
         'INTENT_MISMATCH',
         'The preview intent names a different owner, wallet index, chain or deadline.'
       );
+    const calldata = encodeAbiParameters(
+      [
+        {
+          type: 'tuple[]',
+          components: [
+            { name: 'target', type: 'address' },
+            { name: 'value', type: 'uint256' },
+            { name: 'callData', type: 'bytes' },
+          ],
+        },
+      ],
+      [
+        [
+          ...sessions.map((session) => ({
+            target: wallet,
+            value: BigInt(0),
+            callData: gen.contracts.encodeGrantRules(session),
+          })),
+          {
+            target: d.kernel,
+            value: BigInt(0),
+            callData: encodeCreateJob(
+              card.provider,
+              evaluator,
+              job.expiredAt,
+              { jobSpec: encodeJobSpec(spec) },
+              hook
+            ),
+          },
+        ],
+      ]
+    );
     const bytes = encodeJobSpec(spec);
-    const packedTarget = getAddress(('0x' + calldata.slice(2, 42)) as Address);
-    const kernelCall = decodeCreateJob(('0x' + calldata.slice(106)) as Hex);
     if (
-      packedTarget !== getAddress(d.kernel) ||
-      BigInt('0x' + calldata.slice(42, 106)) !== BigInt(0) ||
-      kernelCall.description !== bytes ||
-      getAddress(kernelCall.provider) !== getAddress(card.provider) ||
-      getAddress(kernelCall.evaluator) !== getAddress(evaluator) ||
-      getAddress(kernelCall.hook) !== getAddress(hook) ||
-      kernelCall.expiredAt !== BigInt(job.expiredAt) ||
+      remoteMode !== MODE_BATCH ||
+      remoteCalldata !== calldata ||
       intent.execCalldataHash !== keccak256(calldata) ||
-      intent.sessionHash !== keccak256(encodeSession(session)) ||
-      intent.mode !== mode ||
+      intent.sessionHash !== zeroHash ||
+      intent.mode !== MODE_BATCH ||
       getAddress(intent.wallet) !== getAddress(wallet) ||
       getAddress(intent.executor) !== getAddress(d.marketplace)
     )
@@ -475,13 +506,12 @@ export class MarketNamespaceImpl implements MarketNamespace {
       );
     await s.read(d.rules, MARKET_RULES_ABI, 'checkRulesMatchCard', [
       card.rulesBytes,
-      session,
+      sessions,
       {
         agent: card.provider,
-        chainHash: keccak256(stringToHex(card.chain)),
         principal: job.principal,
         expiredAt: job.expiredAt,
-        expectedCEA: accounts[card.chain],
+        expectedCEAs: rules.map((r) => accounts[r.chainNamespace]),
       },
     ]);
     const label = options.label ?? 'Agent job';
@@ -492,7 +522,7 @@ export class MarketNamespaceImpl implements MarketNamespace {
       cardVersion: card.version,
       wallet: getAddress(wallet),
       walletDeployed: deployed,
-      session,
+      sessions,
       intent,
       calldata,
       jobSpec: { spec, bytes },
@@ -500,21 +530,32 @@ export class MarketNamespaceImpl implements MarketNamespace {
       label,
       deposit: {
         principal: {
-          prc20: terms.assets[rules.principalAsset].token,
+          prc20: principalAssetOf(rules).token,
           amount: job.principal,
         },
         providerFee: { token: card.paymentToken, amount: card.providerFee },
-        pc: card.rules.maxGasPerCall,
+        pc: terms.reduce((n, t) => n + t.maxGasPerCall, BigInt(0)),
       },
       preview: {
-        mayDo: terms.allowedCalls.map(
-          (c) =>
-            `${card.chain}: ${c.target} ${c.selector}; ${c.pins.length} argument conditions; max value ${c.maxValue}.`
-        ),
-        mayMove: terms.assets.map(
-          (a) =>
-            `${a.token}: up to ${a.maxPerCall} per outbound, ${a.maxTotal} total; gas budget ${terms.maxGasPerCall} PC wei.`
-        ),
+        mayDo: terms
+          .flatMap((t) => t.allowedCalls)
+          .map(
+            (c) =>
+              `${card.chains.join(', ')}: ${c.target} ${c.selector}; ${
+                c.pins.length
+              } argument conditions; max value ${c.maxValue}.`
+          ),
+        mayMove: terms
+          .flatMap((t) => t.assets)
+          .map(
+            (a) =>
+              `${a.token}: up to ${a.maxPerCall} per outbound, ${
+                a.maxTotal
+              } total; gas budget ${terms.reduce(
+                (n, t) => n + t.maxGasPerCall,
+                BigInt(0)
+              )} PC wei.`
+          ),
         judgedBy: [...description.checks, description.logic],
         until: new Date(job.expiredAt * 1000).toISOString(),
       },
@@ -525,6 +566,11 @@ export class MarketNamespaceImpl implements MarketNamespace {
     options = { ...options };
     if (options.relay) unavailable('Marketplace relaying');
     if (options.resume) return this.openedResult(plan, options.resume, true);
+    if (plan.sessions?.length !== 1)
+      throw new MarketError(
+        'MULTI_RULE_HOOK_UNSUPPORTED',
+        'The deployed hook binds only one rule; multi-rule job execution is unavailable.'
+      );
     if (this.rt.agw.isReadOnly)
       throw new MarketError(
         'READ_ONLY',
@@ -609,7 +655,7 @@ export class MarketNamespaceImpl implements MarketNamespace {
             cardId: plan.cardId,
             cardVersion: plan.cardVersion,
             job: plan.job,
-            session: plan.session,
+            sessions: plan.sessions,
             intent: plan.intent,
             sig,
             label: plan.label,
@@ -664,23 +710,28 @@ export class MarketNamespaceImpl implements MarketNamespace {
     const e = await eventArgs(this.rt, tx, d.marketplace, ABI, 'JobOpened');
     const [agent] = decodeAbiParameters(
       [{ type: 'address' }],
-      plan.session.sessionValidatorInitData
+      plan.sessions[0].sessionValidatorInitData
     );
-    const expectedRules = permissionId({
-      validator: gen.addresses.sessionValidator,
-      agent,
-      grantNonce: plan.intent.grantNonce,
-    });
+    const expectedRules = plan.sessions.map((session, i) =>
+      permissionId({
+        validator: session.sessionValidator,
+        agent: decodeAbiParameters(
+          [{ type: 'address' }],
+          session.sessionValidatorInitData
+        )[0],
+        grantNonce: plan.intent.grantNonce + BigInt(i),
+      })
+    );
     if (
       e['cardId'] !== plan.cardId ||
       e['cardVersion'] !== plan.cardVersion ||
       getAddress(e['agw'] as Address) !== plan.wallet ||
       e['principal'] !== plan.job.principal ||
       getAddress(e['owner'] as Address) !== getAddress(plan.intent.owner) ||
-      e['rulesId'] !== expectedRules ||
-      getAddress(plan.session.sessionValidator) !==
+      fp(e['rulesIds']) !== fp(expectedRules) ||
+      getAddress(plan.sessions[0].sessionValidator) !==
         getAddress(gen.addresses.sessionValidator) ||
-      plan.intent.sessionHash !== keccak256(encodeSession(plan.session)) ||
+      plan.intent.sessionHash !== zeroHash ||
       plan.intent.execCalldataHash !== keccak256(plan.calldata)
     )
       throw new MarketError(
@@ -694,7 +745,7 @@ export class MarketNamespaceImpl implements MarketNamespace {
       s.read<bigint>(d.marketplace, ABI, 'cardOfJob', [jobId]),
       s.read<bigint>(d.marketplace, ABI, 'cardVersionOfJob', [jobId]),
       s.read<Address>(d.marketplace, ABI, 'agwOfJob', [jobId]),
-      s.read<Hex>(d.marketplace, ABI, 'rulesOfJob', [jobId]),
+      s.read<Hex[]>(d.marketplace, ABI, 'rulesOfJob', [jobId]),
       s.read<{
         client: Address;
         provider: Address;
@@ -710,12 +761,25 @@ export class MarketNamespaceImpl implements MarketNamespace {
         [plan.wallet]
       ),
     ]);
-    const creation = decodeCreateJob(('0x' + plan.calldata.slice(106)) as Hex);
+    const batch = decodeAbiParameters(
+      [
+        {
+          type: 'tuple[]',
+          components: [
+            { name: 'target', type: 'address' },
+            { name: 'value', type: 'uint256' },
+            { name: 'callData', type: 'bytes' },
+          ],
+        },
+      ],
+      plan.calldata
+    )[0];
+    const creation = decodeCreateJob(batch[batch.length - 1].callData);
     if (
       cardId !== plan.cardId ||
       version !== plan.cardVersion ||
       getAddress(wallet) !== getAddress(plan.wallet) ||
-      rules !== expectedRules ||
+      fp(rules) !== fp(expectedRules) ||
       getAddress(owner) !== getAddress(plan.intent.owner) ||
       getAddress(job.client) !== getAddress(plan.wallet) ||
       getAddress(job.provider) !== getAddress(agent) ||
@@ -729,6 +793,23 @@ export class MarketNamespaceImpl implements MarketNamespace {
         'The kernel, wallet and marketplace mappings do not match the opening.',
         { txHash: tx.hash, jobId }
       );
+    if (!recover) {
+      for (const rulesId of expectedRules) {
+        if (
+          !(await s.read<boolean>(
+            gen.addresses.sessionEngine,
+            gen.contracts.abis.engine,
+            'isPermissionEnabled',
+            [rulesId, plan.wallet]
+          ))
+        )
+          throw new MarketError(
+            'RECEIPT_MISMATCH',
+            'An opened permission is not enabled.',
+            { txHash: tx.hash, jobId, rulesId }
+          );
+      }
+    }
     if (recover) {
       if (!this.rt.agw.reader.getTransaction)
         throw new MarketError(
@@ -746,14 +827,14 @@ export class MarketNamespaceImpl implements MarketNamespace {
             cardVersion: bigint;
             job: MarketJobInputs;
             intent: OwnerIntent;
-            session: JobPlan['session'];
+            sessions: JobPlan['sessions'];
           };
           return (
             p.cardId === plan.cardId &&
             p.cardVersion === plan.cardVersion &&
             fp(p.job) === fp(plan.job) &&
             fp(p.intent) === fp(plan.intent) &&
-            encodeSession(p.session) === encodeSession(plan.session)
+            fp(p.sessions) === fp(plan.sessions)
           );
         }
       );
@@ -767,7 +848,7 @@ export class MarketNamespaceImpl implements MarketNamespace {
     return {
       jobId,
       wallet: getAddress(e['agw'] as Address),
-      rulesId: e['rulesId'] as Hex,
+      rulesIds: e['rulesIds'] as Hex[],
       tx,
     };
   }
@@ -852,15 +933,12 @@ export class MarketNamespaceImpl implements MarketNamespace {
     card = { ...card };
     options = { ...options };
     const rules = encodeAgentCardRules(options.rules, {
-      chain: card.chain,
       network: this.rt.agw.network,
     });
     const template = encodeJobSpec(options.jobSpecTemplate);
-    const mutability = options.jobSpecTemplate.allowedMutability;
     const s = await snapshot(this.rt);
     if (
       !card.jobType ||
-      !/^eip155:[1-9]\d*$/.test(card.chain) ||
       !card.metadataURI ||
       !/^0x[\da-f]{64}$/i.test(card.metadataHash) ||
       /^0x0{64}$/i.test(card.metadataHash)
@@ -869,7 +947,7 @@ export class MarketNamespaceImpl implements MarketNamespace {
         'INVALID_AGENT_CARD',
         'Supply a job type, EVM execution chain, metadata URI and nonzero metadata hash.'
       );
-    for (const v of [card.providerFee, card.principalMin, card.principalMax])
+    for (const v of [card.providerFee])
       if (
         typeof v !== 'bigint' ||
         v < BigInt(0) ||
@@ -880,18 +958,11 @@ export class MarketNamespaceImpl implements MarketNamespace {
           'Card amounts must fit uint256.'
         );
     if (
-      card.principalMax === BigInt(0) ||
-      card.principalMin > card.principalMax ||
-      [
-        card.minDuration,
-        card.maxDuration,
-        card.minExecuteWindow,
-        card.settleWindow,
-      ].some((n) => !Number.isInteger(n) || n < 0 || n > 0xffffffff) ||
+      [card.minDuration, card.maxDuration].some(
+        (n) => !Number.isInteger(n) || n < 0 || n > 0xffffffff
+      ) ||
       card.minDuration < 3600 ||
-      card.minDuration > card.maxDuration ||
-      card.settleWindow < 1 ||
-      card.minExecuteWindow + card.settleWindow > card.maxDuration
+      card.minDuration > card.maxDuration
     )
       throw new MarketError(
         'INVALID_AGENT_CARD',
@@ -900,13 +971,13 @@ export class MarketNamespaceImpl implements MarketNamespace {
     if (cardId !== undefined) {
       const current = await this.summaryAt(cardId, s);
       this.assertProvider(current);
-      if (current.chain !== card.chain)
-        throw new MarketError(
-          'CARD_IDENTITY_IMMUTABLE',
-          'An existing card cannot change its execution chain.'
-        );
     }
-    if (mutability !== 'NONE') unavailable('Mutable marketplace criteria');
+    const cap = await s.read<number>(d.marketplace, ABI, 'maxRulesPerCard');
+    if (options.rules.length > cap)
+      throw new MarketError(
+        'INVALID_AGENT_CARD_RULES',
+        'The card exceeds the live rule cap.'
+      );
     const token = await s.read<Address>(
       d.kernel,
       JOB_KERNEL_ABI,
@@ -917,14 +988,13 @@ export class MarketNamespaceImpl implements MarketNamespace {
         'TOKEN_MISMATCH',
         'This deployment accepts only the kernel payment token.'
       );
-    const { chain, ...input } = card;
+    const input = card;
     const jobType = /^0x[\da-f]{64}$/i.test(card.jobType)
       ? (card.jobType as Hex)
       : keccak256(stringToHex(card.jobType));
     const c = {
       ...input,
       jobType,
-      chainNamespace: chain,
       provider: this.rt.agw.signerPushAccount(),
       active: true,
     };
