@@ -10,6 +10,7 @@ import { HexString } from 'ethers/lib.commonjs/utils/data';
 import { chains } from './chains';
 import { bytesToHex, Chain, hexToBytes, parseTransaction, toHex } from 'viem';
 import { signAuthorizationWithEthersSigner } from './signAuthorization';
+import { toSignTypedDataV4Payload } from '../typedData';
 
 export class MetamaskProvider extends BaseWalletProvider {
   private sdk: MetaMaskSDK;
@@ -211,26 +212,9 @@ export class MetamaskProvider extends BaseWalletProvider {
         throw new Error('No connected account');
       }
 
-      typedData.types = {
-        EIP712Domain: [
-          { name: 'version', type: 'string' },
-          { name: 'chainId', type: 'uint256' },
-          { name: 'verifyingContract', type: 'address' },
-        ],
-        ...(typedData.primaryType === 'MigrationPayload'
-          ? { MigrationPayload: typedData.types['MigrationPayload'] }
-          : { UniversalPayload: typedData.types['UniversalPayload'] }),
-      };
-
-      const safeTypedData = JSON.parse(
-        JSON.stringify(typedData, (_key, value) =>
-          typeof value === 'bigint' ? value.toString() : value
-        )
-      );
-
       const signature = await provider.request({
         method: 'eth_signTypedData_v4',
-        params: [accounts[0], JSON.stringify(safeTypedData)],
+        params: [accounts[0], toSignTypedDataV4Payload(typedData)],
       });
 
       return hexToBytes(signature as `0x${string}`);
