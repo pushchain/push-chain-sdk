@@ -10,6 +10,7 @@ import { ChainType, ITypedData } from '../../../types/wallet.types';
 import { chains } from './chains';
 import { getEIP6963ProviderByRdns } from '../utils/eip6963';
 import { signAuthorizationWithEthersSigner } from './signAuthorization';
+import { toSignTypedDataV4Payload } from '../typedData';
 
 export class RabbyProvider extends BaseWalletProvider {
   constructor() {
@@ -198,26 +199,9 @@ export class RabbyProvider extends BaseWalletProvider {
       throw new Error('No connected Rabby account');
     }
 
-    typedData.types = {
-      EIP712Domain: [
-        { name: 'version', type: 'string' },
-        { name: 'chainId', type: 'uint256' },
-        { name: 'verifyingContract', type: 'address' },
-      ],
-      ...(typedData.primaryType === 'MigrationPayload'
-        ? { MigrationPayload: typedData.types['MigrationPayload'] }
-        : { UniversalPayload: typedData.types['UniversalPayload'] }),
-    };
-
-    const safeTypedData = JSON.parse(
-      JSON.stringify(typedData, (_key, value) =>
-        typeof value === 'bigint' ? value.toString() : value
-      )
-    );
-
     const signature = await provider.request({
       method: 'eth_signTypedData_v4',
-      params: [accounts[0], JSON.stringify(safeTypedData)],
+      params: [accounts[0], toSignTypedDataV4Payload(typedData)],
     });
 
     return hexToBytes(signature as `0x${string}`);
